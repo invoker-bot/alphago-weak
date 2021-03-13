@@ -1,6 +1,13 @@
-from gotypes import *
+# -*- coding: utf-8 -*-
+
+import collections
 from typing import *
+import numpy as np
 import zobrist_hash
+from go_types import *
+
+
+__all__ = ["GoBoard"]
 
 
 class GoBoard(GoBoardBase):
@@ -120,6 +127,6 @@ class GoBoard(GoBoardBase):
         if self._grid.item(point) != GoPlayer.none.value:
             return False
         colors = (self._grid.item(p) for p in self.get_neighbors(point))
-        c = Counter(colors)
+        c = collections.Counter(colors)
         if c[GoPlayer.white.value] == 0 or c[GoPlayer.black.value] == 0:
             return c[GoPlayer.none.value] <= 1

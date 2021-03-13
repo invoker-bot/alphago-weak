@@ -1,8 +1,4 @@
-from unittest import TestCase
-from goboard import *
-from godata import *
-from typing import *
-
+'''
 def check_sample_v1(case: TestCase, Board: Type[GoBoard]):
     with SgfDataBase() as data:
         games = data.sample(5)
@@ -14,3 +10,4 @@ def check_sample_v1(case: TestCase, Board: Type[GoBoard]):
                 for string in b.get_strings():
                     for stone in string.stones:
                         case.assertEqual(b.get_string(stone), string)
+'''

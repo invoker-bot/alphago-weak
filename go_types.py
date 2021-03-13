@@ -1,12 +1,16 @@
-from enum import IntEnum
-from typing import Tuple, NamedTuple, Union, Set, Iterable, Optional, Any, Callable, NoReturn, Iterator
+# -*- coding: utf-8 -*-
+
 import numpy as np
-from collections import Counter
-from colorama import init, Fore, Back, Style
+from enum import IntEnum
+from typing import *
+from colorama import init, Fore
 from abc import abstractmethod, ABCMeta
 from itertools import product
 
 init(autoreset=True)
+
+__all__ = ["GoPlayer", "GoPoint", "GoString", "GoIllegalActionError",
+           "GoBoardBase"]
 
 
 class GoPlayer(IntEnum):
@@ -16,9 +20,9 @@ class GoPlayer(IntEnum):
 
     @property
     def other(self):
-        if self is GoPlayer.none:
+        if self == GoPlayer.none:
             return self
-        return GoPlayer.white if self is GoPlayer.black else GoPlayer.black
+        return GoPlayer.white if self == GoPlayer.black else GoPlayer.black
 
     @staticmethod
     def to_player(value):
@@ -82,10 +86,10 @@ class GoBoardBase(metaclass=ABCMeta):
                      empty_stones: Optional[Iterable[GoPoint]] = None) -> NoReturn:
         if black_stones:
             for stone in black_stones:
-                self._grid.itemset(stone, 1)
+                self._grid.itemset(stone, GoPlayer.black.value)
         if white_stones:
             for stone in white_stones:
-                self._grid.itemset(stone, -1)
+                self._grid.itemset(stone, GoPlayer.white.value)
 
     def setup_player(self, player: GoPlayer) -> NoReturn:
         self._next_player = player
@@ -150,65 +154,18 @@ class GoBoardBase(metaclass=ABCMeta):
             for y in range(shape[1]):
                 color = self._grid.item((x, y))
                 if color == GoPlayer.none.value:
-                    cols.append(" ")
+                    cols.append(",")
                 elif color == GoPlayer.white.value:
                     cols.append(Fore.WHITE + "o" + Fore.RESET)
                 else:
                     cols.append(Fore.BLACK + 'x' + Fore.RESET)
-            cols.append("")
-            rows.append((Fore.LIGHTBLACK_EX + '|' + Fore.RESET).join(cols))
+            rows.append("".join(cols))
         rows.append("")
         return '\n'.join(rows)
 
     def __str__(self):
         return self.details()
 
-    '''
-    def grid_tensor(self, dtype=np.float32):
-        shape = self._grid.shape
-        tensor = np.zeros(shape=(2, shape[0], shape[1]), dtype=dtype)
-        player = self._next_player
-        for x, y in product(range(shape[0]), range(shape[1])):
-            stone = self._grid.item((x, y))
-            if stone == player:  # 等于next_player时为1
-                tensor.itemset((0, x, y), 1.0)
-            elif stone == 0:
-                tensor.itemset((0, x, y), 0.5)
-            if self.is_valid_point((x, y)):
-                tensor.itemset((1, x, y), 1.0)
-        return tensor
-
-    def encode_point(self, point: Optional[Point]) -> int:
-        shape = self._grid.shape
-        if point:
-            return point[0] * shape[0] + point[1]
-        return shape[0] * shape[1]
-
-    def decode_point(self, number: int) -> Optional[Point]:
-        shape = self._grid.shape
-        if number == shape[0] * shape[1]:
-            return None
-        return divmod(number, shape[0])
-    '''
 
 
-class GoPlayerControllerBase(metaclass=ABCMeta):
 
-    def __init__(self, board: GoBoardBase, player: GoPlayer):
-        self.board = board
-        self.player = player
-
-    @abstractmethod
-    def play(self):
-        pass
-
-
-class GoBotBase(metaclass=ABCMeta):
-
-    def __init__(self, board: GoBoardBase, player: GoPlayer):
-        self.board = board
-        self.player = player
-
-    @abstractmethod
-    def play(self):
-        pass

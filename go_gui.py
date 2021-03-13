@@ -1,12 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from tkinter import Tk, messagebox, Canvas, PhotoImage, Button, DISABLED, NORMAL, HIDDEN
-# from tkinter.ttk import Canvas
-from gotypes import GoBoard, GoPlayer, GoIllegalActionError, GoPoint
 from os import path
-import copy
 from itertools import product
 from typing import Tuple, Optional, Iterable
-import time
 import numpy as np
+from go_types import *
+from go_board import *
 
 resource_dir = "./img"
 
@@ -256,21 +256,21 @@ class Example(Tk):
         # 几个功能按钮
         button_x = 1.2 * meter * scale
         button_y = [(meter / 2 + i * meter / 16) * scale for i in range(6)]
-        button_width = int(meter/64 * scale)
-        self.startButton = Button(self,width=button_width, text='Start', command=self.start)
+        button_width = int(meter / 64 * scale)
+        self.startButton = Button(self, width=button_width, text='Start', command=self.start)
         self.startButton.place(x=button_x, y=button_y[0])
 
-        self.passButton = Button(self,width=button_width, text='Pass', command=self._pass)
+        self.passButton = Button(self, width=button_width, text='Pass', command=self._pass)
         self.passButton.place(x=button_x, y=button_y[1])
 
-        self.regretButton = Button(self,width=button_width, text='Regret', command=self.regret)
+        self.regretButton = Button(self, width=button_width, text='Regret', command=self.regret)
         self.regretButton.place(x=button_x, y=button_y[2])
         self.regretButton['state'] = DISABLED
 
-        self.replayButton = Button(self,width=button_width,text='Replay', command=self.reload)
+        self.replayButton = Button(self, width=button_width, text='Replay', command=self.reload)
         self.replayButton.place(x=button_x, y=button_y[3])
 
-        self.quitButton = Button(self,width=button_width, text='Quit', command=self.destroy)
+        self.quitButton = Button(self, width=button_width, text='Quit', command=self.destroy)
         self.quitButton.place(x=button_x, y=button_y[4])
 
     def reload(self):
@@ -291,5 +291,4 @@ if __name__ == '__main__':
     app = Example()
     # app.title('围棋')
     app.mainloop()
-    print("killed ")
     # print(np.zeros((2, 2), dtype=np.object))

@@ -1,5 +1,6 @@
+import numpy as np
 from itertools import chain, product
-
+from typing import *
 from gotypes import *
 
 __all__ = [

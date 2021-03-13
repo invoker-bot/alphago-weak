@@ -1,16 +1,17 @@
 from unittest import TestCase, main, skip, expectedFailure
 import sys
+
 if ".." not in sys.path:
     sys.path.append("..")
 from old.goboard_v0 import GoBoard as GoBoardV0
-from goboard import *
-from gobot import *
+from go_board import *
 from goboard_check_v0 import *
 from goboard_check_v1 import *
-from godata import SgfDataBase, SgfFile
 import random
-import __main__
-__main__.SgfFile = SgfFile
+
+
+# import __main__
+# __main__.SgfFile = SgfFile
 
 @skip("deprecated")
 class TestGoBoardV0(TestCase):
@@ -26,7 +27,8 @@ class TestGoBoard(TestCase):
 
     def test_database(self):
         check_sample_v0(self, GoBoard)
-        check_sample_v1(self, GoBoard)
+        # check_sample_v1(self, GoBoard)
+
 
 class TestGoBoardAI(TestCase):
 
