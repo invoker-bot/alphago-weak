@@ -1,8 +1,8 @@
 venv
 weights
 old
-__pycache__
-.data
+**/*/__pycache__
+**/*/.data
 **/*.h5
 log
 todo

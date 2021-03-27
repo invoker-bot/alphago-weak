@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 import numpy as np
-from go_types import *
+
+from .go_types import *
 
 __all__ = ["get_hash"]
 

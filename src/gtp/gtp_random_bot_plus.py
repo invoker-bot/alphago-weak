@@ -8,9 +8,10 @@
 @Version : 1.0
 """
 
-from gtp_random_bot import GTPRandomBot
 from typing import *
-from go_types import *
+
+from ..basic import *
+from .gtp_random_bot import *
 
 __all__ = ["GTPRandomBotPlus"]
 

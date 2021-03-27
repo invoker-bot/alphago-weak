@@ -10,23 +10,10 @@ This module contains xxx.
 This module is designed to xxx.
 """
 
-from typing import *
-
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-import multiprocessing
-import logging
-import time
-import random
-import tqdm
-import enum
-
 import argparse
-from go_cache import *
-from go_data import *
-from gtp import *
-from gtp_random_bot import *
-from gtp_random_bot_plus import *
-from gtp_alphago_weak import *
+
+from src import *
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AlphaGo 1.0")
     parser.add_argument("--datadir", default=".data", type=str, dest="datadir", help="the directory to cache data")

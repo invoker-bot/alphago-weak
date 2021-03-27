@@ -1,18 +1,18 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from os import path, getcwd, makedirs, listdir, remove
 from typing import *
-from go_types import *
 import pickle
 from abc import ABCMeta, abstractmethod
 from sgfmill.sgf import Sgf_game
 import numpy as np
 
+from .go_types import *
+
 __all__ = ["set_cache_dir", "get_cache_dir", "get_game_dir", "get_archive_dir",
            "get_array_dir", "GameData", "GameArchive",
            "GameDatabase", "ArrayDatabase"]
-default_cache_dir = path.join(path.dirname(path.realpath(__file__)), ".data")
+default_cache_dir = path.join(path.dirname(path.realpath(__file__)), "../..", ".data")
 cache_dir = default_cache_dir
 archive_folder = path.join(cache_dir, ".kgs")
 game_folder = path.join(cache_dir, ".game")
@@ -187,7 +187,3 @@ class ArrayDatabase:
     def items(self) -> Iterable[Tuple[str, np.ndarray]]:
         for key in self.keys():
             yield key, self[key]
-
-
-if __name__ == '__main__':
-    set_cache_dir()

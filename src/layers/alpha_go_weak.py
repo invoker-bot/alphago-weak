@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -16,10 +15,9 @@ from keras.utils import plot_model
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
 import tqdm
-from alpha_go import *
-from go_cache import *
-from go_types import *
-from go_board import *
+
+from ..basic import *
+from .alpha_go import *
 
 __all__ = ["GoBoardAI", "AlphaGoWeak"]
 

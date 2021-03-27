@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import collections
 from typing import *
 import numpy as np
-import zobrist_hash
-from go_types import *
+
+from .go_types import *
+from .zobrist_hash import *
 
 __all__ = ["GoBoard"]
 
@@ -31,7 +31,7 @@ class GoBoard(GoBoardBase):
         return self._hash
 
     def _place_stone(self, stone: GoPoint, player: GoPlayer = GoPlayer.none):
-        self._hash ^= zobrist_hash.get_hash(self._grid.item(stone), stone) ^ zobrist_hash.get_hash(player.value, stone)
+        self._hash ^= get_hash(self._grid.item(stone), stone) ^ get_hash(player.value, stone)
         self._grid.itemset(stone, player.value)
 
     def _place_stones(self, stones: Iterable[GoPoint], player: GoPlayer = GoPlayer.none):

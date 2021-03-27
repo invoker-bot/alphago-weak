@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from urllib.request import urlretrieve
@@ -10,8 +9,9 @@ import tarfile
 from typing import *
 import tqdm
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from go_cache import *
 from functools import partial
+
+from ..basic import *
 
 __all__ = ["UGoArchive"]
 
@@ -89,9 +89,3 @@ class UGoArchive(GameArchive):
         self.retrieve(force=force)
         self.unpack(force=force)
         self.extract(force=force)
-
-
-if __name__ == "__main__":
-    set_cache_dir()
-    ar = UGoArchive()
-    ar.download()

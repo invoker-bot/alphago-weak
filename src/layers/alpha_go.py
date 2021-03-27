@@ -5,7 +5,8 @@ import numpy as np
 from os import path
 import time
 from abc import ABCMeta, abstractmethod
-from go_cache import *
+
+from ..basic import *
 
 __all__ = ["AlphaGoBase"]
 
@@ -23,7 +24,7 @@ class AlphaGoBase(metaclass=ABCMeta):
         return path.join(get_cache_dir(), "models", self.mtype)
 
     def weights_file(self, file: str = "default"):
-        return path.join(path.dirname(path.realpath(__file__)), "weights", self.mtype, str(self.size), file)
+        return path.join(path.dirname(path.realpath(__file__)), "../../weights", self.mtype, str(self.size), file)
 
     @abstractmethod
     def fit(self, sample: str, weights_file: str, epochs=100, batch_size=16):

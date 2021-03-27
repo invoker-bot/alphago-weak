@@ -12,7 +12,8 @@ import re
 import string
 from abc import abstractmethod
 from typing import *
-from go_types import *
+
+from ..basic import *
 
 __all__ = ["GTPClient"]
 

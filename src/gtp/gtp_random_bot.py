@@ -9,10 +9,10 @@
 """
 import random
 import collections
-from gtp import *
 from typing import *
-from go_types import *
-from go_board import GoBoard
+
+from ..basic import *
+from .gtp import *
 
 __all__ = ["GTPRandomBot"]
 

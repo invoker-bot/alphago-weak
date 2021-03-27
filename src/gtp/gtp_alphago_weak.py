@@ -9,11 +9,11 @@
 """
 
 import numpy as np
-import collections
-from gtp import *
 from typing import *
-from go_types import *
-from alpha_go_weak import *
+
+from ..basic import *
+from ..layers import *
+from .gtp import *
 
 __all__ = ["GTPAlphaGoWeakV0"]
 

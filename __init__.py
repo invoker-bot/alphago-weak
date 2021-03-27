@@ -14,3 +14,5 @@ This module contains some simple go bots which imitate AlphaGo.
 """
 
 __version__ = "1.0"
+
+from .src import *

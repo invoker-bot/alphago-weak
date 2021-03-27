@@ -8,7 +8,7 @@ import numpy as np
 from go_types import *
 from go_board import *
 
-resource_dir = "./img"
+resource_dir = "../../img"
 
 
 class BoardCanvas(Canvas, GoBoard):
