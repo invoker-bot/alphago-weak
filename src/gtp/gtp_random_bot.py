@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 @Author  : Invoker Bot
@@ -55,8 +54,3 @@ class GTPRandomBot(GTPClient):
 
     def _do_clear_board(self) -> NoReturn:
         self.board = GoBoard(self.board.grid.shape[0])
-
-
-if __name__ == '__main__':
-    client = GTPRandomBot()
-    client.mainloop()

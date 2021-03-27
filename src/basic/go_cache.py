@@ -52,7 +52,7 @@ def get_array_dir() -> str:
 class GameData(NamedTuple):
     size: int
     winner: GoPlayer
-    sequence: List[Optional[GoPoint]]
+    sequence: List[Tuple[Optional[GoPlayer], Optional[GoPoint]]]
     komi: float
     setup_stones: Tuple[Optional[Set[GoPoint]], Optional[Set[GoPoint]], Optional[Set[GoPoint]]]
 
@@ -89,9 +89,17 @@ class GameData(NamedTuple):
 
 
 class GameArchive(metaclass=ABCMeta):
+    name = "none"
+
+    @classmethod
+    def archive_map(cls):
+        _dict = {_cls.name: _cls for _cls in cls.__subclasses__()}
+        for v in cls.__subclasses__():
+            _dict.update(v.archive_map())
+        return _dict
 
     @abstractmethod
-    def retrieve(self, force: bool = False) -> NoReturn:
+    def retrieve(self, force=False) -> NoReturn:
         """
         Retrieve all archives available from Internet.
         :param force: whether forces to download archive if it has already existed
@@ -99,12 +107,25 @@ class GameArchive(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def extract(self) -> NoReturn:
+    def extract(self, force=False) -> NoReturn:
         """
         Extract all game archives to Game Cache Folder, every single file should end with `.game.pkl` and be
         start with it's size of the board.
         """
         pass
+
+    @abstractmethod
+    def unpack(self, force=False) -> NoReturn:
+        """
+        Unpack all game archives to
+        :param force: whether forces to download archive if it has already existed
+        """
+        pass
+
+    def download(self, force=False):
+        self.retrieve(force=force)
+        self.unpack(force=force)
+        self.extract(force=force)
 
 
 class GameDatabase:

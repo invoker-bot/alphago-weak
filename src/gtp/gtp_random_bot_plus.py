@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 @Author  : Invoker Bot
@@ -36,8 +35,3 @@ class GTPRandomBotPlus(GTPRandomBot):
                 if other_counts > 1:
                     points.append(pos)
         return points
-
-
-if __name__ == '__main__':
-    client = GTPRandomBotPlus()
-    client.mainloop()

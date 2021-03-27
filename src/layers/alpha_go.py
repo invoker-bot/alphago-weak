@@ -12,20 +12,28 @@ __all__ = ["AlphaGoBase"]
 
 
 class AlphaGoBase(metaclass=ABCMeta):
-    def __init__(self, mtype: str, size: int = 19, dtype=np.float16) -> NoReturn:
+    name = "alphago"
+
+    @classmethod
+    def alphago_map(cls):
+        _dict = {_cls.name: _cls for _cls in cls.__subclasses__()}
+        for v in cls.__subclasses__():
+            _dict.update(v.alphago_map())
+        return _dict
+
+    def __init__(self, size: int = 19, dtype=np.float16) -> NoReturn:
         self.size = size
         self.dtype = dtype
-        self.mtype = mtype
 
     def log_dir(self, name: str = time.strftime("%Y_%m_%d-%H_%M_%S")):
         return path.join(self.root(), "logs", name)
 
     def root(self):
-        return path.join(get_cache_dir(), "models", self.mtype)
+        return path.join(get_cache_dir(), "models", self.name)
 
-    def weights_file(self, file: str = "default"):
-        return path.join(path.dirname(path.realpath(__file__)), "../../weights", self.mtype, str(self.size), file)
+    def weights_file(self, file: str = "default.h5"):
+        return path.join(path.dirname(path.realpath(__file__)), "../../weights", self.name, str(self.size), file)
 
     @abstractmethod
-    def fit(self, sample: str, weights_file: str, epochs=100, batch_size=16):
+    def init_fit(self, sample: str, weights_file: str, epochs=100, batch_size=16, force=False):
         pass

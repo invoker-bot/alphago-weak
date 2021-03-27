@@ -8,4 +8,4 @@
 @Version : 1.0
 """
 
-from .go_data import *
+from .u_go import *

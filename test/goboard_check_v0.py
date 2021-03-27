@@ -1,12 +1,17 @@
 import numpy as np
 from unittest import TestCase
-from go_types import *
 from typing import *
+import sys
+
+if ".." not in sys.path:
+    sys.path.append("..")
+
+from src.basic import *
 
 black, white, none = GoPlayer.black, GoPlayer.white, GoPlayer.none
 
 
-def check_v0(case: TestCase, Board: Type[GoBoardBase]):
+def check_board_v0(case: TestCase, Board: Type[GoBoardBase]):
     b = Board(4)
 
     def test_grid(grid: List[List[GoPlayer]]):
@@ -14,30 +19,30 @@ def check_v0(case: TestCase, Board: Type[GoBoardBase]):
             np.all(np.array(grid, np.uint8) == b.grid))
 
     case.assertTrue(np.all(np.full((4, 4), GoPlayer.none, np.uint8) == b.grid))
-    b.play((0, 0))
-    b.play((0, 1))
-    b.play((1, 1))
-    b.play((1, 0))
+    b.play((0, 0), black)
+    b.play((0, 1), white)
+    b.play((1, 1), black)
+    b.play((1, 0), white)
     test_grid([[none, white, none, none],
                [white, black, none, none],
                [none, none, none, none],
                [none, none, none, none]])
-    case.assertRaises(GoIllegalActionError, lambda: b.play((0, 0)))
+    case.assertRaises(GoIllegalActionError, lambda: b.play((0, 0), black))
     for i in range(4):
         for j in range(4):
             if 0 <= i < 2 and 0 <= j < 2:
-                case.assertFalse(b.is_valid_point((i, j)))
+                case.assertFalse(b.is_valid_point((i, j), black))
             else:
-                case.assertTrue(b.is_valid_point((i, j)))
+                case.assertTrue(b.is_valid_point((i, j), black))
     test_grid([[none, white, none, none],
                [white, black, none, none],
                [none, none, none, none],
                [none, none, none, none]])
-    b.play((2, 0))
-    b.play((1, 2))
-    b.play((0, 2))
-    b.play((3, 3))
-    b.play((0, 0))
+    b.play((2, 0), black)
+    b.play((1, 2), white)
+    b.play((0, 2), black)
+    b.play((3, 3), white)
+    b.play((0, 0), black)
     test_grid([[black, none, black, none],
                [none, black, white, none],
                [black, none, none, none],
@@ -45,11 +50,11 @@ def check_v0(case: TestCase, Board: Type[GoBoardBase]):
 
     b = Board(3)
     case.assertTrue(np.all(np.full((3, 3), GoPlayer.none, np.uint8) == b.grid))
-    b.play((0, 1))
-    b.play((0, 0))
-    b.play((0, 2))
-    b.play((2, 0))
-    b.play((1, 2))
+    b.play((0, 1), black)
+    b.play((0, 0), white)
+    b.play((0, 2), black)
+    b.play((2, 0), white)
+    b.play((1, 2), black)
     test_grid([[white, black, black],
                [none, none, black],
                [white, none, none]])
@@ -89,7 +94,3 @@ def check_v0(case: TestCase, Board: Type[GoBoardBase]):
     case.assertTrue(b.is_valid_point((1, 1)))
     b._next_player = white
     case.assertFalse(b.is_valid_point((1, 1)))
-
-
-def check_sample_v0(case: TestCase, Board: Type[GoBoardBase]):
-    pass

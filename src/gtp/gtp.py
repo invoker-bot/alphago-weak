@@ -105,8 +105,10 @@ class GTPClient:
     def do_genmove(self, _id: str = "", args: str = ""):
         parsed = self.COLOR.match(args)
         if parsed:
-            result = self._do_genmove(GoPlayer.to_player(parsed["color"].lower()))
+            player = GoPlayer.to_player(parsed["color"].lower())
+            result = self._do_genmove(player)
             if isinstance(result, tuple):
+                self._do_play(player, result)
                 result = self.COORDINATE[result[0]] + str(result[1] + 1)
             print("=", _id, result, "\n", flush=True)
         else:
@@ -148,8 +150,3 @@ class GTPClient:
     def mainloop(self):
         while True:
             self.do_command(input())
-
-
-if __name__ == '__main__':
-    client = GTPClient()
-    client.mainloop()

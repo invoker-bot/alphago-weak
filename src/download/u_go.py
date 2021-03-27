@@ -2,13 +2,13 @@
 
 from urllib.request import urlretrieve
 from bs4 import BeautifulSoup
-from os import rename, path, cpu_count
+import os
+from os import path, cpu_count
 from glob import glob
 from sgfmill import sgf
 import tarfile
 from typing import *
 import tqdm
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from functools import partial
 
 from ..basic import *
@@ -16,10 +16,17 @@ from ..basic import *
 __all__ = ["UGoArchive"]
 
 
+def rename(src: str, dst: str):
+    if path.exists(dst):
+        os.remove(dst)
+    os.rename(src, dst)
+
+
 class UGoArchive(GameArchive):
+    name = "u-go"
 
     @staticmethod
-    def _retrieve_one(url: str, filename: Optional[str] = None, force: bool = False):
+    def _retrieve_one(url: str, filename: Optional[str] = None, force=False):
         if filename is None:
             filename = path.basename(url)
         filename = path.join(get_archive_dir(), filename)
@@ -28,8 +35,7 @@ class UGoArchive(GameArchive):
             urlretrieve(url, tmp_name)
             rename(tmp_name, filename)
 
-    @staticmethod
-    def retrieve(force: bool = False):
+    def retrieve(self, force=False):
         tqdm.tqdm.write("Preparing to download...")
         UGoArchive._retrieve_one('http://u-go.net/gamerecords/', "kgs_index.html", force)
         kgs_index = path.join(get_archive_dir(), "kgs_index.html")
@@ -41,13 +47,11 @@ class UGoArchive(GameArchive):
                 archive_url: str = link.get("href")
                 if archive_url.endswith('.tar.gz'):
                     urls.append(archive_url)
-            with ThreadPoolExecutor(max_workers=cpu_count() // 2) as executor:
-                tasks = executor.map(partial(UGoArchive._retrieve_one, filename=None, force=force), urls)
-                for _ in tqdm.tqdm(tasks, total=len(urls), desc="Downloading...", unit="archive"):
-                    pass
+            do_works(partial(UGoArchive._retrieve_one, filename=None, force=force), urls, desc="Downloading...",
+                     unit="archive", cpu=False)
 
     @staticmethod
-    def _unpack_one(archive: str, force: bool = False):
+    def _unpack_one(archive: str, force=False):
         dest_path = path.join(get_archive_dir(), path.splitext(archive)[0])
         tmp_path = dest_path + ".tmp"
         if force or not path.exists(dest_path):
@@ -55,13 +59,9 @@ class UGoArchive(GameArchive):
                 a.extractall(tmp_path)
                 rename(tmp_path, dest_path)
 
-    @staticmethod
-    def unpack(force=False):
+    def unpack(self, force=False):
         archives = list(glob(path.join(get_archive_dir(), "*.tar.gz")))
-        with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
-            tasks = executor.map(partial(UGoArchive._unpack_one, force=force), archives)
-            for _ in tqdm.tqdm(tasks, total=len(archives), desc="Unpacking...", unit="archive"):
-                pass
+        do_works(partial(UGoArchive._unpack_one, force=force), archives, desc="Unpacking", unit="archive")
 
     @staticmethod
     def _extract_one(file_name: str, force=False):
@@ -73,19 +73,6 @@ class UGoArchive(GameArchive):
                 if len(game_data.sequence) > 1:
                     game_data.to_pickle(name)
 
-    @staticmethod
-    def extract(force=False):
+    def extract(self, force=False):
         files = glob(path.join(get_archive_dir(), "**/*.sgf"), recursive=True)
-        bar = tqdm.tqdm(total=len(files), desc="Extracting...", unit="file", unit_scale=True)
-        with ProcessPoolExecutor(max_workers=cpu_count() // 2) as executor:
-            while len(files) > 0:
-                processing_files = files[:10000]
-                files = files[10000:]
-                results = executor.map(partial(UGoArchive._extract_one, force=force), processing_files)
-                for _ in results:
-                    bar.update(1)
-
-    def download(self, force=False):
-        self.retrieve(force=force)
-        self.unpack(force=force)
-        self.extract(force=force)
+        do_works(partial(UGoArchive._extract_one, force=force), files, desc="Extracting", unit="file")

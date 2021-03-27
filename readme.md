@@ -36,9 +36,9 @@ The input of chessboard grid contains 9 features, which is few but very represen
 
 1. Assume you are in `<project_folder>`.
 
-2. Run command `python go_data.py` to download data from Internet. If the network speed is too slow, you may need to use an accelerator because mirroring is not supported currently.
+2. Run command `python main.py download --type u-go` to download data from Internet. If the network speed is too slow, you may need to use an accelerator because mirroring is not supported currently.
 
-3. Run command `python alpha_go_weak.py` to train your model. The weights file is saved and loaded automatically in this way.
+3. Run command `python main.py train --type  --init` to train your model. The weights file is saved and loaded automatically in this way.
 
 4. The default training logging directory is `<project_folder>/.data/models/alpha-go-weak/logs`. You can type `tensorboard --logdir <log_folder>` to see training history. 
 

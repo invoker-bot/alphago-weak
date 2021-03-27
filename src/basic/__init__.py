@@ -11,3 +11,4 @@ from .go_board import *
 from .go_cache import *
 from .go_types import *
 from .zobrist_hash import *
+from .multi_work import *
