@@ -12,8 +12,8 @@ import numpy as np
 __all__ = ["set_cache_dir", "get_cache_dir", "get_game_dir", "get_archive_dir",
            "get_array_dir", "GameData", "GameArchive",
            "GameDatabase", "ArrayDatabase"]
-
-cache_dir = path.join(path.dirname(path.realpath(__file__)), ".data")
+default_cache_dir = path.join(path.dirname(path.realpath(__file__)), ".data")
+cache_dir = default_cache_dir
 archive_folder = path.join(cache_dir, ".kgs")
 game_folder = path.join(cache_dir, ".game")
 array_folder = path.join(cache_dir, ".array")
@@ -22,15 +22,12 @@ array_folder = path.join(cache_dir, ".array")
 def set_cache_dir(directory: Optional[str] = None) -> NoReturn:
     global cache_dir, archive_folder, game_folder, array_folder
     if directory is None:
-        directory = path.join(path.dirname(path.realpath(__file__)), ".data")
-    if path.isabs(directory):
-        cache_dir = directory
-    else:
-        cache_dir = path.join(getcwd(), directory)
+        directory = default_cache_dir
+    cache_dir = path.join(getcwd(), directory)
     archive_folder = path.join(cache_dir, ".kgs")
     game_folder = path.join(cache_dir, ".game")
     array_folder = path.join(cache_dir, ".array")
-    makedirs(cache_dir, exist_ok=True)
+    makedirs(get_cache_dir(), exist_ok=True)
     makedirs(get_archive_dir(), exist_ok=True)
     makedirs(get_game_dir(), exist_ok=True)
     makedirs(get_array_dir(), exist_ok=True)
@@ -57,34 +54,17 @@ class GameData(NamedTuple):
     winner: GoPlayer
     sequence: List[Optional[GoPoint]]
     komi: float
-    handicap: int
     setup_stones: Tuple[Optional[Set[GoPoint]], Optional[Set[GoPoint]], Optional[Set[GoPoint]]]
-    first_player: GoPlayer
 
     @classmethod
     def from_sgf(cls, sgf_game: Sgf_game):
         size = sgf_game.get_size()
         winner = GoPlayer.to_player(sgf_game.get_winner())
-        sequence: List[GoPoint] = []
-        first_player = GoPlayer.none
-        seq = sgf_game.get_main_sequence()
-        if len(seq) > 1:  # not empty
-            nodes = iter(seq)
-            first_move = next(nodes).get_move()
-            assert first_move[0] is None
-            second_move = next(nodes).get_move()
-            first_player = GoPlayer.to_player(second_move[0])
-            assert first_player != GoPlayer.none
-            sequence.append(second_move[1])
-            for node in nodes:
-                player, point = node.get_move()
-                assert player is not None
-                sequence.append(point)
-
+        sequence = list(map(lambda move: (GoPlayer.to_player(move[0]), move[1]),
+                            (node.get_move() for node in sgf_game.get_main_sequence())))
         komi = sgf_game.get_komi()
-        handicap = sgf_game.get_handicap()
         setup_stones = sgf_game.get_root().get_setup_stones()
-        return cls(size, winner, sequence, komi, handicap, setup_stones, first_player)
+        return cls(size, winner, sequence, komi, setup_stones)
 
     @staticmethod
     def from_pickle(name: str, size: Union[int, str] = 19):

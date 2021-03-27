@@ -6,7 +6,6 @@ import numpy as np
 import zobrist_hash
 from go_types import *
 
-
 __all__ = ["GoBoard"]
 
 
@@ -17,8 +16,22 @@ class GoBoard(GoBoardBase):
         self._hash = 0
         self.__robbery = None
 
+    def __hash__(self):
+        return self._hash
+
+    def __index__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        if isinstance(other, GoBoard):
+            return self._hash == other._hash
+        return NotImplemented
+
+    def __int__(self):
+        return self._hash
+
     def _place_stone(self, stone: GoPoint, player: GoPlayer = GoPlayer.none):
-        self._hash ^= zobrist_hash.get_hash(self._grid.item(stone), stone) ^ zobrist_hash.get_hash(player, stone)
+        self._hash ^= zobrist_hash.get_hash(self._grid.item(stone), stone) ^ zobrist_hash.get_hash(player.value, stone)
         self._grid.itemset(stone, player.value)
 
     def _place_stones(self, stones: Iterable[GoPoint], player: GoPlayer = GoPlayer.none):
@@ -64,10 +77,9 @@ class GoBoard(GoBoardBase):
                     strings.append(string)
         return strings
 
-    def is_valid_point(self, point: GoPoint) -> bool:
+    def is_valid_point(self, point: GoPoint, color=GoPlayer.none) -> bool:
         try:
-            # nonlocal back
-            back = self.play(point)
+            back = self.play(point, color)
             back()
             return True
         except GoIllegalActionError:
@@ -82,7 +94,9 @@ class GoBoard(GoBoardBase):
                     dead_points.update(string.stones)
         return dead_points
 
-    def play(self, point: Optional[GoPoint] = None) -> Callable[[], NoReturn]:
+    def play(self, point: Optional[GoPoint] = None, color=GoPlayer.none) -> Callable[[], NoReturn]:
+        if color != GoPlayer.none:
+            self._next_player = color
         player = self._next_player
         if point is None:
             self._next_player = player.other
@@ -122,11 +136,3 @@ class GoBoard(GoBoardBase):
                     raise GoIllegalActionError.already_has_a_stone(self._next_player, point, self)
             except IndexError:
                 raise GoIllegalActionError.move_out_of_range(self._next_player, point, self)
-
-    def is_point_a_fake_eye(self, point: GoPoint) -> bool:
-        if self._grid.item(point) != GoPlayer.none.value:
-            return False
-        colors = (self._grid.item(p) for p in self.get_neighbors(point))
-        c = collections.Counter(colors)
-        if c[GoPlayer.white.value] == 0 or c[GoPlayer.black.value] == 0:
-            return c[GoPlayer.none.value] <= 1

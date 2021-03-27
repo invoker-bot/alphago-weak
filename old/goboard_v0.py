@@ -1,7 +1,7 @@
 import numpy as np
 from itertools import chain, product
 from typing import *
-from gotypes import *
+from go_types import *
 
 __all__ = [
     "GoBoard"

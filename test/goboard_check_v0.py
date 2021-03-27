@@ -3,7 +3,6 @@ from unittest import TestCase
 from go_types import *
 from typing import *
 
-
 black, white, none = GoPlayer.black, GoPlayer.white, GoPlayer.none
 
 
@@ -14,7 +13,7 @@ def check_v0(case: TestCase, Board: Type[GoBoardBase]):
         case.assertTrue(
             np.all(np.array(grid, np.uint8) == b.grid))
 
-    case.assertTrue(np.all(np.full((4, 4), GoPlayer.none,np.uint8) == b.grid))
+    case.assertTrue(np.all(np.full((4, 4), GoPlayer.none, np.uint8) == b.grid))
     b.play((0, 0))
     b.play((0, 1))
     b.play((1, 1))
@@ -45,7 +44,7 @@ def check_v0(case: TestCase, Board: Type[GoBoardBase]):
                [none, none, none, white]])
 
     b = Board(3)
-    case.assertTrue(np.all(np.full((3, 3), GoPlayer.none,np.uint8) == b.grid))
+    case.assertTrue(np.all(np.full((3, 3), GoPlayer.none, np.uint8) == b.grid))
     b.play((0, 1))
     b.play((0, 0))
     b.play((0, 2))
@@ -68,8 +67,29 @@ def check_v0(case: TestCase, Board: Type[GoBoardBase]):
     case.assertSetEqual({(1, 0), (2, 1)}, ws2.liberties)
     case.assertEqual(GoPlayer.white, ws2.player)
 
+    b = Board(5)
+    b.play((0, 0), black)
+    b.play((0, 1), black)
+    b.play((0, 2), black)
+    b.play((0, 3), black)
+    b.play((1, 3), black)
+    b.play((2, 0), black)
+    b.play((2, 1), black)
+    b.play((2, 2), black)
+    b.play((2, 3), black)
+    b.play((1, 0), white)
+    b.play((1, 2), white)
+
+    test_grid([[black, black, black, black, none],
+               [white, none, white, black, none],
+               [black, black, black, black, none],
+               [none, none, none, none, none],
+               [none, none, none, none, none]])
+    b._next_player = black
+    case.assertTrue(b.is_valid_point((1, 1)))
+    b._next_player = white
+    case.assertFalse(b.is_valid_point((1, 1)))
+
 
 def check_sample_v0(case: TestCase, Board: Type[GoBoardBase]):
     pass
-
-

@@ -77,9 +77,10 @@ class GoIllegalActionError(Exception):
 
 class GoBoardBase(metaclass=ABCMeta):
 
-    def __init__(self, shape: int = 19, first_player=GoPlayer.black):
+    def __init__(self, shape: int = 19, komi=6.5, first_player=GoPlayer.black):
         self._next_player = first_player
         self._grid = np.full((shape, shape), GoPlayer.none.value, dtype=np.uint8)
+        self.komi = komi
 
     def setup_stones(self, black_stones: Optional[Iterable[GoPoint]] = None,
                      white_stones: Optional[Iterable[GoPoint]] = None,
@@ -103,20 +104,54 @@ class GoBoardBase(metaclass=ABCMeta):
             lst = ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))
         return tuple((px, py) for px, py in lst if 0 <= px < shape[0] and 0 <= py < shape[1])
 
+    def get_corners(self, point: GoPoint) -> Tuple[GoPoint]:
+        shape = self._grid.shape
+        x, y = point
+        lst = ((x - 1, y - 1), (x - 1, y + 1), (x + 1, y - 1), (x + 1, y + 1))
+        return tuple((px, py) for px, py in lst if 0 <= px < shape[0] and 0 <= py < shape[1])
+
+    def score(self) -> float:
+        black = 0
+        white = self.komi
+        for point in self:
+            color = self._grid.item(point)
+            if color == GoPlayer.black.value:
+                black += 1
+            elif color == GoPlayer.white.value:
+                white += 1
+            else:
+                if all(self._grid.item(p) == GoPlayer.black.value for p in self.get_neighbors(point)):
+                    black += 1
+                elif all(self._grid.item(p) == GoPlayer.white.value for p in self.get_neighbors(point)):
+                    white += 1
+        return black - white
+
+    def is_point_a_true_eye(self, point: GoPoint, color=GoPlayer.none) -> bool:
+        player = self._next_player if color == GoPlayer.none else color
+        for neighbor in self.get_neighbors(point):
+            if self._grid.item(neighbor) != player.value:
+                return False
+        other_count = 0
+        player_count = 0
+        for corner in self.get_corners(point):
+            if self._grid.item(corner) == player.value:
+                player_count += 1
+            else:
+                other_count += 1
+        if other_count == 0 or (other_count == 1 and player_count == 3):
+            return True
+        return False
+
     @abstractmethod
     def get_string(self, point: GoPoint) -> Optional[GoString]:
         pass
 
     @abstractmethod
-    def is_valid_point(self, point: GoPoint) -> bool:
+    def is_valid_point(self, point: GoPoint, color=GoPlayer.none) -> bool:
         pass
 
     @abstractmethod
-    def play(self, point: Optional[GoPoint] = None) -> Any:
-        pass
-
-    @abstractmethod
-    def is_point_a_fake_eye(self, point: GoPoint) -> bool:
+    def play(self, point: Optional[GoPoint] = None, color=GoPlayer.none) -> Any:
         pass
 
     @property
@@ -165,7 +200,3 @@ class GoBoardBase(metaclass=ABCMeta):
 
     def __str__(self):
         return self.details()
-
-
-
-

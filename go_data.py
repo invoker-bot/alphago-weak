@@ -11,7 +11,6 @@ from typing import *
 import tqdm
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from go_cache import *
-from go_types import *
 from functools import partial
 
 __all__ = ["UGoArchive"]
@@ -71,7 +70,7 @@ class UGoArchive(GameArchive):
             sgf_game = sgf.Sgf_game.from_bytes(f.read())
             if force or not GameData.pickle_exists(name, sgf_game.size):
                 game_data = GameData.from_sgf(sgf_game)
-                if game_data.first_player != GoPlayer.none:
+                if len(game_data.sequence) > 1:
                     game_data.to_pickle(name)
 
     @staticmethod
@@ -86,11 +85,10 @@ class UGoArchive(GameArchive):
                 for _ in results:
                     bar.update(1)
 
-    @staticmethod
-    def download(force=False):
-        ar.retrieve(force=force)
-        ar.unpack(force=force)
-        ar.extract(force=force)
+    def download(self, force=False):
+        self.retrieve(force=force)
+        self.unpack(force=force)
+        self.extract(force=force)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@
 - [x] **GPU** computing.
 - [x] **GUI** support.
 - [ ] Support for **GTP** (Go Text Protocol).
+- [ ] Reinforcement learning.
 - [ ] Support for **MCST** (Monte Carlo Search Tree).
 - [ ] Support for command line tools.
 

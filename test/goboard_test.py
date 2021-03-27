@@ -25,19 +25,6 @@ class TestGoBoard(TestCase):
     def test_v0(self):
         check_v0(self, GoBoard)
 
-    def test_database(self):
-        check_sample_v0(self, GoBoard)
-        # check_sample_v1(self, GoBoard)
-
-
-class TestGoBoardAI(TestCase):
-
-    def test_v0(self):
-        check_v0(self, GoBoardAI)
-
-    def test_database(self):
-        check_sample_v0(self, GoBoardAI)
-
 
 if __name__ == '__main__':
     main()

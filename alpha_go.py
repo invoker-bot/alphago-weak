@@ -22,6 +22,9 @@ class AlphaGoBase(metaclass=ABCMeta):
     def root(self):
         return path.join(get_cache_dir(), "models", self.mtype)
 
+    def weights_file(self, file: str = "default"):
+        return path.join(path.dirname(path.realpath(__file__)), "weights", self.mtype, str(self.size), file)
+
     @abstractmethod
-    def fit(self, sample: str, epochs=100, batch_size=16):
+    def fit(self, sample: str, weights_file: str, epochs=100, batch_size=16):
         pass
