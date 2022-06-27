@@ -7,7 +7,7 @@
 @Version : 1.0
 """
 
-from os import path
+from os import path, makedirs
 from sgfmill.sgf import Sgf_game
 from abc import *
 from typing import *
@@ -40,6 +40,9 @@ class GameArchive(metaclass=ABCMeta):
         if root is None:
             root = path.join(path.dirname(path.realpath(__file__)), "../..", ".data")
         self.root = root
+        makedirs(self.root, exist_ok=True)
+        makedirs(self.archive_dir, exist_ok=True)
+        makedirs(self.data_dir, exist_ok=True)
 
     @property
     def archive_dir(self):

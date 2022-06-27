@@ -12,7 +12,7 @@ This module is designed to xxx.
 
 import argparse
 
-from src import *
+from alphago_weak import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AlphaGo 1.0")
