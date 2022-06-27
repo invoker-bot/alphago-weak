@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 @Author  : Invoker Bot
@@ -7,7 +6,5 @@
 @Data    : 2021/3/27
 @Version : 1.0
 """
-from .go_board import *
-from .go_cache import *
-from .go_types import *
-from .multi_work import *
+
+from .u_go import *

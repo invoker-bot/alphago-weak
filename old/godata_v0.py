@@ -60,7 +60,7 @@ def retrieve_kgs_archive():
         for link in links:
             archive_url: str = link.get("href")
             if archive_url.endswith('.tar.gz'):
-                retrieve(archive_url, path.join(kgs_archive_folder, path.basename(archive_url) + ".download"))
+                retrieve(archive_url, path.join(kgs_archive_folder, path.basename(archive_url) + ".dataset"))
 @deprecate()
 def print_process_bar(percent: float, length: int, time: float):
     progress_a = '█' * int(length * percent)

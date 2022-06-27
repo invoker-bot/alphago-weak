@@ -4,7 +4,7 @@ from typing import *
 import numpy as np
 
 from .go_types import *
-from .zobrist_hash import *
+from alphago_weak.board.zobrist_hash import *
 
 __all__ = ["GoBoard"]
 
@@ -12,7 +12,7 @@ __all__ = ["GoBoard"]
 class GoBoard(GoBoardBase):
 
     def __init__(self, shape: int = 19, first_player=GoPlayer.black):
-        super().__init__(shape, first_player)
+        self._grid = np.full((shape, shape), GoPlayer.none, dtype=np.uint8)
         self._hash = 0
         self.__robbery = None
 

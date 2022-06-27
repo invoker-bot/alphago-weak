@@ -8,6 +8,5 @@
 """
 
 from .basic import *
-from .download import *
 from .gtp import *
 from .layers import *

@@ -22,10 +22,10 @@ if __name__ == "__main__":
 
     download_map = GameArchive.archive_map()
 
-    download_parser = sub_parser.add_parser("download", help="download go data from the Internet")
+    download_parser = sub_parser.add_parser("dataset", help="dataset go data from the Internet")
     download_parser.add_argument("--type", choices=download_map.keys(), required=True, help="type of the website")
     download_parser.add_argument("-f", "--force", action="store_true", default=False, dest="force",
-                                 help="force to download")
+                                 help="force to dataset")
 
     train_map = AlphaGoBase.alphago_map()
     train_parser = sub_parser.add_parser("train", help="train AlphaGo Weak")
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     play_map = GTPClient.gtp_map()
     play_parser.add_argument("--mode", choices=play_map.keys(), required=True, help="mode of the bot")
     args = parser.parse_args()
-    if args.command == "download":
+    if args.command == "dataset":
         set_cache_dir(args.datadir)
         ar = download_map[args.type]()
         ar.download(args.force)

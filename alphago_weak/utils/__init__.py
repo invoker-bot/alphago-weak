@@ -1,11 +1,8 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 @Author  : Invoker Bot
 @Email   : invoker-bot@outlook.com
 @Site    : 
-@Data    : 2021/3/27
-@Version : 1.0
+@Data    : 2022/6/27
+@Version : 1.1
 """
-
-from .u_go import *

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from typing import *
+from .basic import *
 
-from .go_types import *
-
-__all__ = ["get_hash"]
+__all__ = ["zobrist_hash"]
 
 ZOBRIST_HASHMAP = np.array([[[2526334998825741210, 3313582256518275088, -287774555718411658, -7043430064820032895,
                               -9059326486587851936, -4458066124237195787, -5684614108446514227, 6617432469892932430,
@@ -540,5 +540,5 @@ ZOBRIST_HASHMAP = np.array([[[2526334998825741210, 3313582256518275088, -2877745
                                  -5955908387828596719]]], dtype=np.int64)
 
 
-def get_hash(color: int, point: GoPoint) -> int:
-    return ZOBRIST_HASHMAP.item((color, point[0], point[1]))
+def zobrist_hash(player: Union[GoPlayer, int], point: GoPoint) -> int:
+    return ZOBRIST_HASHMAP.item((player, point.x, point.y))

@@ -12,6 +12,7 @@ from .go_types import *
 __all__ = ["set_cache_dir", "get_cache_dir", "get_game_dir", "get_archive_dir",
            "get_array_dir", "GameData", "GameArchive",
            "GameDatabase", "ArrayDatabase"]
+
 default_cache_dir = path.join(path.dirname(path.realpath(__file__)), "../..", ".data")
 cache_dir = default_cache_dir
 archive_folder = path.join(cache_dir, ".kgs")
@@ -102,7 +103,7 @@ class GameArchive(metaclass=ABCMeta):
     def retrieve(self, force=False) -> NoReturn:
         """
         Retrieve all archives available from Internet.
-        :param force: whether forces to download archive if it has already existed
+        :param force: whether forces to dataset archive if it has already existed
         """
         pass
 
@@ -118,7 +119,7 @@ class GameArchive(metaclass=ABCMeta):
     def unpack(self, force=False) -> NoReturn:
         """
         Unpack all game archives to
-        :param force: whether forces to download archive if it has already existed
+        :param force: whether forces to dataset archive if it has already existed
         """
         pass
 
