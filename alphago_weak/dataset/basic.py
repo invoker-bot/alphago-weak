@@ -3,15 +3,22 @@
 @Author  : Invoker Bot
 @Email   : invoker-bot@outlook.com
 @Site    :
-@Data    : 2021/11/19
-@Version : 1.0
+@Data    : 2022/6/28
+@Version : 1.1
 """
 
-from os import path, makedirs
+import pickle
+import tarfile
+import argparse
+from os import path, makedirs, rename
+from glob import glob
+from functools import partial
+from sgfmill import sgf
 from sgfmill.sgf import Sgf_game
 from abc import *
 from typing import *
 from ..board import *
+from ..utils.multi_works import do_works
 
 __all__ = ["GameData", "GameArchive"]
 
@@ -31,7 +38,7 @@ class GameData(NamedTuple):
                             (node.get_move() for node in sgf_game.get_main_sequence())))
         komi = sgf_game.get_komi()
         setup_stones = sgf_game.get_root().get_setup_stones()
-        return cls("GameData", size=size, winner=winner, sequence=sequence, komi=komi, setup_stones=setup_stones)
+        return cls(size=size, winner=winner, sequence=sequence, komi=komi, setup_stones=setup_stones)
 
 
 class GameArchive(metaclass=ABCMeta):
@@ -53,30 +60,57 @@ class GameArchive(metaclass=ABCMeta):
         return path.join(self.root, "data")
 
     @abstractmethod
-    def retrieve(self, force=False) -> NoReturn:
+    def retrieve(self, force=False):
         """
-        Retrieve all archives available from Internet.
-        :param force: whether forces to dataset archive if it has already existed
-        """
-        pass
-
-    @abstractmethod
-    def extract(self, force=False) -> NoReturn:
-        """
-        Extract all game archives to Game Cache Folder, every single file should end with `.game.pkl` and be
-        start with it's size of the board.
+        Retrieve all go game archives from the Internet.
+        :param force: whether forces to retrieve dataset archives if they have already existed
         """
         pass
 
-    @abstractmethod
-    def unpack(self, force=False) -> NoReturn:
+    def _unpack_one(self, archive: str, force=False):
+        dest_path = path.join(self.archive_dir, path.splitext(archive)[0])
+        tmp_path = dest_path + ".tmp"
+        if force or not path.exists(dest_path):
+            with tarfile.open(archive) as a:
+                a.extractall(tmp_path)
+                rename(tmp_path, dest_path)
+
+    def unpack(self, force=False):
+        """Unpack all game archives to common file formats (e.g. sgf, etc.).
+        :param force: whether forces to unpack dataset archives if they have already unpacked
         """
-        Unpack all game archives to
-        :param force: whether forces to dataset archive if it has already existed
+        print("Preparing to unpack downloaded archives...")
+        archives = list(glob(path.join(self.archive_dir, "*.tar.gz")))
+        do_works(partial(self._unpack_one, force=force), archives, desc="Unpacking", unit="archive")
+
+    def _extract_one(self, file_name: str, force=True):
+        name = path.splitext(path.basename(file_name))[0]
+        data_path = path.join(self.data_dir, name + ".gamedata")
+        if force or not path.exists(data_path):
+            with open(file_name, "rb") as f:
+                sgf_game = sgf.Sgf_game.from_bytes(f.read())
+                game_data = GameData.from_sgf(sgf_game)
+                if len(game_data.sequence) > 1:
+                    with open(data_path, "wb") as data_f:
+                        pickle.dump(game_data, data_f)
+
+    def extract(self, force=True):
+        """Extract all game unpacked archives to Game Data Folder, every single game data file should
+            end with `.gamedata` and be named with it's size of the board.
         """
-        pass
+        files = glob(path.join(self.archive_dir, "**/*.sgf"), recursive=True)
+        do_works(partial(self._extract_one, force=force), files, desc="Extracting", unit="file")
 
     def download(self, force=False):
         self.retrieve(force=force)
         self.unpack(force=force)
         self.extract(force=force)
+
+    def main(self, args: Sequence[str] = None):
+        parser = argparse.ArgumentParser(description="useful for downloading archives")
+        parser.add_argument("-r", "--root", default=None, help="root dir for caching")
+        parser.add_argument("-f", "--force", default=False, type=bool, help="force to re-download")
+        res = parser.parse_args(args)
+        if res.root is not None:
+            self.root = res.root
+        self.download(res.force)

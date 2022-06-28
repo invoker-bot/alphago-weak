@@ -9,18 +9,16 @@
 
 import numpy as np
 from typing import *
-from itertools import *
-from operator import eq
 from .basic import *
 from .zobrist_hash import zobrist_hash
 
-__all__ = ["GoBoard"]
+__all__ = ["GoBoardBase", "GoBoard"]
 
 
-class GoBoard(object):
+class GoBoard(GoBoardBase):
 
-    def __init__(self, shape=(19, 19)):
-        self._grid = np.full((shape, shape), GoPlayer.none, dtype=np.uint8)
+    def __init__(self, size=19):
+        super().__init__(size)
         self.__hash = 0
         self.__robbery = None
 
@@ -38,36 +36,12 @@ class GoBoard(object):
     def __int__(self):
         return hash(self)
 
-    def __iter__(self) -> Iterator[GoPoint]:
-        width, height = self._grid.shape
-        yield from starmap(GoPoint, product(range(width), range(height)))
-
-    def __getitem__(self, point: GoPoint) -> Union[GoPlayer, int]:
-        return self._grid.item(tuple(point))
-
-    def __setitem__(self, point: GoPoint, player: Union[GoPlayer, int]):
-        self._grid.itemset(tuple(point), player)
-
     def __delitem__(self, point: GoPoint):
         self.__setitem__(point, GoPlayer.none)
 
     def __len__(self) -> int:
         width, height = self._grid.shape
         return width * height
-
-    @property
-    def shape(self) -> Tuple[int, int]:
-        return self._grid.shape
-
-    def neighbors(self, point: GoPoint) -> Iterator[GoPoint]:
-        width, height = self._grid.shape
-        pts = ((point.x - 1, point.y), (point.x + 1, point.y), (point.x, point.y - 1), (point.x, point.y + 1))
-        return (GoPoint(x, y) for x, y in pts if 0 <= x < width and 0 <= y < height)
-
-    def corners(self, point: GoPoint) -> Iterator[GoPoint]:
-        width, height = self._grid.shape
-        lst = ((point.x - 1, point.y - 1), (point.x - 1, point.y + 1), (point.x + 1, point.y - 1), (point.x + 1, point.y + 1))
-        return (GoPoint(x, y) for x, y in lst if 0 <= x < width and 0 <= y < height)
 
     def _place_stone(self, pos: GoPoint, player: Union[GoPlayer, int] = GoPlayer.none):
         """Change a stone on the Go board without checking.
@@ -128,12 +102,6 @@ class GoBoard(object):
 
         self._place_stones(stones, player)
         return back
-
-    def setup_stones(self, black_stones: Optional[Iterable[GoPoint]] = None, white_stones: Optional[Iterable[GoPoint]] = None):
-        if black_stones:
-            self._place_stones(black_stones, GoPlayer.black)
-        if white_stones:
-            self._place_stones(white_stones, GoPlayer.white)
 
     def get_string(self, point: GoPoint) -> Optional[GoString]:
         """Search the chess string from a point.

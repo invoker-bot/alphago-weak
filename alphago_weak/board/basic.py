@@ -13,11 +13,10 @@ from enum import IntEnum
 from typing import *
 from colorama import init, Fore
 from abc import abstractmethod, ABCMeta
-from itertools import product
 
 init(autoreset=True)
 
-__all__ = ["GoPlayer", "GoPoint", "GoString", "GoIllegalActionError"]
+__all__ = ["GoPlayer", "GoPoint", "GoString", "GoIllegalActionError", "GoBoardBase"]
 
 
 class GoPlayer(IntEnum):
@@ -31,6 +30,13 @@ class GoPlayer(IntEnum):
     @property
     def other(self):
         return GoPlayer(2 - self.value)
+
+    @classmethod
+    def to_player(cls, player: Optional[str]):
+        try:
+            return cls[player]
+        except KeyError:
+            return cls.none
 
 
 class GoPoint(object):
@@ -68,6 +74,8 @@ class GoPoint(object):
     def __eq__(self, other: "GoPoint"):
         return self.x == other.x and self.y == other.y
 
+    def __hash__(self):
+        return self.x | (self.y << 8)
 
 class GoString(NamedTuple):
     player: GoPlayer
@@ -112,21 +120,24 @@ class GoIllegalActionError(Exception):
 
 class GoBoardBase(metaclass=ABCMeta):
 
-    def __init__(self, shape=(19, 19)):
-        self._grid = np.full((shape, shape), GoPlayer.none, dtype=np.uint8)
-        self._next_player = GoPlayer.white
+    def __init__(self, size=19):
+        self._grid = np.full((size, size), GoPlayer.none, dtype=np.uint8)
+        self._next_player = GoPlayer.black
+        self.komi = 6.5
+
+    def _setup_stones(self, player: GoPlayer, stones: Iterable[GoPoint] = None):
+        if stones is not None:
+            for stone in stones:
+                self[stone] = player
 
     def setup_stones(self, black_stones: Optional[Iterable[GoPoint]] = None,
                      white_stones: Optional[Iterable[GoPoint]] = None,
-                     empty_stones: Optional[Iterable[GoPoint]] = None) -> NoReturn:
-        if black_stones:
-            for stone in black_stones:
-                self._grid.itemset(stone, GoPlayer.black.value)
-        if white_stones:
-            for stone in white_stones:
-                self._grid.itemset(stone, GoPlayer.white.value)
+                     empty_stones: Optional[Iterable[GoPoint]] = None):
+        self._setup_stones(GoPlayer.black, black_stones)
+        self._setup_stones(GoPlayer.white, white_stones)
+        self._setup_stones(GoPlayer.none, empty_stones)
 
-    def setup_player(self, player: GoPlayer) -> NoReturn:
+    def setup_player(self, player: GoPlayer):
         self._next_player = player
 
     def get_neighbors(self, point: GoPoint, include_self=False) -> Tuple[GoPoint]:
@@ -136,13 +147,27 @@ class GoBoardBase(metaclass=ABCMeta):
             lst = ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1), (x, y))
         else:
             lst = ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))
-        return tuple((px, py) for px, py in lst if 0 <= px < shape[0] and 0 <= py < shape[1])
+        return tuple(GoPoint(px, py) for px, py in lst if 0 <= px < shape[0] and 0 <= py < shape[1])
 
     def get_corners(self, point: GoPoint) -> Tuple[GoPoint]:
         shape = self._grid.shape
         x, y = point
         lst = ((x - 1, y - 1), (x - 1, y + 1), (x + 1, y - 1), (x + 1, y + 1))
-        return tuple((px, py) for px, py in lst if 0 <= px < shape[0] and 0 <= py < shape[1])
+        return tuple(GoPoint(px, py) for px, py in lst if 0 <= px < shape[0] and 0 <= py < shape[1])
+
+    @property
+    def shape(self) -> Tuple[int, int]:
+        return self._grid.shape
+
+    def neighbors(self, point: GoPoint) -> Iterator[GoPoint]:
+        width, height = self._grid.shape
+        pts = ((point.x - 1, point.y), (point.x + 1, point.y), (point.x, point.y - 1), (point.x, point.y + 1))
+        return (GoPoint(x, y) for x, y in pts if 0 <= x < width and 0 <= y < height)
+
+    def corners(self, point: GoPoint) -> Iterator[GoPoint]:
+        width, height = self._grid.shape
+        lst = ((point.x - 1, point.y - 1), (point.x - 1, point.y + 1), (point.x + 1, point.y - 1), (point.x + 1, point.y + 1))
+        return (GoPoint(x, y) for x, y in lst if 0 <= x < width and 0 <= y < height)
 
     def score(self) -> float:
         black = 0
@@ -160,22 +185,24 @@ class GoBoardBase(metaclass=ABCMeta):
                     white += 1
         return black - white
 
-    def is_point_a_true_eye(self, point: GoPoint, player = GoPlayer.none) -> bool:
-
-        player = self._next_player if color == GoPlayer.none else color
+    def is_point_a_true_eye(self, point: GoPoint, player=GoPlayer.none) -> bool:
+        if self[point] != GoPlayer.none:
+            return False
         for neighbor in self.get_neighbors(point):
-            if self._grid.item(neighbor) != player.value:
+            if self[neighbor] != player:
                 return False
-        other_count = 0
         player_count = 0
-        for corner in self.get_corners(point):
-            if self._grid.item(corner) == player.value:
+        corners = self.get_corners(point)
+        n_corners = len(corners)
+        for corner in corners:
+            if self[corner] == player:
                 player_count += 1
-            else:
-                other_count += 1
-        if other_count == 0 or (other_count == 1 and player_count == 3):
-            return True
-        return False
+        if n_corners == 4:
+            return player_count >= 3
+        elif n_corners == 2:
+            return player_count == 2
+        else: # n_corners == 1
+            return player_count == 1
 
     @abstractmethod
     def get_string(self, point: GoPoint) -> Optional[GoString]:
@@ -198,11 +225,16 @@ class GoBoardBase(metaclass=ABCMeta):
         return self._grid
 
     def __getitem__(self, point: GoPoint) -> GoPlayer:
-        return GoPlayer(self._grid.item(point))
+        return GoPlayer(self._grid.item(tuple(point)))
+
+    def __setitem__(self, point: GoPoint, player: GoPlayer):
+        self._grid.itemset(tuple(point), player)
 
     def __iter__(self) -> Iterator[GoPoint]:
         X, Y = self._grid.shape
-        yield from product(range(X), range(Y))
+        for x in range(X):
+            for y in range(Y):
+                yield GoPoint(x, y)
 
     def __eq__(self, other):
         if isinstance(other, GoBoardBase):
@@ -211,17 +243,12 @@ class GoBoardBase(metaclass=ABCMeta):
                    np.all(self._grid == other._grid)
         return NotImplemented
 
-    def summary(self):
-        x, y = self._grid.shape
-
-        return "\tshape:(%d,%d)" % (x, y)
-
     def details(self):
-        shape = self._grid.shape
+        X, Y = self._grid.shape
         rows = ["black:x white:o"]
-        for x in range(shape[0]):
+        for x in range(X):
             cols = [""]
-            for y in range(shape[1]):
+            for y in range(Y):
                 color = self._grid.item((x, y))
                 if color == GoPlayer.none.value:
                     cols.append(",")
