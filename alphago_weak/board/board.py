@@ -22,6 +22,11 @@ class GoBoard(GoBoardBase):
         self.__hash = 0
         self.__robbery = None
 
+    def clean(self):
+        super().clean()
+        self.__hash = 0
+        self.__robbery = None
+
     def __hash__(self):
         return self.__hash
 
@@ -209,7 +214,7 @@ class GoBoard(GoBoardBase):
                     dead_points.update(string.stones)
         return dead_points
 
-    def play(self, point: Optional[GoPoint] = None, player: Union[GoPlayer, int] = GoPlayer.none) -> Callable[[], None]:
+    def play(self, point: Optional[GoPoint] = None, player: GoPlayer = GoPlayer.none) -> Callable[[], None]:
         """Take a single step with exception security.
 
         Args:

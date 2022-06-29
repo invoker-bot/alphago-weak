@@ -10,12 +10,12 @@
 import pickle
 import tarfile
 import argparse
+import tensorflow as tf
 from os import path, makedirs, rename
-from glob import glob
+from glob import glob, iglob
 from functools import partial
 from sgfmill import sgf
 from sgfmill.sgf import Sgf_game
-from abc import *
 from typing import *
 from ..board import *
 from ..utils.multi_works import do_works
@@ -26,7 +26,7 @@ __all__ = ["GameData", "GameArchive"]
 class GameData(NamedTuple):
     size: int
     winner: GoPlayer
-    sequence: List[Tuple[Optional[GoPlayer], Optional[GoPoint]]]
+    sequence: List[Tuple[Optional[GoPlayer], Optional[Union[GoPoint, Tuple[int, int]]]]]
     komi: float
     setup_stones: Tuple[Optional[Set[GoPoint]], Optional[Set[GoPoint]], Optional[Set[GoPoint]]]
 
@@ -41,7 +41,7 @@ class GameData(NamedTuple):
         return cls(size=size, winner=winner, sequence=sequence, komi=komi, setup_stones=setup_stones)
 
 
-class GameArchive(metaclass=ABCMeta):
+class GameArchive(object):
 
     def __init__(self, root: str = None):
         if root is None:
@@ -59,7 +59,6 @@ class GameArchive(metaclass=ABCMeta):
     def data_dir(self):
         return path.join(self.root, "data")
 
-    @abstractmethod
     def retrieve(self, force=False):
         """
         Retrieve all go game archives from the Internet.
@@ -105,6 +104,18 @@ class GameArchive(metaclass=ABCMeta):
         self.retrieve(force=force)
         self.unpack(force=force)
         self.extract(force=force)
+
+    @property
+    def data_pattern(self):
+        return path.join(self.data_dir, "*.gamedata")
+
+    def __iter__(self) -> Iterator[GameData]:
+        for game_data_path in iglob(self.data_pattern):
+            with open(game_data_path, "rb") as f:
+                yield pickle.load(f)
+
+    def __len__(self):
+        return len(glob(self.data_pattern))
 
     def main(self, args: Sequence[str] = None):
         parser = argparse.ArgumentParser(description="useful for downloading archives")

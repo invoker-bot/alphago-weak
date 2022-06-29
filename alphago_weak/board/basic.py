@@ -77,6 +77,7 @@ class GoPoint(object):
     def __hash__(self):
         return self.x | (self.y << 8)
 
+
 class GoString(NamedTuple):
     player: GoPlayer
     stones: Set[GoPoint]
@@ -136,6 +137,10 @@ class GoBoardBase(metaclass=ABCMeta):
         self._setup_stones(GoPlayer.black, black_stones)
         self._setup_stones(GoPlayer.white, white_stones)
         self._setup_stones(GoPlayer.none, empty_stones)
+
+    def clean(self):
+        self._grid = GoPlayer.none
+        self._next_player = GoPlayer.black
 
     def setup_player(self, player: GoPlayer):
         self._next_player = player

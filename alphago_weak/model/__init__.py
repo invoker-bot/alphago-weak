@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 @Author  : Invoker Bot
@@ -7,3 +6,5 @@
 @Data    : 2022/6/28
 @Version : 1.0
 """
+
+from .basic import *
