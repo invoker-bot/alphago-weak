@@ -8,6 +8,6 @@
 """
 
 from .basic import *
-from .random_bot import *
+from .gtp_random_bot import *
 from .gtp_random_bot_plus import *
 from .gtp_alphago_weak import *

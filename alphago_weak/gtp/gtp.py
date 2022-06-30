@@ -14,6 +14,7 @@ from abc import abstractmethod
 from typing import *
 
 from ..board import *
+from ..utils.factory import Factory
 
 __all__ = ["GTPClient"]
 
@@ -26,14 +27,7 @@ class GTPClient:
     player = re.compile(r"^\s* (?P<player>w|b|white|black) \s* (?P<move>\w+)?", re.VERBOSE | re.IGNORECASE)
 
     COORDINATE = tuple("ABCDEFGHJKLMNOPQRSTUVWXYZ")
-    COORDINATE_R = {coor:idx for idx, coor in enumerate(COORDINATE)}
-
-    @classmethod
-    def gtp_map(cls):
-        _dict = {_cls.name: _cls for _cls in cls.__subclasses__()}
-        for v in cls.__subclasses__():
-            _dict.update(v.gtp_map())
-        return _dict
+    COORDINATE_R = {coor: idx for idx, coor in enumerate(COORDINATE)}
 
     def __init__(self):
         self.komi = 6.5

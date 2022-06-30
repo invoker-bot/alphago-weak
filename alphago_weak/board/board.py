@@ -166,7 +166,7 @@ class GoBoard(GoBoardBase):
 
     def valid_points(self, player: Union[GoPlayer, int] = GoPlayer.none) -> np.ndarray:
         strings = self.get_strings()
-        tensor = np.zeros(self._grid.shape, dtype=dtype)
+        tensor = np.zeros(self._grid.shape)
         for pos in self:
             if self[pos] == GoPlayer.none:
                 tensor.itemset(pos, 1)

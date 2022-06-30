@@ -10,7 +10,7 @@
 from typing import *
 
 from ..basic import *
-from .random_bot import *
+from .gtp_random_bot import *
 
 __all__ = ["GTPRandomBotPlus"]
 
