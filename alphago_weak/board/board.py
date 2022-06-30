@@ -164,6 +164,23 @@ class GoBoard(GoBoardBase):
         except GoIllegalActionError:
             return False
 
+    def valid_points(self, player: Union[GoPlayer, int] = GoPlayer.none) -> np.ndarray:
+        strings = self.get_strings()
+        tensor = np.zeros(self._grid.shape, dtype=dtype)
+        for pos in self:
+            if self[pos] == GoPlayer.none:
+                tensor.itemset(pos, 1)
+        confuses = set()
+        for string in strings:
+            if len(string.liberties) == 1:
+                confuses.update(string.liberties)
+        for confuse in confuses:
+            if self.is_valid_point(confuse):
+                tensor.itemset(confuse, 1)
+            else:
+                tensor.itemset(confuse, 0)
+        return tensor
+
     def is_eye_point(self, point: GoPoint, player: Union[GoPlayer, int] = GoPlayer.none) -> bool:
         if self[point] != GoPlayer.none:
             return False

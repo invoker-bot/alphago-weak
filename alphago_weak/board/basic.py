@@ -32,11 +32,18 @@ class GoPlayer(IntEnum):
         return GoPlayer(2 - self.value)
 
     @classmethod
-    def to_player(cls, player: Optional[str]):
+    def to_player(cls, player: Optional[str]) -> "GoPlayer":
         try:
             return cls[player]
         except KeyError:
             return cls.none
+
+    def to_sgf(self) -> Optional[str]:
+        if self == GoPlayer.white:
+            return "w"
+        elif self == GoPlayer.black:
+            return "b"
+        return None
 
 
 class GoPoint(object):
@@ -46,6 +53,13 @@ class GoPoint(object):
         self.x = x
         self.y = y
 
+    @classmethod
+    def to_point(cls, point: Optional[Tuple[int, int]]) -> Optional["GoPoint"]:
+        if point is None:
+            return None
+        else:
+            return cls(*point)
+
     def __iter__(self):
         yield self.x
         yield self.y
@@ -53,16 +67,16 @@ class GoPoint(object):
     def __len__(self):
         return 2
 
-    def __add__(self, other: "GoPoint") -> "GoPoint":
+    def __add__(self, other: "GoPoint"):
         return GoPoint(self.x + other.x, self.y + other.y)
 
-    def __sub__(self, other: "GoPoint") -> "GoPoint":
+    def __sub__(self, other: "GoPoint"):
         return GoPoint(self.x - other.x, self.y - other.y)
 
-    def __mul__(self, other: "GoPoint") -> "GoPoint":
+    def __mul__(self, other: "GoPoint"):
         return GoPoint(self.x * other.x, self.y * other.y)
 
-    def __div__(self, other: "GoPoint") -> "GoPoint":
+    def __div__(self, other: "GoPoint"):
         return GoPoint(self.x // other.x, self.y // other.y)
 
     def __str__(self):

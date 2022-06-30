@@ -10,7 +10,7 @@
 from typing import *
 
 from ..basic import *
-from .gtp_random_bot import *
+from .random_bot import *
 
 __all__ = ["GTPRandomBotPlus"]
 
@@ -18,10 +18,10 @@ __all__ = ["GTPRandomBotPlus"]
 class GTPRandomBotPlus(GTPRandomBot):
     name = "random_bot_plus"
 
-    def valid_points(self, color: GoPlayer) -> List[GoPoint]:
+    def valid_points(self, player: GoPlayer) -> List[GoPoint]:
         points = []
         for pos in self.board:
-            if self.board.is_valid_point(pos, color):
+            if self.board.is_valid_point(pos, player):
                 other_counts = 0
                 for neighbor in self.board.get_neighbors(pos):
                     if self.board.grid.item(neighbor) != self.board.next_player.value:

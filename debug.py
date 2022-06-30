@@ -8,11 +8,15 @@
 @Version : 1.0
 """
 
-from alphago_weak.dataset import GameArchive
-from alphago_weak.model.alpha_go_weak import AlphaGoWeakV0
+from dlgo.gotypes import *
+from dlgo.goboard import Board
+from alphago_weak.board import *
+from alphago_weak.dataset import GameData
 
 if __name__ == '__main__':
-    archive = GameArchive()
-    model = AlphaGoWeakV0("alpha_go_weak_v0")
-    model.fit(archive)
-
+    b = Board(19, 19)
+    b.place_stone(Player.black, Point(3, 3))
+    print(b.get(Point(3, 3)))
+    print(b.get(Point(0, 0)))
+    data = GameData.from_sgf("test/sgf/2019-04-01-1.sgf")
+    data.to_sgf("test.sgf")

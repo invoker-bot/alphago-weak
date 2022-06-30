@@ -1,17 +1,20 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
 from unittest import TestCase
 from typing import *
-import sys
 
-if ".." not in sys.path:
-    sys.path.append("..")
-
-from alphago_weak.board import *
+from ..board import *
+from ..dataset import *
+from dlgo.gotypes import *
+from dlgo.goboard import Board as _Board
 
 black, white, none = GoPlayer.black, GoPlayer.white, GoPlayer.none
 
+__all__ = ["board_check_basic", "board_check_sgf"]
 
-def board_check_v0(case: TestCase, Board: Type[GoBoardBase]):
+
+def board_check_basic(case: TestCase, Board: Type[GoBoardBase]):
     b = Board(4)
 
     def test_grid(grid: List[List[GoPlayer]]):
@@ -92,3 +95,48 @@ def board_check_v0(case: TestCase, Board: Type[GoBoardBase]):
                [none, none, none, none, none]])
     case.assertTrue(b.is_valid_point(GoPoint(1, 1), GoPlayer.black))
     case.assertFalse(b.is_valid_point(GoPoint(1, 1), GoPlayer.white))
+
+
+def to_point(point: Optional[GoPoint]):
+    if point is not None:
+        x, y = point
+        return Point(x + 1, y + 1)
+    return None
+
+
+def play_to_end(data: GameData, base: _Board):
+    b, w, _ = data.setup_stones
+    for point in b:
+        base.place_stone(Player.black, to_point(point))
+    for point in w:
+        base.place_stone(Player.white, to_point(point))
+    for player, point in data.sequence:
+        if point is not None:
+            if player == GoPlayer.black:
+                base.place_stone(Player.black, to_point(point))
+            else:
+                base.place_stone(Player.white, to_point(point))
+
+
+def check_equal(case: TestCase, base: _Board, board: GoBoardBase):
+    case.assertEqual((base.num_rows, base.num_cols), board.grid.shape)
+    for point in board:
+        _player = base.get(to_point(point))
+        player = board[point]
+        if player == GoPlayer.none:
+            case.assertIsNone(_player)
+        elif player == GoPlayer.white:
+            case.assertEqual(_player, Player.white)
+        else:
+            case.assertEqual(_player, Player.black)
+
+
+def board_check_sgf(case: TestCase, sgf_name: str, Board: Type[GoBoardBase]):
+    data = GameData.from_sgf(sgf_name)
+    base = _Board(data.size, data.size)
+    play_to_end(data, base)
+    b = Board(data.size)
+    b.setup_stones(*data.setup_stones)
+    for player, point in data.sequence:
+        b.play(point, player)
+    check_equal(case, base, b)

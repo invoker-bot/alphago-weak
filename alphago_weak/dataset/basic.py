@@ -10,9 +10,9 @@
 import pickle
 import tarfile
 import argparse
-import tensorflow as tf
 from os import path, makedirs, rename
 from glob import glob, iglob
+from itertools import starmap
 from functools import partial
 from sgfmill import sgf
 from sgfmill.sgf import Sgf_game
@@ -28,17 +28,44 @@ class GameData(NamedTuple):
     winner: GoPlayer
     sequence: List[Tuple[Optional[GoPlayer], Optional[Union[GoPoint, Tuple[int, int]]]]]
     komi: float
-    setup_stones: Tuple[Optional[Set[GoPoint]], Optional[Set[GoPoint]], Optional[Set[GoPoint]]]
+    setup_stones: Tuple[Set[GoPoint], Set[GoPoint], Set[GoPoint]]
 
-    @classmethod
-    def from_sgf(cls, sgf_game: Sgf_game):
+    @staticmethod
+    def from_sgf(sgf_file: str):
+        with open(sgf_file, "rb") as f:
+            sgf_game = Sgf_game.from_bytes(f.read())
         size = sgf_game.get_size()
         winner = GoPlayer.to_player(sgf_game.get_winner())
-        sequence = list(map(lambda move: (GoPlayer.to_player(move[0]), move[1]),
+        sequence = list(map(lambda move: (GoPlayer.to_player(move[0]), GoPoint.to_point(move[1])),
                             (node.get_move() for node in sgf_game.get_main_sequence())))
         komi = sgf_game.get_komi()
-        setup_stones = sgf_game.get_root().get_setup_stones()
-        return cls(size=size, winner=winner, sequence=sequence, komi=komi, setup_stones=setup_stones)
+        setup_stones: Any = tuple(set(starmap(GoPoint, points)) for points in sgf_game.get_root().get_setup_stones())
+        return GameData(size=size, winner=winner, sequence=sequence, komi=komi, setup_stones=setup_stones)
+
+    def to_sgf(self, sgf_file: str):
+        sgf_game = Sgf_game(size=self.size)
+        sgf_game.set_date()
+        root = sgf_game.get_root()
+        # Player name PB PW
+        # Comment AN, C
+        # PC name
+        root.set("PC", "Desktop")
+        # komi
+        root.set("KM", self.komi)
+        # winner
+        root.set("RE", self.winner.to_sgf())
+        # handicap
+        root.set("HA", len(self.setup_stones[0]) - len(self.setup_stones[1]))
+        for identifier, value in zip(("AB", "AW", "AE"), set(map(tuple, self.setup_stones))):
+            if len(value) > 0:
+                root.set(identifier, value)
+
+        for player, point in self.sequence:
+            if player != GoPlayer.none:
+                node = sgf_game.extend_main_sequence()
+                node.set_move(player.to_sgf(), tuple(point) if point is not None else None)
+        with open(sgf_file, "wb") as f:
+            f.write(sgf_game.serialise())
 
 
 class GameArchive(object):

@@ -12,7 +12,7 @@ from typing import *
 
 from ..basic import *
 from ..layers import *
-from .gtp import *
+from .basic import *
 
 __all__ = ["GTPAlphaGoWeakV0"]
 

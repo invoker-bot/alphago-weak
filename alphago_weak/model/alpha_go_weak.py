@@ -70,22 +70,6 @@ class GoBoardAIV0(GoBoard):
         value = 1 if self._next_player == winner else 0 if winner == GoPlayer.none else -1
         return np.array(value, dtype=self.dtype)
 
-    def valid_points(self, strings: List[GoString], dtype=np.float32) -> np.ndarray:
-        tensor = np.zeros(self._grid.shape, dtype=dtype)
-        for pos in self.__iter__():
-            if self._grid.item(pos) == GoPlayer.none.value:
-                tensor.itemset(pos, 1)
-        confuses = set()
-        for string in strings:
-            if len(string.liberties) == 1:
-                confuses.update(string.liberties)
-        for confuse in confuses:
-            if self.is_valid_point(confuse):
-                tensor.itemset(confuse, 1)
-            else:
-                tensor.itemset(confuse, 0)
-        return tensor
-
 
 def game_dataset_generator(archive: GameArchive, size=19, dtype=np.float32):
     """

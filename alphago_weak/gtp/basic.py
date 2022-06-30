@@ -69,7 +69,7 @@ class GTPClient:
             else:
                 print("?", _id, "unacceptable size", "\n", flush=True)
         except ValueError:
-            print("?", _id, "boardsize not an integer", "\n", flush=True)
+            print("?", _id, "boardsize is not an integer", "\n", flush=True)
 
     def do_komi(self, _id: str = "", args: str = ""):
         try:
@@ -107,7 +107,7 @@ class GTPClient:
             result = self._do_genmove(player)
             if not isinstance(result, str):
                 self._do_play(player, result)
-                result = self.COORDINATE[result[0]] + str(result[1] + 1)
+                result = self.COORDINATE[result.x] + str(result.y + 1)
             print("=", _id, result, "\n", flush=True)
         else:
             print("?", _id, "invalid player", "\n", flush=True)
