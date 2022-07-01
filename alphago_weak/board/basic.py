@@ -11,12 +11,11 @@ import math
 import numpy as np
 from enum import IntEnum
 from typing import *
-from colorama import init, Fore
 from abc import abstractmethod, ABCMeta
 
-init(autoreset=True)
+from .zobrist_hash import zobrist_hash
 
-__all__ = ["GoPlayer", "GoPoint", "GoString", "GoIllegalActionError", "GoBoardBase"]
+__all__ = ["GoPlayer", "GoPoint", "GoString", "GoIllegalActionError", "GoBoardProtocol", "GoBoardBase", "GoBoardAlpha"]
 
 
 class GoPlayer(IntEnum):
@@ -103,6 +102,12 @@ class GoString(NamedTuple):
     def __len__(self) -> int:
         return len(self.stones)
 
+    def __eq__(self, other: "GoString"):
+        return self.player == other.player and self.stones == other.stones
+
+    def __hash__(self):
+        return (len(self.liberties) << 16) | (len(self.stones) << 8) | self.player.value
+
 
 class GoIllegalActionError(Exception):
     def __init__(self, action: Any, msg: str, board):
@@ -133,76 +138,117 @@ class GoIllegalActionError(Exception):
         return cls(player, "illegal player", board)
 
 
-class GoBoardBase(metaclass=ABCMeta):
+class GoBoardProtocol(Protocol):
 
-    def __init__(self, size=19):
-        self._grid = np.full((size, size), GoPlayer.none, dtype=np.uint8)
-        self._next_player = GoPlayer.black
-        self.komi = 6.5
+    def __init__(self, size=19, komi=6.5):
+        self._size = size
+        self.komi = komi
 
-    def _setup_stones(self, player: GoPlayer, stones: Iterable[GoPoint] = None):
-        if stones is not None:
-            for stone in stones:
-                self[stone] = player
+    @property
+    def size(self) -> int:
+        return self._size
 
-    def setup_stones(self, black_stones: Optional[Iterable[GoPoint]] = None,
-                     white_stones: Optional[Iterable[GoPoint]] = None,
-                     empty_stones: Optional[Iterable[GoPoint]] = None):
+    def clean(self):
+        ...
+
+    def __iter__(self) -> Iterator[GoPoint]:
+        ...
+
+    def __getitem__(self, pos: GoPoint) -> GoPlayer:
+        ...
+
+    def __setitem__(self, pos: GoPoint, player: GoPlayer):
+        """Change a stone on the Go board without checking.
+
+        Notes:
+            * Improper usage may violate the rule of the Game of Go.
+        Args:
+            pos: The position of the stone.
+            player: The player who owns the target stone placed.
+        """
+        ...
+
+    def play(self, player, pos: Optional[GoPoint] = None) -> Any:
+        """Take a single step with exception security.
+
+        Args:
+            player: The target player.
+            pos: The target point.
+        Returns:
+            A callable function which allows to withdraw the pre-action.
+        Raises:
+            GoIllegalActionError: When performing an illegal action.
+        """
+        ...
+
+    def is_valid_point(self, player: GoPlayer, pos: GoPoint) -> bool:
+        """Judge whether a point can be placed by a player with no side effects.
+
+        Args:
+            player: The target player.
+            pos: The target point.
+        Returns:
+            Whether the placement action is valid.
+        """
+        ...
+
+    def get_string(self, point: GoPoint) -> Optional[GoString]:
+        ...
+
+    def get_strings(self) -> List[GoString]:
+        ...
+
+
+class GoBoardBase(GoBoardProtocol, metaclass=ABCMeta):
+
+    def __init__(self, size=19, komi=6.5):
+        if not 0 < size <= 25:
+            raise ValueError("board size must be within [1, 25], actual: %d" % size)
+        super().__init__(size, komi)
+        self._size = size
+        self.komi = komi
+
+    @abstractmethod
+    def clean(self):
+        ...
+
+    def _setup_stones(self, player: Union[GoPlayer, int], stones: Iterable[GoPoint]):
+        """Change stones on the Go board without checking.
+
+        Notes:
+            * Improper application may lead to an invalid situation.
+        Args:
+            player: The player who owns the target stones.
+            stones: The positions of the stones.
+        """
+        for stone in stones:
+            self[stone] = player
+
+    def setup_stones(self, black_stones: Iterable[GoPoint], white_stones: Iterable[GoPoint], empty_stones: Iterable[GoPoint]):
         self._setup_stones(GoPlayer.black, black_stones)
         self._setup_stones(GoPlayer.white, white_stones)
         self._setup_stones(GoPlayer.none, empty_stones)
 
-    def clean(self):
-        self._grid[:] = GoPlayer.none
-        self._next_player = GoPlayer.black
-
-    def setup_player(self, player: GoPlayer):
-        self._next_player = player
-
     def get_neighbors(self, point: GoPoint, include_self=False) -> Tuple[GoPoint]:
-        shape = self._grid.shape
         x, y = point
         if include_self:
             lst = ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1), (x, y))
         else:
             lst = ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))
-        return tuple(GoPoint(px, py) for px, py in lst if 0 <= px < shape[0] and 0 <= py < shape[1])
+        return tuple(GoPoint(px, py) for px, py in lst if 0 <= px < self.size and 0 <= py < self.size)
 
     def get_corners(self, point: GoPoint) -> Tuple[GoPoint]:
-        shape = self._grid.shape
         x, y = point
         lst = ((x - 1, y - 1), (x - 1, y + 1), (x + 1, y - 1), (x + 1, y + 1))
-        return tuple(GoPoint(px, py) for px, py in lst if 0 <= px < shape[0] and 0 <= py < shape[1])
-
-    @property
-    def shape(self) -> Tuple[int, int]:
-        return self._grid.shape
+        return tuple(GoPoint(px, py) for px, py in lst if 0 <= px < self.size and 0 <= py < self.size)
 
     def neighbors(self, point: GoPoint) -> Iterator[GoPoint]:
-        width, height = self._grid.shape
         pts = ((point.x - 1, point.y), (point.x + 1, point.y), (point.x, point.y - 1), (point.x, point.y + 1))
-        return (GoPoint(x, y) for x, y in pts if 0 <= x < width and 0 <= y < height)
+        return (GoPoint(x, y) for x, y in pts if 0 <= x < self.size and 0 <= y < self.size)
 
     def corners(self, point: GoPoint) -> Iterator[GoPoint]:
-        width, height = self._grid.shape
         lst = ((point.x - 1, point.y - 1), (point.x - 1, point.y + 1), (point.x + 1, point.y - 1), (point.x + 1, point.y + 1))
-        return (GoPoint(x, y) for x, y in lst if 0 <= x < width and 0 <= y < height)
-
-    def score(self) -> float:
-        black = 0
-        white = self.komi
-        for point in self:
-            color = self._grid.item(point)
-            if color == GoPlayer.black.value:
-                black += 1
-            elif color == GoPlayer.white.value:
-                white += 1
-            else:
-                if all(self._grid.item(p) == GoPlayer.black.value for p in self.get_neighbors(point)):
-                    black += 1
-                elif all(self._grid.item(p) == GoPlayer.white.value for p in self.get_neighbors(point)):
-                    white += 1
-        return black - white
+        return (GoPoint(x, y) for x, y in lst if 0 <= x < self.size and 0 <= y < self.size)
 
     def is_point_a_true_eye(self, point: GoPoint, player=GoPlayer.none) -> bool:
         if self[point] != GoPlayer.none:
@@ -220,67 +266,253 @@ class GoBoardBase(metaclass=ABCMeta):
             return player_count >= 3
         elif n_corners == 2:
             return player_count == 2
-        else: # n_corners == 1
+        else:  # n_corners == 1
             return player_count == 1
 
-    @abstractmethod
-    def get_string(self, point: GoPoint) -> Optional[GoString]:
-        pass
+    def valid_points(self, player: Union[GoPlayer, int]) -> Set[GoPoint]:
+        return set(pos for pos in self if self.is_valid_point(player, pos))
 
     @abstractmethod
-    def is_valid_point(self, point: GoPoint, player=GoPlayer.none) -> bool:
-        pass
-
-    def valid_points(self, player: Union[GoPlayer, int] = GoPlayer.none) -> Set[GoPoint]:
-        return set(pos for pos in self if self.is_valid_point(pos, player))
-
-    @abstractmethod
-    def play(self, point: Optional[GoPoint] = None, color=GoPlayer.none) -> Any:
-        pass
-
-    @property
-    def next_player(self) -> GoPlayer:
-        return self._next_player
-
-    @property
-    def grid(self) -> np.ndarray:
-        return self._grid
-
-    def __getitem__(self, point: GoPoint) -> GoPlayer:
-        return GoPlayer(self._grid.item(tuple(point)))
-
-    def __setitem__(self, point: GoPoint, player: GoPlayer):
-        self._grid.itemset(tuple(point), player)
+    def play(self, player, point: Optional[GoPoint] = None) -> Any:
+        ...
 
     def __iter__(self) -> Iterator[GoPoint]:
-        X, Y = self._grid.shape
-        for x in range(X):
-            for y in range(Y):
+        for x in range(self.size):
+            for y in range(self.size):
                 yield GoPoint(x, y)
 
+    def __len__(self) -> int:
+        return self.size * self.size
+
+    def __index__(self):
+        return hash(self)
+
+    def __int__(self):
+        return hash(self)
+
     def __eq__(self, other):
-        if isinstance(other, GoBoardBase):
-            return self._next_player == other._next_player and \
-                   self._grid.shape == other._grid.shape and \
-                   np.all(self._grid == other._grid)
-        return NotImplemented
+        return hash(self) == hash(other)
 
-    def details(self):
-        X, Y = self._grid.shape
-        rows = ["black:x white:o"]
-        for x in range(X):
-            cols = [""]
-            for y in range(Y):
-                color = self._grid.item((x, y))
-                if color == GoPlayer.none.value:
-                    cols.append(",")
-                elif color == GoPlayer.white.value:
-                    cols.append(Fore.WHITE + "o" + Fore.RESET)
-                else:
-                    cols.append(Fore.BLACK + 'x' + Fore.RESET)
-            rows.append("".join(cols))
-        rows.append("")
-        return '\n'.join(rows)
 
-    def __str__(self):
-        return self.details()
+class GoBoardAlpha(GoBoardBase):
+
+    def __init__(self, size=19, komi=6.5):
+        super().__init__(size, komi)
+        self._grid = np.full((size, size), GoPlayer.none, dtype=np.uint8)
+        self.__hash = 0
+        self.__robbery = None
+
+    def clean(self):
+        self._grid[:] = GoPlayer.none
+        self.__hash = 0
+        self.__robbery = None
+
+    def __hash__(self):
+        return self.__hash
+
+    def __getitem__(self, pos: GoPoint) -> GoPlayer:
+        return GoPlayer(self._grid.item(tuple(pos)))
+
+    def __setitem__(self, pos: GoPoint, player: Union[GoPlayer, int]):
+        self._grid.itemset(tuple(pos), player)
+        self.__hash ^= zobrist_hash(self[pos], pos) ^ zobrist_hash(player, pos)
+
+    def __delitem__(self, point: GoPoint):
+        self.__setitem__(point, GoPlayer.none)
+
+    def place_stone(self, player: GoPlayer, stone: GoPoint) -> Callable[[], None]:
+        """Change a stone on the Go board with a revocable callable function.
+
+        Args:
+            stone: The position of the stone.
+            player: The player who owns the target stone.
+        Returns:
+            A callable function which allows to withdraw the pre-action.
+        """
+        former_stone: int = self[stone]
+
+        def back():
+            self[stone] = former_stone
+
+        self[stone] = player
+        return back
+
+    def place_stones(self, player: GoPlayer, stones: Iterable[GoPoint]) -> Callable[[], None]:
+        """Change stones on the Go board with a revocable callable function.
+
+        Args:
+            stones: The positions of the stones.
+            player: The player who owns the target stones.
+
+        Returns:
+            A callable function which allows to withdraw the pre-action.
+        """
+        former_stones = {stone: self[stone] for stone in stones}
+
+        def back():
+            for stone, player in former_stones.items():
+                self[stone] = player
+
+        self._setup_stones(player, stones)
+        return back
+
+    def get_string(self, point: GoPoint) -> Optional[GoString]:
+        """Search the chess string from a point.
+
+        Args:
+            point: Searching start point for the chess string.
+
+        Returns:
+            The string from the search if found, otherwise returns None.
+        """
+        player = self[point]
+        if player != GoPlayer.none:
+            string = GoString(GoPlayer(player), {point}, set())
+            neighbors_queue = list(self.neighbors(point))
+            while len(neighbors_queue) != 0:
+                point = neighbors_queue.pop()
+                point_t = self[point]
+                if point_t == GoPlayer.none:  # liberty
+                    string.liberties.add(point)
+                elif point_t == player and point not in string.stones:  # stone
+                    string.stones.add(point)
+                    neighbors_queue.extend(self.neighbors(point))
+            return string
+
+    def get_strings(self) -> List[GoString]:
+        """Search all strings from the board.
+
+        Returns:
+            A list of chess strings.
+        """
+        strings = []
+        strings_map = np.full(self._grid.shape, False, dtype=np.bool_)
+        for point in self:
+            if not strings_map.item(tuple(point)):
+                string = self.get_string(point)
+                if string is not None:
+                    for stone in string.stones:
+                        strings_map.itemset(tuple(stone), True)
+                    strings.append(string)
+        return strings
+
+    def is_valid_point(self, player: GoPlayer, pos: GoPoint):
+        try:
+            back = self.play(player, pos)
+            back()
+            return True
+        except GoIllegalActionError:
+            return False
+
+    def valid_points(self, player: GoPlayer) -> Set[GoPoint]:
+        strings = self.get_strings()
+        possible = set(filter(lambda pos: self[pos] == GoPlayer.none, self))
+        confuses = set()
+        for string in strings:
+            if len(string.liberties) == 1:
+                confuses.update(string.liberties)
+        for confuse in confuses:
+            if not self.is_valid_point(player, confuse):
+                possible.remove(confuse)
+
+        def not_suicide(pos):
+            return not all(map(lambda p: self[p] == player.other, self.get_neighbors(pos)))
+
+        return set(filter(not_suicide, possible))
+
+    def score(self) -> float:
+        black = 0
+        white = self.komi
+        for point in self:
+            color = self._grid.item(point)
+            if color == GoPlayer.black.value:
+                black += 1
+            elif color == GoPlayer.white.value:
+                white += 1
+            else:
+                if all(self._grid.item(p) == GoPlayer.black.value for p in self.get_neighbors(point)):
+                    black += 1
+                elif all(self._grid.item(p) == GoPlayer.white.value for p in self.get_neighbors(point)):
+                    white += 1
+        return black - white
+
+    def is_eye_point(self, player: Union[GoPlayer, int], point: GoPoint) -> bool:
+        if self[point] != GoPlayer.none:
+            return False
+        neighbors = self.neighbors(point)
+        if player == GoPlayer.none:
+            neighbor_t = self[next(neighbors)]
+            if neighbor_t == player.none:
+                return False
+            for _neighbor in neighbors:
+                if neighbor_t != self[_neighbor]:
+                    return False
+        else:
+            for neighbor in neighbors:
+                if player != neighbor:
+                    return False
+        return True
+
+    def is_true_eye_point(self, player: GoPlayer, point: GoPoint) -> bool:
+        if not self.is_eye_point(player, point):
+            return False
+        corners = list(self.corners(point))
+        if player == GoPlayer.none:
+            player = self[next(self.neighbors(point))]
+        count = 0
+        for corner in corners:
+            if self[corner] == player:
+                count += 1
+        if len(corners) == 4:
+            return count >= 3
+        else:
+            return len(corners) == count
+
+    def neighbor_dead_stones(self, player: Union[GoPlayer, int], point: GoPoint) -> Set[GoPoint]:
+        """Get the chess stones of the player died near the point.
+
+        Args:
+            point: The target point.
+            player: The target player.
+
+        Returns:
+            The dead stones owned by the player.
+        """
+        dead_points = set()
+        for point in self.neighbors(point):
+            if self[point] == player:
+                string = self.get_string(point)
+                if string.is_dead():
+                    dead_points.update(string.stones)
+        return dead_points
+
+    def play(self, player: GoPlayer, pos: Optional[GoPoint] = None) -> Callable[[], None]:
+        if pos is not None:
+            try:
+                if self[pos] == GoPlayer.none:
+                    back1 = self.place_stone(player, pos)
+                    dead_stones = self.neighbor_dead_stones(player.other, pos)
+                    robbery = None
+                    if len(dead_stones) == 1:
+                        robbery = (next(iter(dead_stones)), pos)
+                        if self.__robbery is not None and robbery == tuple(reversed(self.__robbery)):
+                            back1()
+                            raise GoIllegalActionError.commit_robbery(player, pos, self)
+
+                    tmp_robbery = self.__robbery
+                    self.__robbery = robbery
+                    back2 = self.place_stones(GoPlayer.none, dead_stones)
+
+                    def back():
+                        back2()
+                        self.__robbery = tmp_robbery
+                        back1()
+
+                    if self.get_string(pos).is_dead():
+                        back()
+                        raise GoIllegalActionError.commit_suicide(player, pos, self)
+                    return back
+                else:  # self[point] != GoPlayer.none
+                    raise GoIllegalActionError.already_has_a_stone(player, pos, self)
+            except IndexError:
+                raise GoIllegalActionError.move_out_of_range(player, pos, self)

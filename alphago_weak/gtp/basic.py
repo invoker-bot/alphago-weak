@@ -10,6 +10,7 @@
 import sys
 import re
 import string
+from cmd import Cmd
 from importlib import import_module
 from abc import *
 from typing import *
@@ -20,15 +21,17 @@ __all__ = ["GTPClient"]
 
 PKG = "alphago_weak.gtp"
 
-class GTPClient(metaclass=ABCMeta):
+
+class GTPClient(Cmd, metaclass=ABCMeta):
     __version__ = "1.0"
+    prompt = ""
     name: str = None
     FACTORY_DICT = {
         "random_bot": lambda: import_module(".gtp_random_bot", PKG).GTPRandomBot(),
         "random_bot_mcts": lambda: import_module(".gtp_random_bot_mcts", PKG).GTPRandomBotMCTS(),
     }
 
-    CMD = re.compile(r"^\s* (?P<id>\d+)? \s* (?P<command>\w*) \s* (?P<args>.*)", re.VERBOSE)
+    PRECMD_PAT = re.compile(r"^\s* (?P<id>\d+)? \s* (?P<command>.*)", re.VERBOSE)
     MOVE = re.compile(r"^\s*(?P<x>[abcdefghjklmnopqrst])(?P<y>\d{1,2})", re.VERBOSE | re.IGNORECASE)
     player = re.compile(r"^\s* (?P<player>w|b|white|black) \s* (?P<move>\w+)?", re.VERBOSE | re.IGNORECASE)
 
@@ -36,12 +39,28 @@ class GTPClient(metaclass=ABCMeta):
     COORDINATE_R = {coor: idx for idx, coor in enumerate(COORDINATE)}
 
     def __init__(self):
+        super().__init__()
+        self.id = ""
         self.komi = 6.5
         self.config = {}
 
-    @staticmethod
-    def do_protocol_version(_id: str = "", args: str = ""):
-        print("=", _id, 2, "\n", flush=True)
+    def precmd(self, line: str) -> str:
+        parsed = self.PRECMD_PAT.match(line)
+        if parsed is not None:
+            _id = parsed["id"]
+            self.id = "" if _id is None else _id
+            return parsed["command"]
+        else:
+            return ""
+
+    def response(self, result: str, level="="):
+        print(level, self.id, result, "\n", file=self.stdout, flush=True)
+
+    def default(self, line):
+        print("?", "unknown command", "\n", file=self.stdout, flush=True)
+
+    def do_protocol_version(self, args: str = ""):
+        print("=", self.id, 2, "\n", flush=True)
 
     def do_name(self, _id: str = "", args: str = ""):
         print("=", _id, string.capwords(self.name.replace("_", " ")), "\n", flush=True)
