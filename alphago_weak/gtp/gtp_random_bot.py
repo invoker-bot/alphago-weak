@@ -9,7 +9,6 @@
 import random
 import collections
 from typing import *
-
 from ..board import *
 from .basic import *
 
@@ -24,21 +23,26 @@ class GTPRandomBot(GTPClient):
         super().__init__()
         self.board = GoBoard()
 
-    def _do_play(self, color: GoPlayer, pos: GoPoint) -> bool:
+    def valid_points(self, player: GoPlayer) -> List[GoPoint]:
+        return [pos for pos in self.board.valid_points(player) if not self.board.is_point_a_true_eye(pos, player)]
+
+    def counts(self, player: GoPlayer):
+        counts = collections.Counter(self.board.grid.flat)
+        komi = self.komi if player == GoPlayer.white else -self.komi
+        return counts.get(player.value, 0) + komi - counts.get(player.other.value, 0)
+
+    def should_resign(self, player: GoPlayer):
+        return self.board.shape[0] + self.counts(player) < 0
+
+    def play(self, player, pos):
         try:
-            self.board.play(pos, color)
+            self.board.play(pos, player)
             return True
         except GoIllegalActionError:
             return False
 
-    def valid_points(self, player: GoPlayer) -> List[GoPoint]:
-        return [pos for pos in self.board if
-                self.board.is_valid_point(pos, player) and not self.board.is_point_a_true_eye(pos, player)]
-
-    def _do_genmove(self, player: GoPlayer) -> Union[GoPoint, str]:
-        counts = collections.Counter(self.board.grid.flat)
-        komi = self.komi if player == GoPlayer.white else -self.komi
-        if counts[GoPlayer.none.value] + counts[player.value] + komi <= counts[player.other.value]:
+    def genmove(self, player):
+        if self.should_resign(player):
             return "resign"
         points = self.valid_points(player)
         if len(points) == 0:
@@ -48,9 +52,9 @@ class GTPRandomBot(GTPClient):
             self.board.play(point, player)
             return point
 
-    def _do_boardsize(self, size: int) -> bool:
+    def boardsize(self, size):
         self.board = GoBoard(size)
         return True
 
-    def _do_clear_board(self):
+    def clear_board(self):
         self.board.clean()

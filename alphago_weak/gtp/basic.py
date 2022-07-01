@@ -10,33 +10,34 @@
 import sys
 import re
 import string
-from abc import abstractmethod
+from importlib import import_module
+from abc import *
 from typing import *
 
 from ..board import *
 
 __all__ = ["GTPClient"]
 
+PKG = "alphago_weak.gtp"
 
-class GTPClient:
+class GTPClient(metaclass=ABCMeta):
     __version__ = "1.0"
-    name = "none"
+    name: str = None
+    FACTORY_DICT = {
+        "random_bot": lambda: import_module(".gtp_random_bot", PKG).GTPRandomBot(),
+        "random_bot_mcts": lambda: import_module(".gtp_random_bot_mcts", PKG).GTPRandomBotMCTS(),
+    }
+
     CMD = re.compile(r"^\s* (?P<id>\d+)? \s* (?P<command>\w*) \s* (?P<args>.*)", re.VERBOSE)
     MOVE = re.compile(r"^\s*(?P<x>[abcdefghjklmnopqrst])(?P<y>\d{1,2})", re.VERBOSE | re.IGNORECASE)
     player = re.compile(r"^\s* (?P<player>w|b|white|black) \s* (?P<move>\w+)?", re.VERBOSE | re.IGNORECASE)
 
     COORDINATE = tuple("ABCDEFGHJKLMNOPQRSTUVWXYZ")
-    COORDINATE_R = {coor:idx for idx, coor in enumerate(COORDINATE)}
-
-    @classmethod
-    def gtp_map(cls):
-        _dict = {_cls.name: _cls for _cls in cls.__subclasses__()}
-        for v in cls.__subclasses__():
-            _dict.update(v.gtp_map())
-        return _dict
+    COORDINATE_R = {coor: idx for idx, coor in enumerate(COORDINATE)}
 
     def __init__(self):
         self.komi = 6.5
+        self.config = {}
 
     @staticmethod
     def do_protocol_version(_id: str = "", args: str = ""):
@@ -64,7 +65,7 @@ class GTPClient:
     def do_boardsize(self, _id: str = "", args: str = ""):
         try:
             size = int(args)
-            if 0 < size <= 25 and self._do_boardsize(size):
+            if 0 < size <= 25 and self.boardsize(size):
                 print("=", _id, "\n", flush=True)
             else:
                 print("?", _id, "unacceptable size", "\n", flush=True)
@@ -79,7 +80,7 @@ class GTPClient:
             print("?", _id, "komi not a float", "\n", flush=True)
 
     def do_clear_board(self, _id: str = "", args: str = ""):
-        self._do_clear_board()
+        self.clear_board()
         print("=", _id, "\n", flush=True)
 
     def do_play(self, _id: str = "", args: str = ""):
@@ -93,7 +94,7 @@ class GTPClient:
                 move_parsed = self.MOVE.match(action)
                 x = self.COORDINATE_R[move_parsed["x"].upper()]
                 y = int(move_parsed["y"]) - 1
-                if self._do_play(GoPlayer.to_player(player), GoPoint(x, y)):
+                if self.play(GoPlayer.to_player(player), GoPoint(x, y)):
                     print("=", _id, "\n", flush=True)
                 else:
                     print("?", _id, "illegal move", "\n", flush=True)
@@ -104,28 +105,28 @@ class GTPClient:
         parsed = self.player.match(args)
         if parsed:
             player = GoPlayer.to_player(parsed["player"].lower())
-            result = self._do_genmove(player)
+            result = self.genmove(player)
             if not isinstance(result, str):
-                self._do_play(player, result)
+                self.play(player, result)
                 result = self.COORDINATE[result.x] + str(result.y + 1)
             print("=", _id, result, "\n", flush=True)
         else:
             print("?", _id, "invalid player", "\n", flush=True)
 
     @abstractmethod
-    def _do_boardsize(self, size: int) -> bool:
+    def boardsize(self, size: int) -> bool:
         return True
 
     @abstractmethod
-    def _do_clear_board(self):
+    def clear_board(self):
         pass
 
     @abstractmethod
-    def _do_play(self, player: GoPlayer, pos: GoPoint) -> bool:
+    def play(self, player: GoPlayer, pos: GoPoint) -> bool:
         return True
 
     @abstractmethod
-    def _do_genmove(self, player: GoPlayer) -> Union[GoPoint, str]:
+    def genmove(self, player: GoPlayer) -> Union[GoPoint, str]:
         """
         return pass or resign
         """

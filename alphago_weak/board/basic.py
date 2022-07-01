@@ -153,7 +153,7 @@ class GoBoardBase(metaclass=ABCMeta):
         self._setup_stones(GoPlayer.none, empty_stones)
 
     def clean(self):
-        self._grid = GoPlayer.none
+        self._grid[:] = GoPlayer.none
         self._next_player = GoPlayer.black
 
     def setup_player(self, player: GoPlayer):
@@ -228,8 +228,11 @@ class GoBoardBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def is_valid_point(self, point: GoPoint, color=GoPlayer.none) -> bool:
+    def is_valid_point(self, point: GoPoint, player=GoPlayer.none) -> bool:
         pass
+
+    def valid_points(self, player: Union[GoPlayer, int] = GoPlayer.none) -> Set[GoPoint]:
+        return set(pos for pos in self if self.is_valid_point(pos, player))
 
     @abstractmethod
     def play(self, point: Optional[GoPoint] = None, color=GoPlayer.none) -> Any:

@@ -148,7 +148,7 @@ class GoBoard(GoBoardBase):
                     strings.append(string)
         return strings
 
-    def is_valid_point(self, point: GoPoint, player: Union[GoPlayer, int] = GoPlayer.none) -> bool:
+    def is_valid_point(self, point: GoPoint, player: GoPlayer):
         """Judge whether a point can be placed by a player with no side effects.
 
         Args:
@@ -164,22 +164,21 @@ class GoBoard(GoBoardBase):
         except GoIllegalActionError:
             return False
 
-    def valid_points(self, player: Union[GoPlayer, int] = GoPlayer.none) -> np.ndarray:
+    def valid_points(self, player: GoPlayer) -> Set[GoPoint]:
         strings = self.get_strings()
-        tensor = np.zeros(self._grid.shape)
-        for pos in self:
-            if self[pos] == GoPlayer.none:
-                tensor.itemset(pos, 1)
+        possible = set(filter(lambda pos: self[pos] == GoPlayer.none, self))
         confuses = set()
         for string in strings:
             if len(string.liberties) == 1:
                 confuses.update(string.liberties)
         for confuse in confuses:
-            if self.is_valid_point(confuse):
-                tensor.itemset(confuse, 1)
-            else:
-                tensor.itemset(confuse, 0)
-        return tensor
+            if not self.is_valid_point(confuse, player):
+                possible.remove(confuse)
+
+        def not_suicide(pos):
+            return not all(map(lambda p: self[p] == player.other, self.get_neighbors(pos)))
+
+        return set(filter(not_suicide,possible))
 
     def is_eye_point(self, point: GoPoint, player: Union[GoPlayer, int] = GoPlayer.none) -> bool:
         if self[point] != GoPlayer.none:

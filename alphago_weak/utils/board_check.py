@@ -118,17 +118,19 @@ def play_to_end(data: GameData, base: _Board):
                 base.place_stone(Player.white, to_point(point))
 
 
-def check_equal(case: TestCase, base: _Board, board: GoBoardBase):
-    case.assertEqual((base.num_rows, base.num_cols), board.grid.shape)
-    for point in board:
+def check_equal(case: TestCase, base: _Board, b: GoBoardBase):
+    case.assertEqual((base.num_rows, base.num_cols), b.grid.shape)
+    for point in b:
         _player = base.get(to_point(point))
-        player = board[point]
-        if player == GoPlayer.none:
+        player = b[point]
+        if player == none:
             case.assertIsNone(_player)
-        elif player == GoPlayer.white:
+        elif player == white:
             case.assertEqual(_player, Player.white)
         else:
             case.assertEqual(_player, Player.black)
+    case.assertSetEqual(GoBoardBase.valid_points(b, black), b.valid_points(black))
+    case.assertSetEqual(GoBoardBase.valid_points(b, white), b.valid_points(white))
 
 
 def board_check_sgf(case: TestCase, sgf_name: str, Board: Type[GoBoardBase]):

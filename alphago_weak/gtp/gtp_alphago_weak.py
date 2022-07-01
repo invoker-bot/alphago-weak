@@ -28,19 +28,19 @@ class GTPAlphaGoWeakV0(GTPClient):
         self.model.load(weights_file)
         self.board = GoBoardAIV0(size)
 
-    def _do_play(self, color: GoPlayer, pos: GoPoint) -> bool:
+    def play(self, color: GoPlayer, pos: GoPoint) -> bool:
         try:
             self.board.play(pos, color)
             return True
         except GoIllegalActionError:
             return False
 
-    def _do_genmove(self, color: GoPlayer) -> Union[GoPoint, str]:
+    def genmove(self, color: GoPlayer) -> Union[GoPoint, str]:
         return self.model.predict(self.board, color)
 
-    def _do_boardsize(self, size: int) -> bool:
+    def boardsize(self, size: int) -> bool:
         self.board = GoBoardAIV0(size)
         return True
 
-    def _do_clear_board(self) -> NoReturn:
+    def clear_board(self) -> NoReturn:
         self.board = GoBoardAIV0(self.board.grid.shape[0])
