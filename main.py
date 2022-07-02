@@ -46,4 +46,4 @@ if __name__ == "__main__":
 
     if args.command == "play":
         bot: GTPClient = GTPClient.FACTORY_DICT[args.mode]()
-        bot.mainloop()
+        bot.cmdloop()

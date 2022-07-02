@@ -9,6 +9,7 @@
 import math
 
 import numpy as np
+import collections
 from enum import IntEnum
 from typing import *
 from abc import abstractmethod, ABCMeta
@@ -140,9 +141,8 @@ class GoIllegalActionError(Exception):
 
 class GoBoardProtocol(Protocol):
 
-    def __init__(self, size=19, komi=6.5):
+    def __init__(self, size=19):
         self._size = size
-        self.komi = komi
 
     @property
     def size(self) -> int:
@@ -199,14 +199,12 @@ class GoBoardProtocol(Protocol):
         ...
 
 
-class GoBoardBase(GoBoardProtocol, metaclass=ABCMeta):
+class GoBoardBase(metaclass=ABCMeta):
 
-    def __init__(self, size=19, komi=6.5):
+    def __init__(self, size=19):
         if not 0 < size <= 25:
             raise ValueError("board size must be within [1, 25], actual: %d" % size)
-        super().__init__(size, komi)
-        self._size = size
-        self.komi = komi
+        self.size = size
 
     @abstractmethod
     def clean(self):
@@ -296,8 +294,8 @@ class GoBoardBase(GoBoardProtocol, metaclass=ABCMeta):
 
 class GoBoardAlpha(GoBoardBase):
 
-    def __init__(self, size=19, komi=6.5):
-        super().__init__(size, komi)
+    def __init__(self, size=19):
+        super().__init__(size)
         self._grid = np.full((size, size), GoPlayer.none, dtype=np.uint8)
         self.__hash = 0
         self.__robbery = None
@@ -420,21 +418,11 @@ class GoBoardAlpha(GoBoardBase):
 
         return set(filter(not_suicide, possible))
 
-    def score(self) -> float:
-        black = 0
-        white = self.komi
-        for point in self:
-            color = self._grid.item(point)
-            if color == GoPlayer.black.value:
-                black += 1
-            elif color == GoPlayer.white.value:
-                white += 1
-            else:
-                if all(self._grid.item(p) == GoPlayer.black.value for p in self.get_neighbors(point)):
-                    black += 1
-                elif all(self._grid.item(p) == GoPlayer.white.value for p in self.get_neighbors(point)):
-                    white += 1
-        return black - white
+    def score(self, player: GoPlayer, komi=6.5) -> float:
+        counts = collections.Counter(self._grid.flat)
+        if player == GoPlayer.black:
+            komi = -komi
+        return counts.get(player.value, 0) + komi - counts.get(player.other.value, 0)
 
     def is_eye_point(self, player: Union[GoPlayer, int], point: GoPoint) -> bool:
         if self[point] != GoPlayer.none:

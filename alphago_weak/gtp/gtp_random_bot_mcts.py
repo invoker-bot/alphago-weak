@@ -6,7 +6,7 @@
 @Data    : 2021/3/25
 @Version : 1.0
 """
-
+import sys
 import math
 import copy
 from typing import *
@@ -17,12 +17,20 @@ from .gtp_random_bot import *
 __all__ = ["GTPRandomBotMCTS"]
 
 
-class MCTSNode(object):
+class RandomMCTSNode(object):
 
-    def __init__(self, parent: "MCTSNode" = None, action: Any = None):
+    def __init__(self, parent: "RandomMCTSNode" = None, board: GoBoardBase = None, player: GoPlayer = GoPlayer.none,
+                 point: GoPoint = None, komi=6.5):
         self.parent = parent
-        self.children: List["MCTSNode"] = []
-        self.action = action
+        if board is None:
+            board = self.parent.board
+        self.board = copy.deepcopy(board)
+        self.children: Optional[List["RandomMCTSNode"]] = None
+        self.player = parent.player.other if player == GoPlayer.none else player
+        self.point = point
+        if point is not None:
+            self.board.play(self.player, point)
+        self.komi = komi
         self.w = 0
         self.n = 0
         self.c = math.sqrt(2)
@@ -30,22 +38,47 @@ class MCTSNode(object):
     @property
     def upper_confidence_bound(self):
         if self.n == 0:
-            return 3.0
+            return sys.float_info.max
         N = self.parent.n
         return self.w / self.n + self.c * math.sqrt(math.log(N) / self.n)
 
-    def select_node(self):
+    def evaluate(self, num=1600):
+        if self.children is None:
+            self.expand()
+        for _ in range(num):
+            child_node = self.choose_node()
+            w = child_node.rollout()
+            child_node.update(w)
+
+    def choose_node(self):
         return max(self.children, key=lambda node: node.upper_confidence_bound, default=self)
 
-    def expand(self, actions: list):
-        for action in actions:
-            self.children.append(MCTSNode(self, action))
+    def choose_action(self):
+        return (max(self.children, key=lambda node: node.n, default=self).player, self.point)
 
-    def backward_propagation(self, win: int = 0):
+    def expand(self):
+        self.children = [RandomMCTSNode(self, point=point) for point in self.board.valid_points(self.player.other)]
+
+    def rollout(self):
+        board = copy.deepcopy(self.board)
+        bot = GTPRandomBot(board)
+        player = self.player.other
+        while True:
+            pos = bot.genmove(player)
+            if isinstance(pos, GoPoint):
+                assert bot.play(player, pos)
+            else:
+                break
+            player = player.other
+        return int(board.score(self.player, self.komi) > 0)
+
+    def update(self, win: int = 0):
+        """backward propagation"""
         node = self
         while node is not None:
             node.n += 1
             node.w += win
+            win = -win
             node = node.parent
 
 
@@ -56,26 +89,11 @@ class GTPRandomBotMCTS(GTPRandomBot):
     def genmove(self, player: GoPlayer) -> Union[GoPoint, str]:
         if self.should_resign(player):
             return "resign"
-        points = self.valid_points(player)
-        if len(points) == 0:
-            return "pass"
-        node = MCTSNode()
-        node.expand(points)
-        board = self.board
-        for i in range(self.config.get("mtcs", 1600)):
-            self.board = copy.deepcopy(board)
-            child_node = node.select_node()
-            action = child_node.action
-            self.play(player, action)
-            current_player = player.other
-            while isinstance(action, GoPoint):
-                action = super().genmove(current_player)
-                current_player = current_player.other
-            win = int(self.counts(player) > 0)
-            child_node.backward_propagation(win)
-        action = node.select_node().action
-        self.board = board
-        if action is not None:
-            return action
+        node = RandomMCTSNode(None, self.board, player.other, komi=self.komi)
+        node.evaluate(self.config.get("mtcs", 1600))
+        _player, point = node.choose_action()
+        assert player == _player
+        if point is not None:
+            return point
         else:
             return "pass"

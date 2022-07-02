@@ -32,8 +32,8 @@ class GTPClient(Cmd, metaclass=ABCMeta):
     }
 
     PRECMD_PAT = re.compile(r"^\s* (?P<id>\d+)? \s* (?P<command>.*)", re.VERBOSE)
-    MOVE = re.compile(r"^\s*(?P<x>[abcdefghjklmnopqrst])(?P<y>\d{1,2})", re.VERBOSE | re.IGNORECASE)
-    player = re.compile(r"^\s* (?P<player>w|b|white|black) \s* (?P<move>\w+)?", re.VERBOSE | re.IGNORECASE)
+    MOVE = re.compile(r"^\s*(?P<x>[a-hj-z])(?P<y>\d{1,2})", re.VERBOSE | re.IGNORECASE)
+    PLAY_PAT = re.compile(r"^\s* (?P<player>w|b|white|black) \s* (?P<move>\w+)?", re.VERBOSE | re.IGNORECASE)
 
     COORDINATE = tuple("ABCDEFGHJKLMNOPQRSTUVWXYZ")
     COORDINATE_R = {coor: idx for idx, coor in enumerate(COORDINATE)}
@@ -53,118 +53,101 @@ class GTPClient(Cmd, metaclass=ABCMeta):
         else:
             return ""
 
-    def response(self, result: str, level="="):
+    def response(self, result: str = "\n", level="="):
         print(level, self.id, result, "\n", file=self.stdout, flush=True)
 
     def default(self, line):
-        print("?", "unknown command", "\n", file=self.stdout, flush=True)
+        self.response("unknown command", "?")
 
-    def do_protocol_version(self, args: str = ""):
-        print("=", self.id, 2, "\n", flush=True)
+    def do_protocol_version(self, args: str):
+        self.response("2")
 
-    def do_name(self, _id: str = "", args: str = ""):
-        print("=", _id, string.capwords(self.name.replace("_", " ")), "\n", flush=True)
+    def do_name(self, args: str):
+        self.response(string.capwords(self.name, "_"))
 
-    def do_version(self, _id: str = "", args: str = ""):
-        print("=", _id, self.__version__, "\n", flush=True)
+    def do_version(self, args: str):
+        self.response(self.__version__)
 
-    def do_known_command(self, _id: str = "", args: str = ""):
+    def do_known_command(self, args: str):
         result = "true" if hasattr(self, "do_" + args.strip()) else "false"
-        print("=", _id, result, "\n", flush=True)
+        self.response(result)
 
-    def do_list_commands(self, _id: str = "", args: str = ""):
-        cmds = [attr[3:] for attr in dir(self) if attr.startswith("do_")]
-        print("=", _id, "\n".join(cmds), "\n", flush=True)
+    def do_list_commands(self, args: str):
+        # cmds = [attr[3:] for attr in dir(self) if attr.startswith("do_")]
+        self.response("\n".join(self.completenames("")))
 
-    @staticmethod
-    def do_quit(_id: str = "", args: str = ""):
-        print("=", _id, "\n", flush=True)
-        sys.exit(0)
+    def do_quit(self, args: str):
+        self.response()
+        return True
 
-    def do_boardsize(self, _id: str = "", args: str = ""):
+    def do_boardsize(self, args: str):
         try:
             size = int(args)
             if 0 < size <= 25 and self.boardsize(size):
-                print("=", _id, "\n", flush=True)
+                self.response()
             else:
-                print("?", _id, "unacceptable size", "\n", flush=True)
+                self.response("unacceptable size", "?")
         except ValueError:
-            print("?", _id, "boardsize is not an integer", "\n", flush=True)
+            self.response("boardsize is not an integer", "?")
 
-    def do_komi(self, _id: str = "", args: str = ""):
+    def do_komi(self, args: str):
         try:
             self.komi = float(args)
-            print("=", _id, "\n", flush=True)
+            self.response()
         except ValueError:
-            print("?", _id, "komi not a float", "\n", flush=True)
+            self.response("komi not a float", "?")
 
-    def do_clear_board(self, _id: str = "", args: str = ""):
+    def do_clear_board(self, args: str):
         self.clear_board()
-        print("=", _id, "\n", flush=True)
+        self.response()
 
-    def do_play(self, _id: str = "", args: str = ""):
-        parsed = self.player.match(args)
+    def do_play(self, args: str):
+        parsed = self.PLAY_PAT.match(args)
         if parsed and parsed["move"]:
             player = parsed["player"].lower()
             action = parsed["move"].strip().lower()
             if action == "pass" or action == "resign":
-                print("=", _id, "\n", flush=True)
+                self.response()
             else:
                 move_parsed = self.MOVE.match(action)
                 x = self.COORDINATE_R[move_parsed["x"].upper()]
                 y = int(move_parsed["y"]) - 1
                 if self.play(GoPlayer.to_player(player), GoPoint(x, y)):
-                    print("=", _id, "\n", flush=True)
+                    self.response()
                 else:
-                    print("?", _id, "illegal move", "\n", flush=True)
+                    self.response("illegal move", "?")
         else:
-            print("?", _id, "invalid player or coordinate", "\n", flush=True)
+            self.response("invalid player or coordinate", "?")
 
-    def do_genmove(self, _id: str = "", args: str = ""):
-        parsed = self.player.match(args)
+    def do_genmove(self, args: str):
+        parsed = self.PLAY_PAT.match(args)
         if parsed:
             player = GoPlayer.to_player(parsed["player"].lower())
             result = self.genmove(player)
             if not isinstance(result, str):
                 self.play(player, result)
                 result = self.COORDINATE[result.x] + str(result.y + 1)
-            print("=", _id, result, "\n", flush=True)
+            self.response(result)
         else:
-            print("?", _id, "invalid player", "\n", flush=True)
+            self.response("invalid player", "?")
 
     @abstractmethod
     def boardsize(self, size: int) -> bool:
-        return True
+        ...
 
     @abstractmethod
     def clear_board(self):
-        pass
+        ...
 
     @abstractmethod
     def play(self, player: GoPlayer, pos: GoPoint) -> bool:
-        return True
+        ...
 
     @abstractmethod
-    def genmove(self, player: GoPlayer) -> Union[GoPoint, str]:
+    def genmove(self, player: GoPlayer) -> Union[GoPoint, "str"]:
         """
-        return pass or resign
+        can return "pass" or "resign"
         """
-        return "pass"
+        ...
 
-    def do_command(self, line: str):
-        parsed = self.CMD.match(line)
-        if parsed is not None:
-            cmd = "do_" + parsed["command"]
-            _id = parsed["id"]
-            _id = "" if _id is None else _id
-            if hasattr(self, cmd):
-                func = getattr(self, cmd)
-                return func(_id, parsed["args"])
-            else:
-                print("?", _id, "unknown command", "\n", flush=True)
-        else:
-            print("?", "unknown command", "\n", flush=True)
 
-    def mainloop(self):
-        while True:
-            self.do_command(input())
