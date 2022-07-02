@@ -53,11 +53,11 @@ class RandomMCTSNode(object):
     def choose_node(self):
         return max(self.children, key=lambda node: node.upper_confidence_bound, default=self)
 
-    def choose_action(self):
-        return (max(self.children, key=lambda node: node.n, default=self).player, self.point)
+    def choose_point(self):
+        return max(self.children, key=lambda node: node.n, default=self).point
 
     def expand(self):
-        self.children = [RandomMCTSNode(self, point=point) for point in self.board.valid_points(self.player.other)]
+        self.children = [RandomMCTSNode(self, point=point, komi=self.komi) for point in self.board.valid_points(self.player.other)]
 
     def rollout(self):
         board = copy.deepcopy(self.board)
@@ -91,8 +91,7 @@ class GTPRandomBotMCTS(GTPRandomBot):
             return "resign"
         node = RandomMCTSNode(None, self.board, player.other, komi=self.komi)
         node.evaluate(self.config.get("mtcs", 1600))
-        _player, point = node.choose_action()
-        assert player == _player
+        point = node.choose_point()
         if point is not None:
             return point
         else:

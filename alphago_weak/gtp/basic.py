@@ -7,8 +7,9 @@
 @Version : 1.1
 """
 
-import sys
+
 import re
+import tqdm
 import string
 from cmd import Cmd
 from importlib import import_module
@@ -27,8 +28,8 @@ class GTPClient(Cmd, metaclass=ABCMeta):
     prompt = ""
     name: str = None
     FACTORY_DICT = {
-        "random_bot": lambda: import_module(".gtp_random_bot", PKG).GTPRandomBot(),
-        "random_bot_mcts": lambda: import_module(".gtp_random_bot_mcts", PKG).GTPRandomBotMCTS(),
+        "random_bot": lambda board: import_module(".gtp_random_bot", PKG).GTPRandomBot(board),
+        "random_bot_mcts": lambda board: import_module(".gtp_random_bot_mcts", PKG).GTPRandomBotMCTS(board),
     }
 
     PRECMD_PAT = re.compile(r"^\s* (?P<id>\d+)? \s* (?P<command>.*)", re.VERBOSE)
@@ -38,8 +39,9 @@ class GTPClient(Cmd, metaclass=ABCMeta):
     COORDINATE = tuple("ABCDEFGHJKLMNOPQRSTUVWXYZ")
     COORDINATE_R = {coor: idx for idx, coor in enumerate(COORDINATE)}
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, board: GoBoardAlpha = None):
+        super(Cmd, self).__init__()
+        self.board = GoBoardAlpha() if board is None else board
         self.id = ""
         self.komi = 6.5
         self.config = {}
@@ -130,6 +132,32 @@ class GTPClient(Cmd, metaclass=ABCMeta):
             self.response(result)
         else:
             self.response("invalid player", "?")
+
+    @classmethod
+    def evaluate(cls, black: str, white: str, board_size = 19, num: int = 100, komi = 6.5):
+        black_count = 0
+        for _ in tqdm.tqdm(range(num),total=num, unit="count", desc= "Simulating..."):
+            board = GoBoardAlpha(board_size)
+            black_bot: GTPClient = cls.FACTORY_DICT[black](board)
+            black_bot.komi = komi
+            white_bot: GTPClient = cls.FACTORY_DICT[white](board)
+            white_bot.komi = komi
+            while True:
+                black_action = black_bot.genmove(GoPlayer.black)
+                if isinstance(black_action, GoPoint):
+                    board.play(GoPlayer.black, black_action)
+                elif black_action == "resign":
+                    break
+                white_action = white_bot.genmove(GoPlayer.white)
+                if isinstance(white_action, GoPoint):
+                    board.play(GoPlayer.white, white_action)
+                elif white_action == "resign":
+                    black_count += 1
+                    break
+                if isinstance(black_action, str) and isinstance(white_action, str):
+                    black_count += int(board.score(GoPlayer.black, komi) > 0)
+                    break
+        return black_count / num
 
     @abstractmethod
     def boardsize(self, size: int) -> bool:

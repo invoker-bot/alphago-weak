@@ -10,6 +10,7 @@
 import pickle
 import tarfile
 import argparse
+from importlib import import_module
 from os import path, makedirs, rename
 from glob import glob, iglob
 from itertools import starmap
@@ -68,7 +69,13 @@ class GameData(NamedTuple):
             f.write(sgf_game.serialise())
 
 
+PKG = "alphago_weak.dataset"
+
+
 class GameArchive(object):
+    FACTORY_DICT = {
+        "u_go": lambda root: import_module(".u_go", PKG).UGoArchive(root),
+    }
 
     def __init__(self, root: str = None):
         if root is None:
@@ -113,12 +120,10 @@ class GameArchive(object):
         name = path.splitext(path.basename(file_name))[0]
         data_path = path.join(self.data_dir, name + ".gamedata")
         if force or not path.exists(data_path):
-            with open(file_name, "rb") as f:
-                sgf_game = sgf.Sgf_game.from_bytes(f.read())
-                game_data = GameData.from_sgf(sgf_game)
-                if len(game_data.sequence) > 1:
-                    with open(data_path, "wb") as data_f:
-                        pickle.dump(game_data, data_f)
+            game_data = GameData.from_sgf(file_name)
+            if len(game_data.sequence) > 1:
+                with open(data_path, "wb") as data_f:
+                    pickle.dump(game_data, data_f)
 
     def extract(self, force=True):
         """Extract all game unpacked archives to Game Data Folder, every single game data file should

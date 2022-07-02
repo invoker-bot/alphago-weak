@@ -20,7 +20,7 @@ class GTPRandomBot(GTPClient):
     __version__ = "1.0"
 
     def __init__(self, board: GoBoard = None):
-        super().__init__()
+        super().__init__(board)
         self.board = GoBoard() if board is None else board
 
     def valid_points(self, player: GoPlayer) -> List[GoPoint]:

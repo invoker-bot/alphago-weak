@@ -7,22 +7,22 @@
 @Data    : 2022/6/27
 @Version : 1.0
 """
-# from alphago_weak.board import *
-# from alphago_weak.gtp.gtp_random_bot_mcts import *
+from alphago_weak.board import *
+from alphago_weak.gtp.gtp_random_bot_mcts import *
+from alphago_weak.dataset import *
+from alphago_weak.model.alpha_go_weak import AlphaGoWeakV0
 
-from cmd import Cmd
 
+def average(archive, num):
+    it = iter(archive)
+    length = [len(next(it).sequence) for _ in range(num)]
+    return sum(length) / len(length)
 
-class CmdObj(Cmd):
-
-    prompt = ""
-
-    def do_abs(self, arg):
-        print("abc")
 
 if __name__ == '__main__':
     # a = GTPRandomBotMCTS()
     # a.boardsize(7)
     # print(a.genmove(GoPlayer.black))
-    cmd = CmdObj()
-    cmd.cmdloop()
+    dataset = GameArchive()
+    model = AlphaGoWeakV0()
+    model.fit(dataset)
