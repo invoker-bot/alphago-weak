@@ -15,7 +15,6 @@ from os import path, makedirs, rename
 from glob import glob, iglob
 from itertools import starmap
 from functools import partial
-from sgfmill import sgf
 from sgfmill.sgf import Sgf_game
 from typing import *
 from ..board import *
@@ -25,11 +24,11 @@ __all__ = ["GameData", "GameArchive"]
 
 
 class GameData(NamedTuple):
-    size: int
-    winner: GoPlayer
-    sequence: List[Tuple[Optional[GoPlayer], Optional[Union[GoPoint, Tuple[int, int]]]]]
-    komi: float
-    setup_stones: Tuple[Set[GoPoint], Set[GoPoint], Set[GoPoint]]
+    size: int = 19
+    winner: GoPlayer = GoPlayer.none
+    sequence: List[Tuple[Optional[GoPlayer], Optional[Union[GoPoint, Tuple[int, int]]]]] = []
+    komi: float = 6.5
+    setup_stones: Tuple[Set[GoPoint], Set[GoPoint], Set[GoPoint]] = (set(), set(), set())
 
     @staticmethod
     def from_sgf(sgf_file: str):
@@ -41,7 +40,7 @@ class GameData(NamedTuple):
                             (node.get_move() for node in sgf_game.get_main_sequence())))
         komi = sgf_game.get_komi()
         setup_stones: Any = tuple(set(starmap(GoPoint, points)) for points in sgf_game.get_root().get_setup_stones())
-        return GameData(size=size, winner=winner, sequence=sequence, komi=komi, setup_stones=setup_stones)
+        return GameData(size, winner, sequence, komi, setup_stones)
 
     def to_sgf(self, sgf_file: str):
         sgf_game = Sgf_game(size=self.size)

@@ -7,29 +7,35 @@
 @Version : 1.1
 """
 
-
 import re
 import tqdm
 import string
+import logging
+from os import path, makedirs
 from cmd import Cmd
 from importlib import import_module
 from abc import *
 from typing import *
 
 from ..board import *
+from ..dataset import GameData
 
-__all__ = ["GTPClient"]
+__all__ = ["GTPClientBase"]
 
 PKG = "alphago_weak.gtp"
 
 
-class GTPClient(Cmd, metaclass=ABCMeta):
+def import_class_func(module: str, class_: str) -> Callable[[GoBoardBase, float], "GTPClientBase"]:
+    return lambda board, komi: getattr(import_module(module, "alphago_weak.gtp"), class_)(board, komi)
+
+
+class GTPClientBase(Cmd, metaclass=ABCMeta):
     __version__ = "1.0"
     prompt = ""
     name: str = None
     FACTORY_DICT = {
-        "random_bot": lambda board: import_module(".gtp_random_bot", PKG).GTPRandomBot(board),
-        "random_bot_mcts": lambda board: import_module(".gtp_random_bot_mcts", PKG).GTPRandomBotMCTS(board),
+        "random_bot": import_class_func(".gtp_random_bot", "GTPRandomBot"),
+        "random_bot_mcts": import_class_func(".gtp_random_bot_mcts", "GTPRandomBotMCTS"),
     }
 
     PRECMD_PAT = re.compile(r"^\s* (?P<id>\d+)? \s* (?P<command>.*)", re.VERBOSE)
@@ -39,11 +45,11 @@ class GTPClient(Cmd, metaclass=ABCMeta):
     COORDINATE = tuple("ABCDEFGHJKLMNOPQRSTUVWXYZ")
     COORDINATE_R = {coor: idx for idx, coor in enumerate(COORDINATE)}
 
-    def __init__(self, board: GoBoardAlpha = None):
+    def __init__(self, board: GoBoardBase = None, komi=6.5):
         super(Cmd, self).__init__()
-        self.board = GoBoardAlpha() if board is None else board
+        self.board = board
         self.id = ""
-        self.komi = 6.5
+        self.komi = komi
         self.config = {}
 
     def precmd(self, line: str) -> str:
@@ -134,29 +140,42 @@ class GTPClient(Cmd, metaclass=ABCMeta):
             self.response("invalid player", "?")
 
     @classmethod
-    def evaluate(cls, black: str, white: str, board_size = 19, num: int = 100, komi = 6.5):
+    def evaluate(cls, black: str, white: str, board_size=19, num=100, komi=6.5, output: str = None):
         black_count = 0
-        for _ in tqdm.tqdm(range(num),total=num, unit="count", desc= "Simulating..."):
-            board = GoBoardAlpha(board_size)
-            black_bot: GTPClient = cls.FACTORY_DICT[black](board)
-            black_bot.komi = komi
-            white_bot: GTPClient = cls.FACTORY_DICT[white](board)
-            white_bot.komi = komi
+        if output is not None:
+            makedirs(output, exist_ok=True)
+            logging.basicConfig(filename=path.join(output, "log.txt"), format="%(asctime)s - %(name)s - [%(levelname)s]: %(message)s")
+        logger = logging.getLogger("evaluate")
+        for idx in tqdm.tqdm(range(num), total=num, unit="count", desc="Simulating..."):
+            board = GoBoard(board_size)
+            bots: Dict[GoPlayer, "GTPClientBase"] = {player: cls.FACTORY_DICT[bot_name](board, komi)
+                                                     for player, bot_name in ((GoPlayer.black, black), (GoPlayer.white, white))}
+            seq: List[Tuple[GoPlayer, GoPoint]] = []
+            current_player = GoPlayer.black
+            history_action = None
             while True:
-                black_action = black_bot.genmove(GoPlayer.black)
-                if isinstance(black_action, GoPoint):
-                    board.play(GoPlayer.black, black_action)
-                elif black_action == "resign":
+                current_bot = bots[current_player]
+                current_action = current_bot.genmove(current_player)
+                if isinstance(current_action, GoPoint):
+                    # try:
+                    board.play(current_player, current_action)
+                    seq.append((current_player, current_action))
+                    #except GoIllegalActionError as e:
+                    #    logger.warning("%s (%s in match %d)" % (e, bots[current_player].name, idx))
+                elif current_action == "resign":
                     break
-                white_action = white_bot.genmove(GoPlayer.white)
-                if isinstance(white_action, GoPoint):
-                    board.play(GoPlayer.white, white_action)
-                elif white_action == "resign":
-                    black_count += 1
-                    break
-                if isinstance(black_action, str) and isinstance(white_action, str):
-                    black_count += int(board.score(GoPlayer.black, komi) > 0)
-                    break
+                else:  # current_action == pass
+                    if history_action == "pass":
+                        # set current play as a loser
+                        current_player = GoPlayer.black if board.score(GoPlayer.black, komi) < 0 else GoPlayer.white
+                        break
+                history_action = current_action
+                current_player = current_player.other
+            winner = current_player.other
+            black_count += int(winner == GoPlayer.black)
+            if output is not None:
+                game_data = GameData(board_size, winner, seq, komi)
+                game_data.to_sgf(path.join(output, f'{idx}.sgf'))
         return black_count / num
 
     @abstractmethod
@@ -167,15 +186,16 @@ class GTPClient(Cmd, metaclass=ABCMeta):
     def clear_board(self):
         ...
 
-    @abstractmethod
-    def play(self, player: GoPlayer, pos: GoPoint) -> bool:
-        ...
+    def play(self, player, pos):
+        try:
+            self.board.play(player, pos)
+            return True
+        except GoIllegalActionError:
+            return False
 
     @abstractmethod
-    def genmove(self, player: GoPlayer) -> Union[GoPoint, "str"]:
+    def genmove(self, player: GoPlayer) -> Union[GoPoint, str]:
         """
         can return "pass" or "resign"
         """
         ...
-
-

@@ -24,7 +24,7 @@ if __name__ == "__main__":
     sub_parser = parser.add_subparsers(dest="command", help="commands")
 
     download_parser = sub_parser.add_parser("download", help="download go dataset from the Internet")
-    download_parser.add_argument("-r", "--root",  default=None, help="root path of the dataset")
+    download_parser.add_argument("-r", "--root", default=None, help="root path of the dataset")
     download_parser.add_argument("-t", "--type", choices=GameArchive.FACTORY_DICT.keys(), required=True, help="type of the website")
     download_parser.add_argument("-f", "--force", action="store_true", default=False, dest="force",
                                  help="whether force to download dataset")
@@ -44,25 +44,26 @@ if __name__ == "__main__":
     """
 
     evaluate_parser = sub_parser.add_parser("evaluate", help="evaluate the level of two bots")
-    evaluate_parser.add_argument("-b", "--black", choices=GTPClient.FACTORY_DICT.keys(), required=True, help="type of the black bot")
-    evaluate_parser.add_argument("-w", "--white", choices=GTPClient.FACTORY_DICT.keys(), required=True, help="type of the white bot")
+    evaluate_parser.add_argument("-b", "--black", choices=GTPClientBase.FACTORY_DICT.keys(), required=True, help="type of the black bot")
+    evaluate_parser.add_argument("-w", "--white", choices=GTPClientBase.FACTORY_DICT.keys(), required=True, help="type of the white bot")
     evaluate_parser.add_argument("--board_size", type=int, default=19, help="go board size")
     evaluate_parser.add_argument("--komi", type=float, default=6.5, help="komi")
     evaluate_parser.add_argument("-c", "--count", type=int, default=100, help="evaluate counts")
-    
+    evaluate_parser.add_argument("-o", "--output", default=None, help="output directory for evaluate results")
+
     play_parser = sub_parser.add_parser("play", help="play the game of go by GTP")
-    play_parser.add_argument("-t", "--type", choices=GTPClient.FACTORY_DICT.keys(), required=True, help="type of the bot")
-    
+    play_parser.add_argument("-t", "--type", choices=GTPClientBase.FACTORY_DICT.keys(), required=True, help="type of the bot")
+
     args = parser.parse_args()
 
     if args.command == "download":
         archive: GameArchive = GameArchive.FACTORY_DICT[args.type](args.root)
         archive.download(args.force)
     elif args.command == "evaluate":
-        black_v = GTPClient.evaluate(args.black, args.white, board_size=args.board_size, num = args.count, komi=args.komi)
+        black_v = GTPClientBase.evaluate(args.black, args.white, board_size=args.board_size, num=args.count, komi=args.komi, output=args.output)
         print("the winning rate of black bot (%s): %0.3f" % (args.black, black_v))
         print("the winning rate of white bot (%s): %0.3f" % (args.white, 1 - black_v))
 
     elif args.command == "play":
-        bot: GTPClient = GTPClient.FACTORY_DICT[args.type](None)
+        bot = GTPClientBase.FACTORY_DICT[args.type](None)
         bot.cmdloop()

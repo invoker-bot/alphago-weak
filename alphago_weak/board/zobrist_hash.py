@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
+from .basic import *
+
 __all__ = ["zobrist_hash"]
 
-ZOBRIST_HASHMAP = np.array([[[2526334998825741210, 3313582256518275088, -287774555718411658, -7043430064820032895,
+ZOBRIST_HASH = np.array([[[2526334998825741210, 3313582256518275088, -287774555718411658, -7043430064820032895,
                               -9059326486587851936, -4458066124237195787, -5684614108446514227, 6617432469892932430,
                               5612758957431768173, 6166435164800025018, -4395404568614665322, -2297592652396012928,
                               4023565642994008543, -1670970637664492055, 83592551111831716, -4661897451516378953,
@@ -538,5 +540,5 @@ ZOBRIST_HASHMAP = np.array([[[2526334998825741210, 3313582256518275088, -2877745
                                  -5955908387828596719]]], dtype=np.int64)
 
 
-def zobrist_hash(player, point) -> int:
-    return ZOBRIST_HASHMAP.item((int(player), point.x, point.y))
+def zobrist_hash(player: GoPlayer, point: GoPoint) -> int:
+    return ZOBRIST_HASH.item((int(player), point.x, point.y))

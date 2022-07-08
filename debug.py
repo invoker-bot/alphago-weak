@@ -23,6 +23,10 @@ if __name__ == '__main__':
     # a = GTPRandomBotMCTS()
     # a.boardsize(7)
     # print(a.genmove(GoPlayer.black))
-    dataset = GameArchive()
-    model = AlphaGoWeakV0()
-    model.fit(dataset)
+    data = GameData.from_sgf("test/sgf/0.sgf")
+    b = GoBoard(data.size)
+    for player, pos in data.sequence:
+        b.play(player, pos)
+
+    # model = AlphaGoWeakV0()
+    # model.fit(dataset)

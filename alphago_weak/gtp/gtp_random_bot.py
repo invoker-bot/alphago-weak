@@ -10,31 +10,25 @@
 import random
 from typing import *
 from .basic import *
-from ..board import GoPoint, GoPlayer, GoIllegalActionError, GoBoardAlpha as GoBoard
+from ..board import *
 
 __all__ = ["GTPRandomBot"]
 
 
-class GTPRandomBot(GTPClient):
+class GTPRandomBot(GTPClientBase):
     name = "random_bot"
     __version__ = "1.0"
 
-    def __init__(self, board: GoBoard = None):
-        super().__init__(board)
-        self.board = GoBoard() if board is None else board
+    def __init__(self, board: GoBoardBase = None, komi=6.5):
+        super().__init__(board, komi)
+        if self.board is None:
+            self.board = GoBoard()
 
     def valid_points(self, player: GoPlayer) -> List[GoPoint]:
-        return [pos for pos in self.board.valid_points(player) if not self.board.is_point_a_true_eye(pos, player)]
+        return [pos for pos in self.board.valid_points(player) if self.board.eye_type(player, pos) < GoEyeType.unknown]
 
     def should_resign(self, player: GoPlayer):
         return 2 * self.board.size + self.board.score(player, self.komi) < 0
-
-    def play(self, player, pos):
-        try:
-            self.board.play(player, pos)
-            return True
-        except GoIllegalActionError:
-            return False
 
     def genmove(self, player):
         if self.should_resign(player):
