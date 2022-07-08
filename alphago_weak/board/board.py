@@ -21,10 +21,34 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
 
     def __init__(self, size=19):
         super().__init__(size)
+        self._robbery: Optional[GoPoint] = None
         self.__hash = 0
 
     def place_stone(self, player: GoPlayer, stone: GoPoint):
+        """Change a stone on the Go board with a revocable callable function.
+
+        Args:
+            stone: The position of the stone.
+            player: The player who owns the target stone.
+        Returns:
+            A callable function which allows to withdraw the pre-action.
+        """
         self.__hash ^= zobrist_hash(self[stone], stone) ^ zobrist_hash(player, stone)
+
+    def __setitem__(self, pos: Optional[GoPoint], player: GoPlayer):
+        if pos is not None:
+            self.place_stone(player, pos)
+            if player != GoPlayer.none:
+                # assert self[pos] == GoPlayer.none
+                dead_count = 0
+                for neighbor in self.neighbors(pos):
+                    string = self.get_string(neighbor)
+                    if string is not None and string.player == player.other:
+                        dead_count += len(string.stones)
+                        self._robbery = next(iter(string.stones))
+                        self.remove_string(string)
+                if dead_count != 1:
+                    self._robbery = None
 
     def __index__(self):
         return hash(self)
@@ -89,14 +113,23 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
                     strings.append(string)
         return strings
 
+    def remove_string(self, string: GoString):
+        for stone in string.stones:
+            self.place_stone(GoPlayer.none, stone)
+
     def is_valid_point(self, player, pos):
         if self[pos] != GoPlayer.none:
             return False
-        neighbor_strings = [self.get_string(neighbor) for neighbor in self.neighbors(pos)]
+        neighbor_strings = []
+
         # has space for the stone
-        for neighbor_string in neighbor_strings:
+        for neighbor_string in map(self.get_string, self.neighbors(pos)):
             if neighbor_string is None:
                 return True
+            neighbor_strings.append(neighbor_string)
+
+        if pos == self._robbery:
+            return False
 
         for neighbor_string in neighbor_strings:
             if neighbor_string.player == player and len(neighbor_string.liberties) > 1:
@@ -104,68 +137,6 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
 
         # any of this is true
         return any(map(lambda string: string == player.other and len(string) == 1, neighbor_strings))
-
-
-class GoBoardAlpha(PyGoBoardBase):
-
-    def __init__(self, size=19):
-        super().__init__(size)
-        self._grid = np.full((size, size), GoPlayer.none, dtype=np.uint8)
-        self.__robbery = None
-
-    def __getitem__(self, pos: GoPoint) -> GoPlayer:
-        return GoPlayer(self._grid.item(tuple(pos)))
-
-    def __setitem__(self, pos: GoPoint, player: GoPlayer):
-        self._grid.itemset(tuple(pos), player)
-        super().__setitem__(pos, player)
-
-    def __delitem__(self, point: GoPoint):
-        self.__setitem__(point, GoPlayer.none)
-
-    def place_stone(self, player: GoPlayer, stone: GoPoint) -> Callable[[], None]:
-        """Change a stone on the Go board with a revocable callable function.
-
-        Args:
-            stone: The position of the stone.
-            player: The player who owns the target stone.
-        Returns:
-            A callable function which allows to withdraw the pre-action.
-        """
-        former_stone = self[stone]
-
-        def back():
-            self[stone] = former_stone
-
-        self[stone] = player
-        return back
-
-    def place_stones(self, player: GoPlayer, stones: Iterable[GoPoint]) -> Callable[[], None]:
-        """Change stones on the Go board with a revocable callable function.
-
-        Args:
-            stones: The positions of the stones.
-            player: The player who owns the target stones.
-
-        Returns:
-            A callable function which allows to withdraw the pre-action.
-        """
-        former_stones = {stone: self[stone] for stone in stones}
-
-        def back():
-            for stone, player in former_stones.items():
-                self[stone] = player
-
-        self._setup_stones(player, stones)
-        return back
-
-    def is_valid_point(self, player: GoPlayer, pos: GoPoint):
-        try:
-            back = self.play(player, pos)
-            back()
-            return True
-        except GoIllegalActionError:
-            return False
 
     def valid_points(self, player):
         strings = self.get_strings()
@@ -185,56 +156,26 @@ class GoBoardAlpha(PyGoBoardBase):
 
         return filter(not_suicide, possibles)
 
+
+
+class GoBoardAlpha(PyGoBoardBase):
+
+    def __init__(self, size=19):
+        super().__init__(size)
+        self._grid = np.full((size, size), GoPlayer.none, dtype=np.uint8)
+
+    def __getitem__(self, pos: GoPoint) -> GoPlayer:
+        return GoPlayer(self._grid.item(tuple(pos)))
+
+    def place_stone(self, player, stone):
+        super().place_stone(player, stone)
+        self._grid.itemset(tuple(stone),player)
+
     def score(self, player: GoPlayer, komi=6.5) -> float:
         counts = collections.Counter(self._grid.flat)
         if player == GoPlayer.black:
             komi = -komi
         return counts.get(player.value, 0) + komi - counts.get(player.other.value, 0)
-
-    def neighbor_dead_stones(self, player: Union[GoPlayer, int], point: GoPoint) -> Set[GoPoint]:
-        """Get the chess stones of the player died near the point.
-
-        Args:
-            point: The target point.
-            player: The target player.
-
-        Returns:
-            The dead stones owned by the player.
-        """
-        dead_points = set()
-        for point in self.neighbors(point):
-            if self[point] == player:
-                string = self.get_string(point)
-                if string.is_dead():
-                    dead_points.update(string.stones)
-        return dead_points
-
-    def play(self, player: GoPlayer, pos: Optional[GoPoint] = None) -> Callable[[], None]:
-        if pos is not None:
-            if self[pos] == GoPlayer.none:
-                back1 = self.place_stone(player, pos)
-                dead_stones = self.neighbor_dead_stones(player.other, pos)
-                robbery = None
-                if len(dead_stones) == 1:
-                    robbery = (next(iter(dead_stones)), pos)
-                    if self.__robbery is not None and robbery == tuple(reversed(self.__robbery)):
-                        back1()
-                        raise GoIllegalActionError(player, pos)
-                tmp_robbery = self.__robbery
-                self.__robbery = robbery
-                back2 = self.place_stones(GoPlayer.none, dead_stones)
-
-                def back():
-                    back2()
-                    self.__robbery = tmp_robbery
-                    back1()
-
-                if self.get_string(pos).is_dead():
-                    back()
-                    raise GoIllegalActionError(player, pos)
-                return back
-            else:  # self[point] != GoPlayer.none
-                raise GoIllegalActionError(player, pos)
 
 
 class GoBoardBeta(PyGoBoardBase):
@@ -255,13 +196,11 @@ class GoBoardBeta(PyGoBoardBase):
 
     def __setitem__(self, point, player):
         if player == GoPlayer.none:
+            pass
 
     def _remove_string(self, string: GoString):
         for stone in string.stones:
             del self._grid[stone]
-
-
-
 
 
 GoBoard = GoBoardAlpha

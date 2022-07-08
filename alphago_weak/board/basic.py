@@ -229,9 +229,10 @@ class GoBoardBase(metaclass=ABCMeta):
         Raises:
             GoIllegalActionError: When performing an illegal action.
         """
-        if self.is_valid_point(player, pos):
+        if pos is not None:
+            if not self.is_valid_point(player, pos):
+                raise GoIllegalActionError(player, pos)
             self[pos] = player
-        raise GoIllegalActionError(player, pos)
 
     @abstractmethod
     def is_valid_point(self, player: GoPlayer, pos: GoPoint) -> bool:
