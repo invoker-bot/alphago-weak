@@ -23,8 +23,8 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
         super().__init__(size)
         self.__hash = 0
 
-    def __setitem__(self, point: GoPoint, player: GoPlayer):
-        self.__hash ^= zobrist_hash(self[point], point) ^ zobrist_hash(player, point)
+    def place_stone(self, player: GoPlayer, stone: GoPoint):
+        self.__hash ^= zobrist_hash(self[stone], stone) ^ zobrist_hash(player, stone)
 
     def __index__(self):
         return hash(self)
@@ -37,6 +37,73 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
 
     def __hash__(self):
         return self.__hash
+
+    def new_string(self, point: GoPoint):
+        """Construct the chess string from the target point.
+
+        Args:
+            point: Searching start point for the chess string.
+
+        Returns:
+            The string from the search if found, otherwise returns None.
+        """
+        player = self[point]
+        if player != GoPlayer.none:
+            string = GoString(GoPlayer(player), {point}, set())
+            neighbors_queue = list(self.neighbors(point))
+            while len(neighbors_queue) != 0:
+                point = neighbors_queue.pop()
+                point_t = self[point]
+                if point_t == GoPlayer.none:  # liberty
+                    string.liberties.add(point)
+                elif point_t == player and point not in string.stones:  # stone
+                    string.stones.add(point)
+                    neighbors_queue.extend(self.neighbors(point))
+            return string
+
+    def get_string(self, point: GoPoint) -> Optional[GoString]:
+        """Search the chess string from a point.
+
+        Args:
+            point: Searching start point for the chess string.
+
+        Returns:
+            The string from the search if found, otherwise returns None.
+        """
+        return self.new_string(point)
+
+    def get_strings(self) -> List[GoString]:
+        """Search all strings from the board.
+
+        Returns:
+            A list of chess strings.
+        """
+        strings = []
+        strings_map = np.full((self.size, self.size), False, dtype=np.bool_)
+        for point in self:
+            if not strings_map.item(tuple(point)):
+                string = self.get_string(point)
+                if string is not None:
+                    for stone in string.stones:
+                        strings_map.itemset(tuple(stone), True)
+                    strings.append(string)
+        return strings
+
+    def is_valid_point(self, player, pos):
+        if self[pos] != GoPlayer.none:
+            return False
+        neighbor_strings = [self.get_string(neighbor) for neighbor in self.neighbors(pos)]
+        # has space for the stone
+        for neighbor_string in neighbor_strings:
+            if neighbor_string is None:
+                return True
+
+        for neighbor_string in neighbor_strings:
+            if neighbor_string.player == player and len(neighbor_string.liberties) > 1:
+                return True  # cannot commit suicide
+
+        # any of this is true
+        return any(map(lambda string: string == player.other and len(string) == 1, neighbor_strings))
 
 
 class GoBoardAlpha(PyGoBoardBase):
@@ -92,46 +159,6 @@ class GoBoardAlpha(PyGoBoardBase):
         self._setup_stones(player, stones)
         return back
 
-    def get_string(self, point: GoPoint) -> Optional[GoString]:
-        """Search the chess string from a point.
-
-        Args:
-            point: Searching start point for the chess string.
-
-        Returns:
-            The string from the search if found, otherwise returns None.
-        """
-        player = self[point]
-        if player != GoPlayer.none:
-            string = GoString(GoPlayer(player), {point}, set())
-            neighbors_queue = list(self.neighbors(point))
-            while len(neighbors_queue) != 0:
-                point = neighbors_queue.pop()
-                point_t = self[point]
-                if point_t == GoPlayer.none:  # liberty
-                    string.liberties.add(point)
-                elif point_t == player and point not in string.stones:  # stone
-                    string.stones.add(point)
-                    neighbors_queue.extend(self.neighbors(point))
-            return string
-
-    def get_strings(self) -> List[GoString]:
-        """Search all strings from the board.
-
-        Returns:
-            A list of chess strings.
-        """
-        strings = []
-        strings_map = np.full(self._grid.shape, False, dtype=np.bool_)
-        for point in self:
-            if not strings_map.item(tuple(point)):
-                string = self.get_string(point)
-                if string is not None:
-                    for stone in string.stones:
-                        strings_map.itemset(tuple(stone), True)
-                    strings.append(string)
-        return strings
-
     def is_valid_point(self, player: GoPlayer, pos: GoPoint):
         try:
             back = self.play(player, pos)
@@ -184,76 +211,57 @@ class GoBoardAlpha(PyGoBoardBase):
 
     def play(self, player: GoPlayer, pos: Optional[GoPoint] = None) -> Callable[[], None]:
         if pos is not None:
-            try:
-                if self[pos] == GoPlayer.none:
-                    back1 = self.place_stone(player, pos)
-                    dead_stones = self.neighbor_dead_stones(player.other, pos)
-                    robbery = None
-                    if len(dead_stones) == 1:
-                        robbery = (next(iter(dead_stones)), pos)
-                        if self.__robbery is not None and robbery == tuple(reversed(self.__robbery)):
-                            back1()
-                            raise GoIllegalActionError.commit_robbery(player, pos, self)
-
-                    tmp_robbery = self.__robbery
-                    self.__robbery = robbery
-                    back2 = self.place_stones(GoPlayer.none, dead_stones)
-
-                    def back():
-                        back2()
-                        self.__robbery = tmp_robbery
+            if self[pos] == GoPlayer.none:
+                back1 = self.place_stone(player, pos)
+                dead_stones = self.neighbor_dead_stones(player.other, pos)
+                robbery = None
+                if len(dead_stones) == 1:
+                    robbery = (next(iter(dead_stones)), pos)
+                    if self.__robbery is not None and robbery == tuple(reversed(self.__robbery)):
                         back1()
+                        raise GoIllegalActionError(player, pos)
+                tmp_robbery = self.__robbery
+                self.__robbery = robbery
+                back2 = self.place_stones(GoPlayer.none, dead_stones)
 
-                    if self.get_string(pos).is_dead():
-                        back()
-                        raise GoIllegalActionError.commit_suicide(player, pos, self)
-                    return back
-                else:  # self[point] != GoPlayer.none
-                    raise GoIllegalActionError.already_has_a_stone(player, pos, self)
-            except IndexError:
-                raise GoIllegalActionError.move_out_of_range(player, pos, self)
+                def back():
+                    back2()
+                    self.__robbery = tmp_robbery
+                    back1()
+
+                if self.get_string(pos).is_dead():
+                    back()
+                    raise GoIllegalActionError(player, pos)
+                return back
+            else:  # self[point] != GoPlayer.none
+                raise GoIllegalActionError(player, pos)
 
 
 class GoBoardBeta(PyGoBoardBase):
     def __init__(self, size=19):
         super().__init__(size)
         self._grid: Dict[GoPoint, GoString] = {}
-        self.__hash = 0
         self.__robbery = None
 
     def __hash__(self):
         return self.__hash
 
-    def __getitem__(self, point: GoPoint) -> GoPlayer:
+    def __getitem__(self, point):
         string = self._grid.get(point, None)
         if string is None:
             return GoPlayer.none
         else:
             return string.player
 
-    def __delitem__(self, point: GoPoint):
-        self.__setitem__(point, GoPlayer.none)
+    def __setitem__(self, point, player):
+        if player == GoPlayer.none:
 
     def _remove_string(self, string: GoString):
         for stone in string.stones:
             del self._grid[stone]
 
-    def _new_string(self, point: GoPoint):
-        player = self[point]
-        if player != GoPlayer.none:
-            string = GoString(GoPlayer(player), {point}, set())
-            self._grid[point] = string
-            neighbors_queue = list(self.neighbors(point))
-            while len(neighbors_queue) != 0:
-                point = neighbors_queue.pop()
-                point_t = self[point]
-                if point_t == GoPlayer.none:  # liberty
-                    string.liberties.add(point)
-                elif point_t == player and point not in string.stones:  # stone
-                    string.stones.add(point)
-                    self._grid[point] = string
-                    neighbors_queue.extend(self.neighbors(point))
-            return string
+
+
 
 
 GoBoard = GoBoardAlpha

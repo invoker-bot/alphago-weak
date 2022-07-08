@@ -117,32 +117,8 @@ class GoString(NamedTuple):
 
 
 class GoIllegalActionError(Exception):
-    def __init__(self, action: Any, msg: str, board):
-        super().__init__("%s: %s\n" % (msg, action))
-        self.board = board
-
-    def details(self):
-        return self.board.details()
-
-    @classmethod
-    def move_out_of_range(cls, player: GoPlayer, point: GoPoint, board):
-        return cls("%s %s" % (player.name, point), "move out of range", board)
-
-    @classmethod
-    def already_has_a_stone(cls, player: GoPlayer, point: GoPoint, board):
-        return cls("%s %s" % (player.name, point), "already has a stone", board)
-
-    @classmethod
-    def commit_suicide(cls, player: GoPlayer, point: GoPoint, board):
-        return cls("%s %s" % (player.name, point), "commit suicide", board)
-
-    @classmethod
-    def commit_robbery(cls, player: GoPlayer, point: GoPoint, board):
-        return cls("%s %s" % (player.name, point), "commit robbery", board)
-
-    @classmethod
-    def illegal_player(cls, player: GoPlayer, board):
-        return cls(player, "illegal player", board)
+    def __init__(self, player: GoPlayer, pos: GoPoint):
+        super().__init__("%s - %s\n" % (player, pos))
 
 
 class GoBoardBase(metaclass=ABCMeta):
@@ -242,7 +218,6 @@ class GoBoardBase(metaclass=ABCMeta):
     def __delitem__(self, point: GoPoint):
         self.__setitem__(point, GoPlayer.none)
 
-    @abstractmethod
     def play(self, player: GoPlayer, pos: Optional[GoPoint] = None):
         """Take a single step with exception security.
 
@@ -254,7 +229,9 @@ class GoBoardBase(metaclass=ABCMeta):
         Raises:
             GoIllegalActionError: When performing an illegal action.
         """
-        ...
+        if self.is_valid_point(player, pos):
+            self[pos] = player
+        raise GoIllegalActionError(player, pos)
 
     @abstractmethod
     def is_valid_point(self, player: GoPlayer, pos: GoPoint) -> bool:
