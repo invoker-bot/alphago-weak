@@ -7,6 +7,7 @@
 @Version : 1.0
 """
 import math
+import collections
 from abc import *
 from typing import *
 from enum import IntEnum
@@ -101,7 +102,7 @@ class GoPoint(object):
 class GoString(NamedTuple):
     player: GoPlayer
     stones: Set[GoPoint]
-    liberties: Set[GoPoint]
+    liberties: Set[GoPoint] = set()
 
     def is_dead(self) -> bool:
         return len(self.liberties) == 0
@@ -248,3 +249,9 @@ class GoBoardBase(metaclass=ABCMeta):
 
     def valid_points(self, player: GoPlayer) -> Iterable[GoPoint]:
         return (pos for pos in self if self.is_valid_point(player, pos))
+
+    def score(self, player: GoPlayer, komi=6.5) -> float:
+        counts = collections.Counter(map(self.__getitem__, iter(self)))
+        if player == GoPlayer.black:
+            komi = -komi
+        return counts.get(player.value, 0) + komi - counts.get(player.other.value, 0)

@@ -12,8 +12,6 @@ This module is designed to xxx.
 
 import argparse
 
-from sympy import evaluate
-
 from alphago_weak.dataset import *
 from alphago_weak.gtp import *
 

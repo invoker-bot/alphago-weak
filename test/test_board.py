@@ -14,10 +14,10 @@ b, w, none = GoPlayer.black, GoPlayer.white, GoPlayer.none
 P = GoPoint
 
 
-def dump_board_status(board: GoBoardBase) -> Dict[str, List[Tuple[int, int]]]:
+def dump_board_status(_b: GoBoardBase) -> Dict[str, List[Tuple[int, int]]]:
     black_stones: List[Tuple[int, int]] = []
     white_stones: List[Tuple[int, int]] = []
-    for pos, player in board.items():
+    for pos, player in _b.items():
         if player == GoPlayer.black:
             black_stones.append(tuple(pos))
         elif player == GoPlayer.white:
@@ -25,8 +25,8 @@ def dump_board_status(board: GoBoardBase) -> Dict[str, List[Tuple[int, int]]]:
     return {"black": black_stones, "white": white_stones}
 
 
-def assert_board_status(board: GoBoardBase, status: Dict[str, List[Tuple[int, int]]]):
-    board_status = dump_board_status(board)
+def assert_board_status(_b: GoBoardBase, status: Dict[str, List[Tuple[int, int]]]):
+    board_status = dump_board_status(_b)
     assert set(board_status["black"]) == set(map(tuple, status.get("black", [])))
     assert set(board_status["white"]) == set(map(tuple, status.get("white", [])))
 
@@ -37,15 +37,7 @@ def play_stones(board: GoBoardBase, player: GoPlayer, stones: List[Tuple[int, in
     return stones
 
 
-def assert_board_sgf(sgf_name: str, Board: Type[GoBoardBase]):
-    data = GameData.from_sgf(sgf_name)
-    base = Board(data.size)
-    b.setup_stones(*data.setup_stones)
-    for player, point in data.sequence:
-        b.play(player, point)
-
-
-@pytest.mark.parametrize("Board", [GoBoardAlpha])
+@pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
 def test_board_basic(Board: Type[GoBoardBase]):
     b_ = Board(19)
     # take points and eye judgement
@@ -97,9 +89,8 @@ def test_board_basic(Board: Type[GoBoardBase]):
     assert_board_status(b_, {"white": white_stones, "black": black_stones})
 
 
-@pytest.mark.parametrize("Board", [GoBoardAlpha])
+@pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
 def test_board_random_play(Board: Type[GoBoardBase], benchmark):
-    random.seed(1000)
 
     @benchmark
     def _():
@@ -113,7 +104,7 @@ def test_board_random_play(Board: Type[GoBoardBase], benchmark):
             current_player = current_player.other
 
 
-@pytest.mark.parametrize("Board", [GoBoardAlpha])
+@pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
 def test_board_sgf_play(Board: Type[GoBoardBase], benchmark):
     dataset = []
     for sgf_file in iglob(path.join(path.dirname(__file__), "sgf", "**/*.sgf"), recursive=True):

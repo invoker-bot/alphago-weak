@@ -10,7 +10,6 @@
 from abc import *
 from typing import *
 import numpy as np
-import collections
 from .basic import *
 from .zobrist_hash import zobrist_hash
 
@@ -24,7 +23,7 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
         self._robbery: Optional[GoPoint] = None
         self.__hash = 0
 
-    def place_stone(self, player: GoPlayer, stone: GoPoint):
+    def _place_stone(self, player: GoPlayer, stone: GoPoint):
         """Change a stone on the Go board with a revocable callable function.
 
         Args:
@@ -35,20 +34,25 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
         """
         self.__hash ^= zobrist_hash(self[stone], stone) ^ zobrist_hash(player, stone)
 
+    def _remove_stone(self, stone: GoPoint):
+        self._place_stone(GoPlayer.none, stone)
+
     def __setitem__(self, pos: Optional[GoPoint], player: GoPlayer):
         if pos is not None:
-            self.place_stone(player, pos)
             if player != GoPlayer.none:
                 # assert self[pos] == GoPlayer.none
                 dead_count = 0
                 for neighbor in self.neighbors(pos):
                     string = self.get_string(neighbor)
-                    if string is not None and string.player == player.other:
+                    if string is not None and string.player == player.other and len(string.liberties) == 1:
                         dead_count += len(string.stones)
                         self._robbery = next(iter(string.stones))
                         self.remove_string(string)
                 if dead_count != 1:
                     self._robbery = None
+                self._place_stone(player, pos)
+            else:
+                self._remove_stone(pos)
 
     def __index__(self):
         return hash(self)
@@ -115,7 +119,7 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
 
     def remove_string(self, string: GoString):
         for stone in string.stones:
-            self.place_stone(GoPlayer.none, stone)
+            self._place_stone(GoPlayer.none, stone)
 
     def is_valid_point(self, player, pos):
         if self[pos] != GoPlayer.none:
@@ -136,7 +140,7 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
                 return True  # cannot commit suicide
 
         # any of this is true
-        return any(map(lambda string: string == player.other and len(string) == 1, neighbor_strings))
+        return any(map(lambda string: string.player == player.other and len(string.liberties) == 1, neighbor_strings))
 
     def valid_points(self, player):
         strings = self.get_strings()
@@ -157,7 +161,6 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
         return filter(not_suicide, possibles)
 
 
-
 class GoBoardAlpha(PyGoBoardBase):
 
     def __init__(self, size=19):
@@ -167,25 +170,15 @@ class GoBoardAlpha(PyGoBoardBase):
     def __getitem__(self, pos: GoPoint) -> GoPlayer:
         return GoPlayer(self._grid.item(tuple(pos)))
 
-    def place_stone(self, player, stone):
-        super().place_stone(player, stone)
+    def _place_stone(self, player, stone):
+        super()._place_stone(player, stone)
         self._grid.itemset(tuple(stone),player)
-
-    def score(self, player: GoPlayer, komi=6.5) -> float:
-        counts = collections.Counter(self._grid.flat)
-        if player == GoPlayer.black:
-            komi = -komi
-        return counts.get(player.value, 0) + komi - counts.get(player.other.value, 0)
 
 
 class GoBoardBeta(PyGoBoardBase):
     def __init__(self, size=19):
         super().__init__(size)
         self._grid: Dict[GoPoint, GoString] = {}
-        self.__robbery = None
-
-    def __hash__(self):
-        return self.__hash
 
     def __getitem__(self, point):
         string = self._grid.get(point, None)
@@ -194,13 +187,28 @@ class GoBoardBeta(PyGoBoardBase):
         else:
             return string.player
 
-    def __setitem__(self, point, player):
+    def _place_stone(self, player, stone):
+        super()._place_stone(player, stone)
         if player == GoPlayer.none:
-            pass
+            self._grid.pop(stone, None)
+        else:
+            neighbor_strings = list(filter(lambda string: string is not None and string.player==player, map(self.get_string, self.neighbors(stone))))
+            if len(neighbor_strings) == 0:
+                self._grid[stone] = GoString(player, {stone}, set(self.neighbors(stone)))
+            else:
+                string = max(neighbor_strings, key=lambda string: len(string.stones))
+                self._grid[stone] = string
+                for other_string in neighbor_strings:
+                    if other_string is not string:
+                        for other_stone in other_string.stones:
+                            self._grid[other_stone] = string
+                        string.stones.update(other_string.stones)
+                        string.liberties.update(other_string.liberties)
+                string.stones.add(stone)
+                string.liberties.remove(stone)
+                for neighbor in self.neighbors(stone):
+                    if self.get_string(neighbor) is None:
+                        string.liberties.add(neighbor)
 
-    def _remove_string(self, string: GoString):
-        for stone in string.stones:
-            del self._grid[stone]
 
-
-GoBoard = GoBoardAlpha
+GoBoard = GoBoardBeta
