@@ -13,14 +13,13 @@ from tensorflow.keras.layers import Dense, Flatten, Conv2D, Input, add
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from tensorflow.keras.utils import plot_model
-from functools import partial
+from itertools import zip_longest
 
 from .basic import *
 from ..board import *
 from ..dataset import *
 
 __all__ = ["AlphaGoWeakV0", "AlphaGoWeak"]
-
 
 TTreeNodeV0 = TypeVar("TTreeNodeV0", bound="TreeNodeV0")
 
@@ -65,7 +64,6 @@ class TreeNodeV0:
 
 
 class AlphaGoWeakV0(ModelBase):
-
     FEATURES = {
         "player_stone": 0,
         "opponent_stone": 1,
@@ -98,7 +96,7 @@ class AlphaGoWeakV0(ModelBase):
             output.itemset(-1, 1.0)
         return output
 
-    def encode_value_output(self, player: GoPlayer, winner: GoPlayer, decay = 1.0) -> np.ndarray:
+    def encode_value_output(self, player: GoPlayer, winner: GoPlayer, decay=1.0) -> np.ndarray:
         """
         Returns:
              array(1) represents black or white
@@ -139,7 +137,7 @@ class AlphaGoWeakV0(ModelBase):
         self.value_network.compile(loss="mean_squared_error", optimizer="adam")
         self.model = Model(inputs=[_input], outputs=[policy_network_output, value_network_output])
         self.model.compile(loss=["categorical_crossentropy", "mean_squared_error"], loss_weights=[0.6, 0.4],
-                           optimizer="adam",  metrics= [['accuracy'], None])
+                           optimizer="adam", metrics=[['accuracy'], None])
         if path.exists(self.weights_path):
             self.load()
 
@@ -149,33 +147,35 @@ class AlphaGoWeakV0(ModelBase):
     def save(self):
         self.model.save_weights(self.weights_path)
 
-    def game_dataset_generator(self, archive: GameArchive, size):
-        """
-        """
-        for data in archive:
-            if data.size == self.size:
+    def fit_from_archive(self, archive: GameArchive, epochs=100, batch_size=512, steps_per_data=196):
+        def game_data_generator(archive: GameArchive):
+            """
+            """
+            for data in archive:
                 b = GoBoard(data.size)
                 b.setup_stones(*data.setup_stones)
-                for steps, (player, pos) in enumerate(data.sequence):
+                for steps, (player, pos) in zip(range(steps_per_data), data.sequence):
                     if pos is not None:
                         pos = GoPoint(*pos)
-                    x = math.exp(- steps / (self.size * self.size))
+                    x = math.exp(- steps / (data.size * data.size))
                     decay = min(2 * (1 - x) / (1 + x), 1.0)
                     yield self.encode_input(player, b), (self.encode_policy_output(pos), self.encode_value_output(player, data.winner, decay))
                     b.play(player, pos)
 
-    def fit_from_archive(self, archive: GameArchive, epochs=100, batch_size=512):
-        dataset = tf.data.Dataset.from_generator(lambda: self.game_dataset_generator(archive, self.size),
-                                                 output_signature=(tf.TensorSpec((self.FEATURES["length"], self.size, self.size)),
-                                                                   (tf.TensorSpec((self.size * self.size + 1,)), tf.TensorSpec(())))
-                                                 ).batch(batch_size).prefetch(512).repeat(epochs)
+        dataset = tf.data.Dataset.range(4).interleave(
+            lambda _: tf.data.Dataset.from_generator(lambda: game_data_generator(archive),
+                                                     output_signature=(tf.TensorSpec((self.FEATURES["length"], self.size, self.size)),
+                                                                       (tf.TensorSpec((self.size * self.size + 1,)), tf.TensorSpec(())))
+                                                     ),
+            num_parallel_calls=tf.data.AUTOTUNE
+        ).batch(batch_size).prefetch(512).repeat(epochs)
         self.model.fit(dataset, steps_per_epoch=int(len(archive) / (batch_size / 196)),
                        callbacks=[
-            TensorBoard(log_dir=self.logs_dir),
-            EarlyStopping(patience=5),
-            ModelCheckpoint(self.weights_path, save_best_only=True,
-                            save_weights_only=True),
-        ])
+                           TensorBoard(log_dir=self.logs_dir),
+                           EarlyStopping(patience=5),
+                           ModelCheckpoint(self.weights_path, save_best_only=True,
+                                           save_weights_only=True),
+                       ])
 
     def summary(self):
         self.model.summary()

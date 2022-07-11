@@ -79,18 +79,19 @@ class GameArchive(object):
     def __init__(self, root: str = None):
         if root is None:
             root = path.join(path.dirname(path.realpath(__file__)), "../..", ".data")
-        self.root = root
-        makedirs(self.root, exist_ok=True)
+        self._root = root
+        makedirs(self._root, exist_ok=True)
         makedirs(self.archive_dir, exist_ok=True)
         makedirs(self.data_dir, exist_ok=True)
+        self._data_files = glob(self.data_pattern)
 
     @property
     def archive_dir(self):
-        return path.join(self.root, "archive")
+        return path.join(self._root, "archive")
 
     @property
     def data_dir(self):
-        return path.join(self.root, "data")
+        return path.join(self._root, "data")
 
     def retrieve(self, force=False):
         """
@@ -141,23 +142,14 @@ class GameArchive(object):
         return path.join(self.data_dir, "*.gamedata")
 
     def __iter__(self) -> Iterator[GameData]:
-        for game_data_path in iglob(self.data_pattern):
+        for game_data_path in self._data_files:
             with open(game_data_path, "rb") as f:
                 yield pickle.load(f)
 
     def __getitem__(self, item: int) -> GameData:
-        print("file:", glob(self.data_pattern)[item] )
-        with open(glob(self.data_pattern)[item], "rb") as f:
+        with open(self._data_files[item], "rb") as f:
             return pickle.load(f)
 
     def __len__(self):
-        return len(glob(self.data_pattern))
+        return len(self._data_files)
 
-    def main(self, args: Sequence[str] = None):
-        parser = argparse.ArgumentParser(description="useful for downloading archives")
-        parser.add_argument("-r", "--root", default=None, help="root dir for caching")
-        parser.add_argument("-f", "--force", default=False, type=bool, help="force to re-download")
-        res = parser.parse_args(args)
-        if res.root is not None:
-            self.root = res.root
-        self.download(res.force)
