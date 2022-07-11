@@ -12,13 +12,18 @@ from os import path, makedirs
 
 
 class ModelBase(metaclass=ABCMeta):
-    def __init__(self, name: str, root: str = None):
+    def __init__(self, name: str, root: str = None, size=19):
         if root is None:
             root = path.join(path.dirname(path.realpath(__file__)), "../..", ".data")
         self.root = root
         self.name = name
+        self._size = size
         makedirs(self.root, exist_ok=True)
         makedirs(self.model_dir, exist_ok=True)
+
+    @property
+    def size(self):
+        return self._size
 
     @property
     def model_dir(self):

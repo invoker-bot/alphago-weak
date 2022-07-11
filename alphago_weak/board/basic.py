@@ -8,12 +8,13 @@
 """
 import math
 import collections
+import numpy as np
 from abc import *
 from typing import *
 from enum import IntEnum
 from collections import Counter
 
-__all__ = ["GoPlayer", "GoEyeType", "GoPoint", "GoString", "GoIllegalActionError", "GoBoardBase"]
+__all__ = ["GoPlayer", "GoEyeType", "GoBoardEncodeType", "GoPoint", "GoString", "GoIllegalActionError", "GoBoardBase"]
 
 
 class GoPlayer(IntEnum):
@@ -48,6 +49,12 @@ class GoEyeType(IntEnum):
     fake = 1
     unknown = 2
     true = 3
+
+
+class GoBoardEncodeType(IntEnum):
+    player_stone = 0
+    valid_point = 1
+    player_stone_liberties = 2
 
 
 class GoPoint(object):
@@ -207,7 +214,7 @@ class GoBoardBase(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def __setitem__(self, pos: GoPoint, player: Union[GoPlayer, int]):
+    def __setitem__(self, pos: Optional[GoPoint], player: Union[GoPlayer, int]):
         """Change a stone on the Go board without checking.
         Notes:
             * Improper usage may violate the rule of the Game of Go.
@@ -216,7 +223,7 @@ class GoBoardBase(metaclass=ABCMeta):
             player: The player who owns the target stone placed.
         """
 
-    def __delitem__(self, point: GoPoint):
+    def __delitem__(self, point: Optional[GoPoint]):
         self.__setitem__(point, GoPlayer.none)
 
     def play(self, player: GoPlayer, pos: Optional[GoPoint] = None):
@@ -230,10 +237,9 @@ class GoBoardBase(metaclass=ABCMeta):
         Raises:
             GoIllegalActionError: When performing an illegal action.
         """
-        if pos is not None:
-            if not self.is_valid_point(player, pos):
-                raise GoIllegalActionError(player, pos)
-            self[pos] = player
+        if pos is not None and not self.is_valid_point(player, pos):
+            raise GoIllegalActionError(player, pos)
+        self[pos] = player
 
     @abstractmethod
     def is_valid_point(self, player: GoPlayer, pos: GoPoint) -> bool:
@@ -255,3 +261,14 @@ class GoBoardBase(metaclass=ABCMeta):
         if player == GoPlayer.black:
             komi = -komi
         return counts.get(player.value, 0) + komi - counts.get(player.other.value, 0)
+
+    def encode(self, arr: np.ndarray, offset: int, encode_type: GoBoardEncodeType, player: GoPlayer, length: int=1):
+        if encode_type == GoBoardEncodeType.player_stone:
+            for pos, stone in self.items():
+                if stone == player:
+                    arr.itemset((offset, pos.x, pos.y), 1)
+        elif encode_type == GoBoardEncodeType.valid_point:
+            for pos in self.valid_points(player):
+                arr.itemset((offset, pos.x, pos.y), 1)
+        else:
+            raise NotImplementedError("unsupported encoding type: %s" % encode_type)

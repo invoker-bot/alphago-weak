@@ -18,74 +18,8 @@ from functools import partial
 from .basic import *
 from ..board import *
 from ..dataset import *
-from ..board import GoBoardAlpha as GoBoard
 
-__all__ = ["GoBoardAIV0", "AlphaGoWeakV0"]
-
-
-class GoBoardAIV0(GoBoard):
-    FEATURES = {
-        "player_stone": 0,
-        "opponent_stone": 1,
-        "valid_point": 2,
-        "player_stone_liberties": 3,
-        "opponent_stone_liberties": 7,
-        "length": 11
-    }
-
-    def __init__(self, size=19):
-        super().__init__(size)
-
-    def encode_input(self, player: GoPlayer):
-        _input = np.zeros((self.FEATURES["length"], self.size, self.size), dtype=np.float32)
-        _input[self.FEATURES["player_stone"]] = self._grid == player
-        _input[self.FEATURES["opponent_stone"]] = self._grid == player.other
-        valid_point_offset = self.FEATURES["valid_point"]
-        for pos in self.valid_points(player):
-            _input.itemset((valid_point_offset, pos.x, pos.y), 1.0)
-        player_liberties_offset = self.FEATURES["player_stone_liberties"]
-        for string in self.get_strings():
-            liberties_offset = player_liberties_offset + min(len(string.liberties), 4) - 1
-            if string.player != player:
-                liberties_offset += 4
-            for pos in string.stones:
-                _input.itemset((liberties_offset, pos.x, pos.y), 1.0)
-        return _input
-
-    def encode_policy_output(self, pos: Optional[GoPoint]) -> np.ndarray:
-        """
-        :return np.ndarray (362)
-        """
-        num = self.size * self.size + 1
-        output = np.zeros(num, dtype=np.float32)
-        if pos is not None:
-            output.itemset(pos.x * self.size + pos.y, 1.0)
-        else:
-            output.itemset(-1, 1.0)
-        return output
-
-    def encode_value_output(self, player: GoPlayer, winner: GoPlayer) -> np.ndarray:
-        """
-        :return np.ndarray (1) represents black or white
-        """
-        value = 1.0 if player == winner else 0.0 if winner == GoPlayer.none else -1.0
-        x = math.exp(np.sum(self._grid == player) / (self.size * self.size))
-        decay = 2 * (1 - x) / ( 1 + x)
-        return np.array(decay * value, dtype=np.float32)
-
-
-def game_dataset_generator(archive: GameArchive, size=19):
-    """
-    """
-    for data in archive:
-        if data.size == size:
-            b = GoBoardAIV0(data.size)
-            b.setup_stones(*data.setup_stones)
-            for player, pos in data.sequence:
-                if pos is not None:
-                    pos = GoPoint(*pos)
-                yield b.encode_input(player), (b.encode_policy_output(pos), b.encode_value_output(player, data.winner))
-                b.play(player, pos)
+__all__ = ["AlphaGoWeakV0", "AlphaGoWeak"]
 
 
 TTreeNodeV0 = TypeVar("TTreeNodeV0", bound="TreeNodeV0")
@@ -130,12 +64,50 @@ class TreeNodeV0:
         return max(self.children.values())
 
 
-class AlphaGoWeakV0(ModelBase, GoBoardAIV0):
+class AlphaGoWeakV0(ModelBase):
+
+    FEATURES = {
+        "player_stone": 0,
+        "opponent_stone": 1,
+        "valid_point": 2,
+        "player_stone_liberties": 3,
+        "opponent_stone_liberties": 7,
+        "length": 11
+    }
+
+    def encode_input(self, player: GoPlayer, board: GoBoardBase):
+        assert self.size == board.size
+        input_ = np.zeros((self.FEATURES["length"], self.size, self.size), dtype=np.float32)
+        board.encode(input_, self.FEATURES["player_stone"], GoBoardEncodeType.player_stone, player)
+        board.encode(input_, self.FEATURES["opponent_stone"], GoBoardEncodeType.player_stone, player.other)
+        board.encode(input_, self.FEATURES["valid_point"], GoBoardEncodeType.valid_point, player)
+        board.encode(input_, self.FEATURES["player_stone_liberties"], GoBoardEncodeType.player_stone_liberties, player, 4)
+        board.encode(input_, self.FEATURES["opponent_stone_liberties"], GoBoardEncodeType.player_stone_liberties, player.other, 4)
+        return input_
+
+    def encode_policy_output(self, pos: Optional[GoPoint]) -> np.ndarray:
+        """
+        Returns:
+             array(362)
+        """
+        num = self.size * self.size + 1
+        output = np.zeros(num, dtype=np.float32)
+        if pos is not None:
+            output.itemset(pos.x * self.size + pos.y, 1.0)
+        else:
+            output.itemset(-1, 1.0)
+        return output
+
+    def encode_value_output(self, player: GoPlayer, winner: GoPlayer, decay = 1.0) -> np.ndarray:
+        """
+        Returns:
+             array(1) represents black or white
+        """
+        value = 1.0 if player == winner else 0.0 if winner == GoPlayer.none else -1.0
+        return np.array(decay * value, dtype=np.float32)
 
     def __init__(self, name: str = "alphago_weak_v0", root: str = None, size: int = 19, num_filters=128):
-        ModelBase.__init__(self, name, root)
-        GoBoardAIV0.__init__(self, size)
-        self.size = size
+        ModelBase.__init__(self, name, root, size)
         _input = Input(shape=(self.FEATURES["length"], size, size), name="Input", dtype=tf.float32)
         conv = Conv2D(num_filters, 5, padding="same", data_format="channels_first",
                       activation="relu", name="Residual-Input")(_input)
@@ -177,12 +149,27 @@ class AlphaGoWeakV0(ModelBase, GoBoardAIV0):
     def save(self):
         self.model.save_weights(self.weights_path)
 
-    def fit(self, archive: GameArchive, epochs=100, batch_size=512):
-        dataset = tf.data.Dataset.from_generator(lambda: game_dataset_generator(archive, self.size),
+    def game_dataset_generator(self, archive: GameArchive, size):
+        """
+        """
+        for data in archive:
+            if data.size == self.size:
+                b = GoBoard(data.size)
+                b.setup_stones(*data.setup_stones)
+                for steps, (player, pos) in enumerate(data.sequence):
+                    if pos is not None:
+                        pos = GoPoint(*pos)
+                    x = math.exp(- steps / (self.size * self.size))
+                    decay = min(2 * (1 - x) / (1 + x), 1.0)
+                    yield self.encode_input(player, b), (self.encode_policy_output(pos), self.encode_value_output(player, data.winner, decay))
+                    b.play(player, pos)
+
+    def fit_from_archive(self, archive: GameArchive, epochs=100, batch_size=512):
+        dataset = tf.data.Dataset.from_generator(lambda: self.game_dataset_generator(archive, self.size),
                                                  output_signature=(tf.TensorSpec((self.FEATURES["length"], self.size, self.size)),
                                                                    (tf.TensorSpec((self.size * self.size + 1,)), tf.TensorSpec(())))
                                                  ).batch(batch_size).prefetch(512).repeat(epochs)
-        self.model.fit(dataset,steps_per_epoch = int(len(archive) / ( batch_size / 197)),
+        self.model.fit(dataset, steps_per_epoch=int(len(archive) / (batch_size / 196)),
                        callbacks=[
             TensorBoard(log_dir=self.logs_dir),
             EarlyStopping(patience=5),
@@ -196,17 +183,17 @@ class AlphaGoWeakV0(ModelBase, GoBoardAIV0):
     def plot(self, to_file: str = "model.png"):
         plot_model(self.model, to_file=to_file, show_shapes=True)
 
-    def value_predict(self, player: GoPlayer) -> float:
-        _input = self.encode_input(player, self.dtype)
+    def predict_value_once(self, player: GoPlayer, board: GoBoardBase) -> float:
+        _input = self.encode_input(player, board)
         _input.shape = (1, *_input.shape)
         return self.value_network.predict(_input)[0, 0]
 
-    def policy_predict(self, player: GoPlayer) -> np.ndarray:
-        _input = self.encode_input(player, self.dtype)
+    def predict_policy_once(self, player: GoPlayer, board: GoBoardBase) -> np.ndarray:
+        _input = self.encode_input(player, board)
         _input.shape = (1, *_input.shape)
         return self.policy_network.predict(_input)[0]
 
-    def predict(self, board: GoBoardAIV0, player: GoPlayer, timeout: float = 1.0) -> Union[str, GoPoint]:
+    def predict(self, board: GoBoardBase, player: GoPlayer, timeout: float = 1.0) -> Union[str, GoPoint]:
         start_time = time.perf_counter()
         # valid_positions = self.valid_positions(board, player, eps)
         weights = self.policy_predict(board, player)
@@ -221,3 +208,6 @@ class AlphaGoWeakV0(ModelBase, GoBoardAIV0):
                     back()
         action = max(actions, key=lambda t: t[0])
         return action[1]
+
+
+AlphaGoWeak = AlphaGoWeakV0

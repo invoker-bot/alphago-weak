@@ -37,8 +37,10 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
     def _remove_stone(self, stone: GoPoint):
         self._place_stone(GoPlayer.none, stone)
 
-    def __setitem__(self, pos: Optional[GoPoint], player: GoPlayer):
-        if pos is not None:
+    def __setitem__(self, pos, player):
+        if pos is None:
+            self._robbery = None
+        else:
             if player != GoPlayer.none:
                 # assert self[pos] == GoPlayer.none
                 dead_count = 0
@@ -100,13 +102,13 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
         """
         return self.new_string(point)
 
-    def get_strings(self) -> List[GoString]:
+    def get_strings(self) -> Iterable[GoString]:
         """Search all strings from the board.
 
         Returns:
             A list of chess strings.
         """
-        strings = []
+        # strings = []
         strings_map = np.full((self.size, self.size), False, dtype=np.bool_)
         for point in self:
             if not strings_map.item(tuple(point)):
@@ -114,8 +116,7 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
                 if string is not None:
                     for stone in string.stones:
                         strings_map.itemset(tuple(stone), True)
-                    strings.append(string)
-        return strings
+                    yield string
 
     def remove_string(self, string: GoString):
         for stone in string.stones:
@@ -124,23 +125,27 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
     def is_valid_point(self, player, pos):
         if self[pos] != GoPlayer.none:
             return False
-        neighbor_strings = []
+
+        neighbor_strings: Set[GoString] = set()
 
         # has space for the stone
         for neighbor_string in map(self.get_string, self.neighbors(pos)):
             if neighbor_string is None:
                 return True
-            neighbor_strings.append(neighbor_string)
-
-        if pos == self._robbery:
-            return False
+            neighbor_strings.add(neighbor_string)
 
         for neighbor_string in neighbor_strings:
             if neighbor_string.player == player and len(neighbor_string.liberties) > 1:
-                return True  # cannot commit suicide
+                return True  # not commit suicide
 
-        # any of this is true
-        return any(map(lambda string: string.player == player.other and len(string.liberties) == 1, neighbor_strings))
+        dead_count = 0
+        for neighbor_string in neighbor_strings:
+            if neighbor_string.player == player.other and len(neighbor_string.liberties) == 1:
+                dead_count += len(neighbor_string.stones)
+        if dead_count == 1:
+            return pos != self._robbery
+        else:
+            return dead_count > 0
 
     def valid_points(self, player):
         strings = self.get_strings()
@@ -159,6 +164,14 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
             return not all(map(lambda p: self[p] == player.other, self.neighbors(pos)))
 
         return filter(not_suicide, possibles)
+
+    def encode(self, arr, offset, encode_type, player, length=1):
+        if encode_type == GoBoardEncodeType.player_stone_liberties:
+            for string in self.get_strings():
+                if string.player == player:
+                    liberties_offset = offset + min(len(string.liberties), length) - 1
+                    for pos in string.stones:
+                        arr.itemset((liberties_offset, pos.x, pos.y), 1)
 
 
 class GoBoardAlpha(PyGoBoardBase):

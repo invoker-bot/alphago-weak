@@ -145,6 +145,11 @@ class GameArchive(object):
             with open(game_data_path, "rb") as f:
                 yield pickle.load(f)
 
+    def __getitem__(self, item: int) -> GameData:
+        print("file:", glob(self.data_pattern)[item] )
+        with open(glob(self.data_pattern)[item], "rb") as f:
+            return pickle.load(f)
+
     def __len__(self):
         return len(glob(self.data_pattern))
 
