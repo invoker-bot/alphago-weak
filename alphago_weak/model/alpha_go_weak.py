@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
-from os import path
-from typing import *
 import time
 import math
-
+import tqdm
+import numpy as np
+import tensorflow as tf
+from os import cpu_count
+from functools import partial
+from typing import *
+from concurrent.futures import *
 # os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 # os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices"
-import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, Input, add
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from tensorflow.keras.utils import plot_model
-from itertools import zip_longest
 
 from .basic import *
 from ..board import *
@@ -73,30 +74,34 @@ class AlphaGoWeakV0(ModelBase):
         "length": 11
     }
 
-    def encode_input(self, player: GoPlayer, board: GoBoardBase):
-        assert self.size == board.size
-        input_ = np.zeros((self.FEATURES["length"], self.size, self.size), dtype=np.float32)
-        board.encode(input_, self.FEATURES["player_stone"], GoBoardEncodeType.player_stone, player)
-        board.encode(input_, self.FEATURES["opponent_stone"], GoBoardEncodeType.player_stone, player.other)
-        board.encode(input_, self.FEATURES["valid_point"], GoBoardEncodeType.valid_point, player)
-        board.encode(input_, self.FEATURES["player_stone_liberties"], GoBoardEncodeType.player_stone_liberties, player, 4)
-        board.encode(input_, self.FEATURES["opponent_stone_liberties"], GoBoardEncodeType.player_stone_liberties, player.other, 4)
+    @staticmethod
+    def encode_input(player: GoPlayer, b_: GoBoardBase):
+        input_ = np.zeros((AlphaGoWeakV0.FEATURES["length"], b_.size, b_.size), dtype=np.float32)
+        b_.encode(input_, AlphaGoWeakV0.FEATURES["player_stone"], GoBoardEncodeType.player_stone, player)
+        b_.encode(input_, AlphaGoWeakV0.FEATURES["opponent_stone"], GoBoardEncodeType.player_stone, player.other)
+        b_.encode(input_, AlphaGoWeakV0.FEATURES["valid_point"], GoBoardEncodeType.valid_point, player)
+        b_.encode(input_, AlphaGoWeakV0.FEATURES["player_stone_liberties"], GoBoardEncodeType.player_stone_liberties, player,
+                  4)
+        b_.encode(input_, AlphaGoWeakV0.FEATURES["opponent_stone_liberties"], GoBoardEncodeType.player_stone_liberties,
+                  player.other, 4)
         return input_
 
-    def encode_policy_output(self, pos: Optional[GoPoint]) -> np.ndarray:
+    @staticmethod
+    def encode_policy_output(size: int, pos: Optional[GoPoint]) -> np.ndarray:
         """
         Returns:
              array(362)
         """
-        num = self.size * self.size + 1
+        num = size * size + 1
         output = np.zeros(num, dtype=np.float32)
         if pos is not None:
-            output.itemset(pos.x * self.size + pos.y, 1.0)
+            output.itemset(pos.x * size + pos.y, 1.0)
         else:
             output.itemset(-1, 1.0)
         return output
 
-    def encode_value_output(self, player: GoPlayer, winner: GoPlayer, decay=1.0) -> np.ndarray:
+    @staticmethod
+    def encode_value_output(player: GoPlayer, winner: GoPlayer, decay=1.0) -> np.ndarray:
         """
         Returns:
              array(1) represents black or white
@@ -147,25 +152,54 @@ class AlphaGoWeakV0(ModelBase):
     def save(self):
         self.model.save_weights(self.weights_path)
 
+    @staticmethod
+    def preprocess_game_data(archive_: GameArchive, idx: int):
+        def game_data_generator(data: GameData):
+            b = GoBoard(data.size)
+            b.setup_stones(*data.setup_stones)
+            for steps, (player, pos) in enumerate(data.sequence):
+                if pos is not None:
+                    pos = GoPoint(*pos)
+                x = math.exp(- steps / (data.size * data.size))
+                decay = min(2 * (1 - x) / (1 + x), 1.0)
+                yield AlphaGoWeakV0.encode_input(player, b), (
+                    AlphaGoWeakV0.encode_policy_output(b.size, pos),
+                    AlphaGoWeakV0.encode_value_output(player, data.winner, decay))
+                b.play(player, pos)
+        data = archive_[idx]
+        return list(game_data_generator(data))
+
+    def preprocess_from_archive(self, archive: GameArchive, num=25, batch=65536):
+        total = len(archive)
+        I, P, V = [], [], []
+        idx = 0
+        with ProcessPoolExecutor(max_workers=cpu_count() // 2) as executor:
+            results = tqdm.tqdm(executor.map(partial(self.preprocess_game_data, archive), range(total)), total=len(archive),
+                                desc="Preprocessing...")
+            for r in results:
+                for i, p, v in r:
+                    I.append(i)
+                    P.append(p)
+                    V.append(v)
+                if len(I) >= batch:
+                    np.save(path.join(self.cache_dir, f"{idx}.input"), np.array(I[:batch], dtype=np.float32))
+                    np.save(path.join(self.cache_dir, f"{idx}.policy_output"), np.array(P[:batch], dtype=np.float32))
+                    np.save(path.join(self.cache_dir, f"{idx}.value_output"), np.array(V[:batch], dtype=np.float32))
+                    idx += 1
+                    I = I[batch:]
+                    P = P[batch:]
+                    V = V[batch:]
+                if idx >= num:
+                    return
+
     def fit_from_archive(self, archive: GameArchive, epochs=100, batch_size=512, steps_per_data=196):
-        def game_data_generator(archive: GameArchive):
-            """
-            """
-            for data in archive:
-                b = GoBoard(data.size)
-                b.setup_stones(*data.setup_stones)
-                for steps, (player, pos) in zip(range(steps_per_data), data.sequence):
-                    if pos is not None:
-                        pos = GoPoint(*pos)
-                    x = math.exp(- steps / (data.size * data.size))
-                    decay = min(2 * (1 - x) / (1 + x), 1.0)
-                    yield self.encode_input(player, b), (self.encode_policy_output(pos), self.encode_value_output(player, data.winner, decay))
-                    b.play(player, pos)
 
         dataset = tf.data.Dataset.range(4).interleave(
             lambda _: tf.data.Dataset.from_generator(lambda: game_data_generator(archive),
-                                                     output_signature=(tf.TensorSpec((self.FEATURES["length"], self.size, self.size)),
-                                                                       (tf.TensorSpec((self.size * self.size + 1,)), tf.TensorSpec(())))
+                                                     output_signature=(
+                                                         tf.TensorSpec((self.FEATURES["length"], self.size, self.size)),
+                                                         (tf.TensorSpec((self.size * self.size + 1,)),
+                                                          tf.TensorSpec(())))
                                                      ),
             num_parallel_calls=tf.data.AUTOTUNE
         ).batch(batch_size).prefetch(512).repeat(epochs)
