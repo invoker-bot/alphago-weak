@@ -20,7 +20,7 @@ V = TypeVar('V')
 work_max_num = 10000
 
 
-def do_works(func: Callable[[T], V], works: List[T], desc: str, unit: str, cpu=True) -> List[V]:
+def do_works(func: Callable[[T], V], works: List[T], desc: str, unit: str = "it", cpu=True) -> List[V]:
     R = []
     unit_scale = True if len(works) > work_max_num else False
     with tqdm.tqdm(total=len(works), desc=desc, unit=unit, unit_scale=unit_scale) as bar:

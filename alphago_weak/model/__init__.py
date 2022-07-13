@@ -8,3 +8,4 @@
 """
 
 from .basic import *
+from .alpha_go_weak import *

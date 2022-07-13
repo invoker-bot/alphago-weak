@@ -172,7 +172,8 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
                     liberties_offset = offset + min(len(string.liberties), length) - 1
                     for pos in string.stones:
                         arr.itemset((liberties_offset, pos.x, pos.y), 1)
-
+        else:
+            super().encode(arr, offset, encode_type, player, length=length)
 
 class GoBoardAlpha(PyGoBoardBase):
 
