@@ -14,7 +14,7 @@ from os import path
 from functools import partial
 from typing import *
 from .basic import *
-from ..utils.multi_works import do_works
+from ..utils.multi_works import do_works_experimental
 
 __all__ = ["UGoArchive"]
 
@@ -48,6 +48,6 @@ class UGoArchive(GameArchive):
                 archive_url: str = link.get("href")
                 if archive_url.endswith(".tar.gz"):
                     urls.append(archive_url)
-            do_works(partial(self._retrieve_one, filename=None, force=force), urls, desc="Datasets downloading...",
-                     unit="archive", cpu=False)
+            do_works_experimental(partial(self._retrieve_one, filename=None, force=force), urls, desc="Datasets downloading...",
+                                  unit="archive", cpu=False)
 

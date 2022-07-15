@@ -175,6 +175,7 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
         else:
             super().encode(arr, offset, encode_type, player, length=length)
 
+
 class GoBoardAlpha(PyGoBoardBase):
 
     def __init__(self, size=19):

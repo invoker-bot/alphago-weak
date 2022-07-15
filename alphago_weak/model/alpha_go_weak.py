@@ -17,7 +17,7 @@ from tensorflow.keras.utils import plot_model
 from .basic import *
 from ..board import *
 from ..dataset import *
-from ..utils.multi_works import do_works
+from ..utils.multi_works import do_works_experimental
 
 __all__ = ["AlphaGoWeakV0", "AlphaGoWeak"]
 
@@ -193,7 +193,7 @@ class AlphaGoWeakV0(ModelBase):
     def preprocess_archive(self, archive: GameArchive, counts: int = None):
         if counts is None:
             counts = int(len(archive) * 128 / self.cached_steps)
-        do_works(partial(self._preprocess_archive_one, archive, self.cache_dir, counts=counts, steps=self.cached_steps), list(range(counts)), desc="Caching...")
+        do_works_experimental(partial(self._preprocess_archive_one, archive, self.cache_dir, counts=counts, steps=self.cached_steps), list(range(counts)), desc="Caching...")
 
     def dataset_from_preprocess(self):
         def np_load(idx, suffix):

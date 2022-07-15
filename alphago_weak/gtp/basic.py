@@ -14,11 +14,13 @@ import logging
 from os import path, makedirs
 from cmd import Cmd
 from importlib import import_module
+from functools import partial
 from abc import *
 from typing import *
 
 from ..board import *
 from ..dataset import GameData
+from ..utils.multi_works import do_cpu_intensive_works
 
 __all__ = ["GTPClientBase"]
 
@@ -140,42 +142,39 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
             self.response("invalid player", "?")
 
     @classmethod
-    def evaluate(cls, black: str, white: str, board_size=19, num=100, komi=6.5, output: str = None):
-        black_count = 0
+    def _evaluate_one(cls, black: str, white: str, idx: int, board_size=19, komi=6.5, output: str = None):
+        board = GoBoard(board_size)
+        bots: Dict[GoPlayer, "GTPClientBase"] = {player: cls.FACTORY_DICT[bot_name](board, komi)
+                                                 for player, bot_name in ((GoPlayer.black, black), (GoPlayer.white, white))}
+        seq: List[Tuple[GoPlayer, GoPoint]] = []
+        current_player = GoPlayer.black
+        history_action = None
+        while True:
+            current_bot = bots[current_player]
+            current_action = current_bot.genmove(current_player)
+            if isinstance(current_action, GoPoint):
+                board.play(current_player, current_action)
+                seq.append((current_player, current_action))
+            elif current_action == "resign":
+                break
+            else:  # current_action == pass
+                if history_action == "pass":
+                    # set current play as a loser
+                    current_player = GoPlayer.black if board.score(GoPlayer.black, komi) < 0 else GoPlayer.white
+                    break
+            history_action = current_action
+            current_player = current_player.other
+        winner = current_player.other
+        if output is not None:
+            game_data = GameData(board_size, winner, seq, komi)
+            game_data.to_sgf(path.join(output, f"{idx}.sgf"))
+        return board.score(GoPlayer.black, komi) > 0
+
+    @classmethod
+    def evaluate(cls, black: str, white: str, board_size=19, num=100, komi=6.5, output: str = None, use_multiprocessing=False):
         if output is not None:
             makedirs(output, exist_ok=True)
-            logging.basicConfig(filename=path.join(output, "log.txt"), format="%(asctime)s - %(name)s - [%(levelname)s]: %(message)s")
-        logger = logging.getLogger("evaluate")
-        for idx in tqdm.tqdm(range(num), total=num, unit="count", desc="Simulating..."):
-            board = GoBoard(board_size)
-            bots: Dict[GoPlayer, "GTPClientBase"] = {player: cls.FACTORY_DICT[bot_name](board, komi)
-                                                     for player, bot_name in ((GoPlayer.black, black), (GoPlayer.white, white))}
-            seq: List[Tuple[GoPlayer, GoPoint]] = []
-            current_player = GoPlayer.black
-            history_action = None
-            while True:
-                current_bot = bots[current_player]
-                current_action = current_bot.genmove(current_player)
-                if isinstance(current_action, GoPoint):
-                    # try:
-                    board.play(current_player, current_action)
-                    seq.append((current_player, current_action))
-                    #except GoIllegalActionError as e:
-                    #    logger.warning("%s (%s in match %d)" % (e, bots[current_player].name, idx))
-                elif current_action == "resign":
-                    break
-                else:  # current_action == pass
-                    if history_action == "pass":
-                        # set current play as a loser
-                        current_player = GoPlayer.black if board.score(GoPlayer.black, komi) < 0 else GoPlayer.white
-                        break
-                history_action = current_action
-                current_player = current_player.other
-            winner = current_player.other
-            black_count += int(winner == GoPlayer.black)
-            if output is not None:
-                game_data = GameData(board_size, winner, seq, komi)
-                game_data.to_sgf(path.join(output, f'{idx}.sgf'))
+        black_count = sum(do_cpu_intensive_works(partial(cls._evaluate_one, black, white, board_size=board_size, komi=komi, output=output), range(num), total=num, desc="Evaluating...", use_multiprocessing=use_multiprocessing))
         return black_count / num
 
     @abstractmethod
@@ -187,11 +186,8 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
         ...
 
     def play(self, player, pos):
-        try:
-            self.board.play(player, pos)
-            return True
-        except GoIllegalActionError:
-            return False
+        self.board[pos] = player
+        return True
 
     @abstractmethod
     def genmove(self, player: GoPlayer) -> Union[GoPoint, str]:

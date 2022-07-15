@@ -12,7 +12,7 @@ from os import cpu_count
 from typing import *
 from concurrent.futures import *
 
-__all__ = ["do_works"]
+__all__ = ["do_works_experimental", "do_cpu_intensive_works"]
 
 T = TypeVar('T')
 V = TypeVar('V')
@@ -20,7 +20,7 @@ V = TypeVar('V')
 work_max_num = 10000
 
 
-def do_works(func: Callable[[T], V], works: List[T], desc: str, unit: str = "it", cpu=True) -> List[V]:
+def do_works_experimental(func: Callable[[T], V], works: List[T], desc: str, unit: str = "it", cpu=True) -> List[V]:
     R = []
     unit_scale = True if len(works) > work_max_num else False
     with tqdm.tqdm(total=len(works), desc=desc, unit=unit, unit_scale=unit_scale) as bar:
@@ -35,3 +35,16 @@ def do_works(func: Callable[[T], V], works: List[T], desc: str, unit: str = "it"
                     R.append(r)
                     bar.update(1)
     return R
+
+
+def do_cpu_intensive_works(func: Callable[[T], V], works: Iterable[T], total: int = None, desc: str = None, use_multiprocessing=False, max_workers: int = None) -> Iterator[V]:
+    if not use_multiprocessing:
+        if total is not None:
+            works = tqdm.tqdm(works, desc, total)
+        yield from map(func, works)
+    else:
+        with ProcessPoolExecutor(max_workers) as executor:
+            results = executor.map(func, works)
+            if total is not None:
+                results = tqdm.tqdm(results, desc, total)
+            yield from results

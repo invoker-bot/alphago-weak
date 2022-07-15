@@ -5,6 +5,7 @@ old
 **/*/__pycache__
 **/*/.data
 **/*.h5
+.pytest_cache/
 
 log
 todo

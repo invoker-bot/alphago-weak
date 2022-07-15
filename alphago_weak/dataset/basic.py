@@ -18,7 +18,7 @@ from functools import partial
 from sgfmill.sgf import Sgf_game
 from typing import *
 from ..board import *
-from ..utils.multi_works import do_works
+from ..utils.multi_works import do_works_experimental
 
 __all__ = ["GameData", "GameArchive"]
 
@@ -114,7 +114,7 @@ class GameArchive(object):
         """
         print("Preparing to unpack downloaded archives...")
         archives = list(glob(path.join(self.archive_dir, "*.tar.gz")))
-        do_works(partial(self._unpack_one, force=force), archives, desc="Unpacking", unit="archive")
+        do_works_experimental(partial(self._unpack_one, force=force), archives, desc="Unpacking", unit="archive")
 
     def _extract_one(self, file_name: str, force=True):
         name = path.splitext(path.basename(file_name))[0]
@@ -130,7 +130,7 @@ class GameArchive(object):
             end with `.gamedata` and be named with it's size of the board.
         """
         files = glob(path.join(self.archive_dir, "**/*.sgf"), recursive=True)
-        do_works(partial(self._extract_one, force=force), files, desc="Extracting", unit="file")
+        do_works_experimental(partial(self._extract_one, force=force), files, desc="Extracting", unit="file")
 
     def download(self, force=False):
         self.retrieve(force=force)

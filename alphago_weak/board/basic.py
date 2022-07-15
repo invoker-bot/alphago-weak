@@ -7,12 +7,11 @@
 @Version : 1.0
 """
 import math
-import collections
 import numpy as np
 from abc import *
 from typing import *
 from enum import IntEnum
-from collections import Counter
+from collections import Counter, defaultdict
 
 __all__ = ["GoPlayer", "GoEyeType", "GoBoardEncodeType", "GoPoint", "GoString", "GoIllegalActionError", "GoBoardBase"]
 
@@ -257,10 +256,19 @@ class GoBoardBase(metaclass=ABCMeta):
         return (pos for pos in self if self.is_valid_point(player, pos))
 
     def score(self, player: GoPlayer, komi=6.5) -> float:
-        counts = collections.Counter(map(self.__getitem__, iter(self)))
+        stones: DefaultDict[GoPlayer, int] = defaultdict(lambda :0)
+        for pos, color in self.items():
+            if color == GoPlayer.none:
+                c: Counter[GoPlayer] = Counter(map(self.__getitem__, self.neighbors(pos)))
+                if c[GoPlayer.black] == 0 and c[GoPlayer.white] > 0:
+                    stones[GoPlayer.white] += 1
+                elif c[GoPlayer.white] == 0 and c[GoPlayer.black] > 0:
+                    stones[GoPlayer.black] += 1
+            else:
+                stones[color] += 1
         if player == GoPlayer.black:
             komi = -komi
-        return counts.get(player.value, 0) + komi - counts.get(player.other.value, 0)
+        return stones[player] + komi - stones[player.other]
 
     def encode(self, arr: np.ndarray, offset: int, encode_type: GoBoardEncodeType, player: GoPlayer, length: int=1):
         if encode_type == GoBoardEncodeType.player_stone:

@@ -7,6 +7,7 @@
 @Version : 1.0
 """
 
+import math
 import random
 from typing import *
 from .basic import *
@@ -28,7 +29,7 @@ class GTPRandomBot(GTPClientBase):
         return [pos for pos in self.board.valid_points(player) if self.board.eye_type(player, pos) < GoEyeType.unknown]
 
     def should_resign(self, player: GoPlayer):
-        return 2 * self.board.size + self.board.score(player, self.komi) < 0
+        return math.log(self.board.size) * self.board.size + self.board.score(player, self.komi) < 0
 
     def genmove(self, player):
         if self.should_resign(player):

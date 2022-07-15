@@ -48,6 +48,7 @@ if __name__ == "__main__":
     evaluate_parser.add_argument("--komi", type=float, default=6.5, help="komi")
     evaluate_parser.add_argument("-c", "--count", type=int, default=100, help="evaluate counts")
     evaluate_parser.add_argument("-o", "--output", default=None, help="output directory for evaluate results")
+    evaluate_parser.add_argument("--multiprocessing", action="store_true", default=False, help="using multiprocess")
 
     play_parser = sub_parser.add_parser("play", help="play the game of go by GTP")
     play_parser.add_argument("-t", "--type", choices=GTPClientBase.FACTORY_DICT.keys(), required=True, help="type of the bot")
@@ -58,7 +59,7 @@ if __name__ == "__main__":
         archive: GameArchive = GameArchive.FACTORY_DICT[args.type](args.root)
         archive.download(args.force)
     elif args.command == "evaluate":
-        black_v = GTPClientBase.evaluate(args.black, args.white, board_size=args.board_size, num=args.count, komi=args.komi, output=args.output)
+        black_v = GTPClientBase.evaluate(args.black, args.white, args.board_size, args.count, args.komi, args.output, args.multiprocessing)
         print("the winning rate of black bot (%s): %0.3f" % (args.black, black_v))
         print("the winning rate of white bot (%s): %0.3f" % (args.white, 1 - black_v))
 

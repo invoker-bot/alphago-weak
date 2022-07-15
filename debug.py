@@ -17,23 +17,14 @@ from concurrent.futures import *
 from alphago_weak.board import *
 from alphago_weak.dataset import *
 from alphago_weak.model.alpha_go_weak import *
+from alphago_weak.gtp.gtp_random_bot_mcts import *
+from alphago_weak.utils.visualize import plot_mcts
 
-
-def np_file(idx: int, suffix: str):
-    return path.join(model.cache_dir, f"{idx}.{suffix}.npy")
-
-
-def rename(target: int):
-    for j in range(13786, target, -1):
-        if path.exists(np_file(j, "input")):
-            os.rename(np_file(j, "input"), np_file(target, "input"))
-            os.rename(np_file(j, "policy_output"), np_file(target, "policy_output"))
-            os.rename(np_file(j, "value_output"), np_file(target, "value_output"))
-            return True
-    return False
 
 if __name__ == '__main__':
-
+    b = GTPRandomBotMCTS()
+    b.boardsize(5)
+    print("pos:", b.genmove(GoPlayer.black))
     # bar = tqdm.tqdm(total=len(dataset), desc="testing")
     # with ProcessPoolExecutor(max_workers=cpu_count()//2) as executor:
     #    for _ in executor.map(test, dataset):
@@ -42,7 +33,8 @@ if __name__ == '__main__':
 
     # cpus = cpu_count() // 2
     # total = len(dataset)
-    model = AlphaGoWeak()
-    dataset, length = model.dataset_from_preprocess()
-    model.fit_from_dataset(dataset, length)
+    # model = AlphaGoWeak()
+    # dataset, length = model.dataset_from_preprocess()
+    # model.fit_from_dataset(dataset, length)
+
 

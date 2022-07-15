@@ -87,6 +87,8 @@ def test_board_basic(Board: Type[GoBoardBase]):
     black_stones.remove((8, 7))
     black_stones.remove((7, 8))
     assert_board_status(b_, {"white": white_stones, "black": black_stones})
+    assert b_.score(b, 6.5) == -58.5
+    assert b_.score(w, 6.5) == 58.5
 
 
 @pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
