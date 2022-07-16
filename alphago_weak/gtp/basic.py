@@ -8,9 +8,7 @@
 """
 
 import re
-import tqdm
 import string
-import logging
 from os import path, makedirs
 from cmd import Cmd
 from importlib import import_module
@@ -28,7 +26,7 @@ PKG = "alphago_weak.gtp"
 
 
 def import_class_func(module: str, class_: str) -> Callable[[GoBoardBase, float], "GTPClientBase"]:
-    return lambda board, komi: getattr(import_module(module, "alphago_weak.gtp"), class_)(board, komi)
+    return lambda board=None, komi=6.5: getattr(import_module(module, "alphago_weak.gtp"), class_)(board, komi)
 
 
 class GTPClientBase(Cmd, metaclass=ABCMeta):
@@ -38,6 +36,7 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
     FACTORY_DICT = {
         "random_bot": import_class_func(".gtp_random_bot", "GTPRandomBot"),
         "random_bot_mcts": import_class_func(".gtp_random_bot_mcts", "GTPRandomBotMCTS"),
+        "alphago_weak_v0": import_class_func(".gtp_alphago_weak", "GTPAlphaGoWeakV0"),
     }
 
     PRECMD_PAT = re.compile(r"^\s* (?P<id>\d+)? \s* (?P<command>.*)", re.VERBOSE)
@@ -48,11 +47,10 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
     COORDINATE_R = {coor: idx for idx, coor in enumerate(COORDINATE)}
 
     def __init__(self, board: GoBoardBase = None, komi=6.5):
-        super(Cmd, self).__init__()
+        super().__init__()
         self.board = board
         self.id = ""
         self.komi = komi
-        self.config = {}
 
     def precmd(self, line: str) -> str:
         parsed = self.PRECMD_PAT.match(line)
@@ -177,13 +175,12 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
         black_count = sum(do_cpu_intensive_works(partial(cls._evaluate_one, black, white, board_size=board_size, komi=komi, output=output), range(num), total=num, desc="Evaluating...", use_multiprocessing=use_multiprocessing))
         return black_count / num
 
-    @abstractmethod
-    def boardsize(self, size: int) -> bool:
-        ...
+    def boardsize(self, size):
+        self.board = self.board.__class__(size)
+        return True
 
-    @abstractmethod
     def clear_board(self):
-        ...
+        self.boardsize(self.board.size)
 
     def play(self, player, pos):
         self.board[pos] = player

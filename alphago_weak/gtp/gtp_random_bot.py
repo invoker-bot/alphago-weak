@@ -39,10 +39,3 @@ class GTPRandomBot(GTPClientBase):
             return "pass"
         else:
             return random.choice(points)
-
-    def boardsize(self, size):
-        self.board = GoBoard(size)
-        return True
-
-    def clear_board(self):
-        self.board = GoBoard(self.board.size)

@@ -36,7 +36,7 @@ class ModelBase(metaclass=ABCMeta):
 
     @property
     def weights_path(self):
-        return path.join(self.model_dir, "model.h5")
+        return path.join(self.model_dir, f"{self.size}.weights.h5")
 
     @property
     def logs_dir(self):

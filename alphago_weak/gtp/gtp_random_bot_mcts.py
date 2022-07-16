@@ -24,7 +24,6 @@ class GTPRandomBotMCTS(GTPRandomBot):
 
     def __init__(self, board: GoBoardBase = None, komi=6.5):
         super().__init__(board, komi)
-        self.mcts = MCTSNode()
 
     @staticmethod
     def policy_evaluator(b_: GoBoardBase, player: GoPlayer):
@@ -32,24 +31,21 @@ class GTPRandomBotMCTS(GTPRandomBot):
         weights = [1.0 for _ in range(len(actions))]
         return actions, weights
 
+    def space_count(self):
+        count = 0
+        for pos in self.board:
+            if self.board[pos] == GoPlayer.none:
+                count += 1
+        return count
+
     def genmove(self, player: GoPlayer) -> Union[GoPoint, str]:
         if self.should_resign(player):
             return "resign"
+        if self.space_count() > 2/3 * (self.board.size**2):
+            return super().genmove(player)
         mcts = MCTSNode()
-        point = mcts.evaluate(self.board, player, self.policy_evaluator, num=800, komi=self.komi)
+        point = mcts.evaluate(self.board, player, self.policy_evaluator, num=400, komi=self.komi)
         if point is not None:
             return point
         else:
             return "pass"
-
-    def play(self, player, pos):
-        super().play(player, pos)
-        self.mcts = self.mcts.next(pos)
-
-    def boardsize(self, size):
-        super().boardsize(size)
-        self.mcts = MCTSNode()
-
-    def clear_board(self):
-        super().clear_board()
-        self.mcts = MCTSNode()

@@ -21,47 +21,6 @@ from ..utils.multi_works import do_works_experimental
 
 __all__ = ["AlphaGoWeakV0", "AlphaGoWeak"]
 
-TTreeNodeV0 = TypeVar("TTreeNodeV0", bound="TreeNodeV0")
-
-
-class TreeNodeV0:
-    c = 1.5
-
-    def __init__(self, parent: Optional[TTreeNodeV0], p):
-        self.parent = parent
-        self.children: Dict[GoPoint, TTreeNodeV0] = {}
-        self.q = 0.0
-        self.n = 0
-        self.p = p
-
-    def __setitem__(self, pos: GoPoint, node: TTreeNodeV0):
-        self.children[pos] = node
-
-    def __getitem__(self, pos: GoPoint):
-        return self.children[pos]
-
-    def __contains__(self, pos: GoPoint):
-        return pos in self.children
-
-    def __len__(self):
-        return len(self.children)
-
-    def __float__(self):
-        return self.q + self.c * self.p * math.sqrt(self.n) / (self.n + 1)
-
-    def __lt__(self, other):
-        if isinstance(other, TreeNodeV0):
-            return self.__float__() < other.__float__()
-        return NotImplemented
-
-    def __eq__(self, other):
-        if isinstance(other, TreeNodeV0):
-            return self.__float__() == other.__float__()
-        return NotImplemented
-
-    def max_child(self):
-        return max(self.children.values())
-
 
 class AlphaGoWeakV0(ModelBase):
     FEATURES = {
@@ -106,11 +65,12 @@ class AlphaGoWeakV0(ModelBase):
         Returns:
              array(1) represents black or white
         """
-        value = 1.0 if player == winner else 0.0 if winner == GoPlayer.none else -1.0
+        value = 1.0 if player == winner else 0.5 if winner == GoPlayer.none else 0.0
         return np.array(decay * value, dtype=np.float32)
 
     def __init__(self, name: str = "alphago_weak_v0", root: str = None, size: int = 19, num_filters=128):
         ModelBase.__init__(self, name, root, size)
+        self.cached: Dict[int, Tuple[np.ndarray, float]] = {}
         _input = Input(shape=(self.FEATURES["length"], size, size), name="Input", dtype=tf.float32)
         conv = Conv2D(num_filters, 5, padding="same", data_format="channels_first",
                       activation="relu", name="Residual-Input")(_input)
@@ -134,12 +94,12 @@ class AlphaGoWeakV0(ModelBase):
                                       name="Relu-Output")(value_network_output)
         value_network_output = Flatten(name="Flatten")(value_network_output)
         value_network_output = Dense(256, activation="relu", name="Relu")(value_network_output)
-        value_network_output = Dense(1, activation="tanh", name="ValueOutput")(value_network_output)
+        value_network_output = Dense(1, activation="sigmoid", name="ValueOutput")(value_network_output)
 
-        self.policy_network = Model(inputs=[_input], outputs=[policy_network_output], name="policy-network")
-        self.policy_network.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
-        self.value_network = Model(inputs=[_input], outputs=[value_network_output], name="value-network")
-        self.value_network.compile(loss="mean_squared_error", optimizer="adam")
+        # self.policy_network = Model(inputs=[_input], outputs=[policy_network_output], name="policy-network")
+        # self.policy_network.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+        # self.value_network = Model(inputs=[_input], outputs=[value_network_output], name="value-network")
+        # self.value_network.compile(loss="mean_squared_error", optimizer="adam")
         self.model = Model(inputs=[_input], outputs=[policy_network_output, value_network_output])
         self.model.compile(loss=["categorical_crossentropy", "mean_squared_error"], loss_weights=[0.6, 0.4],
                            optimizer="adam", metrics=[['accuracy'], None])
@@ -190,6 +150,11 @@ class AlphaGoWeakV0(ModelBase):
                 return True
         return False
 
+    def cache_train_data(self, I: List[np.ndarray], P: List[np.ndarray], V: List[np.ndarray]):
+        np.save(path.join(self.cache_dir, f"self_play.input"), np.array(I, dtype=np.float32))
+        np.save(path.join(self.cache_dir, f"self_play.policy_output"), np.array(P, dtype=np.float32))
+        np.save(path.join(self.cache_dir, f"self_play.value_output"), np.array(V, dtype=np.float32))
+
     def preprocess_archive(self, archive: GameArchive, counts: int = None):
         if counts is None:
             counts = int(len(archive) * 128 / self.cached_steps)
@@ -222,7 +187,7 @@ class AlphaGoWeakV0(ModelBase):
                        callbacks=[
                            TensorBoard(log_dir=self.logs_dir),
                            EarlyStopping("loss", patience=5),
-                           ModelCheckpoint(self.weights_path, save_best_only=True,
+                           ModelCheckpoint(self.weights_path, "loss", save_best_only=True,
                                            save_weights_only=True),
                        ])
 
@@ -232,31 +197,30 @@ class AlphaGoWeakV0(ModelBase):
     def plot(self, to_file: str = "model.png"):
         plot_model(self.model, to_file=to_file, show_shapes=True)
 
-    def predict_value_once(self, player: GoPlayer, board: GoBoardBase) -> float:
-        _input = self.encode_input(player, board)
-        _input.shape = (1, *_input.shape)
-        return self.value_network.predict(_input)[0, 0]
+    def predict(self, board: GoBoardBase, player: GoPlayer):
+        cached = self.cached.get(hash(board), None)
+        if cached is None:
+            input_ = self.encode_input(player, board)
+            input_.shape = (1, *input_.shape)
+            policy_, value_ = self.model.predict(input_)
+            policy_.shape = policy_.shape[1:]
+            value_.shape = value_.shape[1:]
+            cached = policy_, float(value_)
+            self.cached[hash(board)] = cached
+        return cached
 
-    def predict_policy_once(self, player: GoPlayer, board: GoBoardBase) -> np.ndarray:
-        _input = self.encode_input(player, board)
-        _input.shape = (1, *_input.shape)
-        return self.policy_network.predict(_input)[0]
+    def policy_evaluator(self, board: GoBoardBase, player: GoPlayer):
+        policy_ = self.predict(board, player)[0]
+        if policy_[-1] > 0.5:
+            policy = [], []
+        else:
+            actions: List[GoPoint] = [pos for pos in board.valid_points(player) if board.eye_type(player, pos) < GoEyeType.unknown]
+            weights: List[float] = [policy_.item(action.x * self.size + action.y) for action in actions]
+            policy = actions, weights
+        return policy
 
-    def predict(self, board: GoBoardBase, player: GoPlayer, timeout: float = 1.0) -> Union[str, GoPoint]:
-        start_time = time.perf_counter()
-        # valid_positions = self.valid_positions(board, player, eps)
-        weights = self.policy_predict(board, player)
-        actions = [(0.0, "pass")]
-        for i in range(self.size * self.size):
-            pos = divmod(i, self.size)
-            if board.is_valid_point(pos, player) and not board.is_point_a_true_eye(pos, player):
-                if weights[i] > 0.003:
-                    back = board.play(pos, player)
-                    q = self.value_predict(board, player)
-                    actions.append((q + self.size * weights[i], pos))
-                    back()
-        action = max(actions, key=lambda t: t[0])
-        return action[1]
+    def value_evaluator(self, board: GoBoardBase, player: GoPlayer, komi=6.5) -> float:
+        return self.predict(board, player)[1]
 
 
 AlphaGoWeak = AlphaGoWeakV0
