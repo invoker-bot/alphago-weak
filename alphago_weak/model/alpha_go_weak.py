@@ -75,7 +75,7 @@ class AlphaGoWeakV0(ModelBase):
         conv = Conv2D(num_filters, 5, padding="same", data_format="channels_first",
                       activation="relu", name="Residual-Input")(_input)
         layer = conv
-        for i in range(1, 12):
+        for i in range(1, int(size * 2 // 3)):
             layer = Conv2D(num_filters, 3, padding="same", data_format="channels_first",
                            activation="relu", name="Residual-Hidden" + str(i))(layer)
         residual = add([conv, layer], name="Residual-Output")
@@ -101,7 +101,7 @@ class AlphaGoWeakV0(ModelBase):
         # self.value_network = Model(inputs=[_input], outputs=[value_network_output], name="value-network")
         # self.value_network.compile(loss="mean_squared_error", optimizer="adam")
         self.model = Model(inputs=[_input], outputs=[policy_network_output, value_network_output])
-        self.model.compile(loss=["categorical_crossentropy", "mean_squared_error"], loss_weights=[0.6, 0.4],
+        self.model.compile(loss=["categorical_crossentropy", "mean_squared_error"], loss_weights=[0.7, 0.3],
                            optimizer="adam", metrics=[['accuracy'], None])
         if path.exists(self.weights_path):
             self.load()
@@ -191,6 +191,22 @@ class AlphaGoWeakV0(ModelBase):
                                            save_weights_only=True),
                        ])
 
+    def fit_step_from_dataset(self, dataset: tf.data.Dataset) -> Tuple[float, float]:
+        policy_accuracy = tf.keras.metrics.CategoricalAccuracy()
+        loss_mean = tf.keras.metrics.Mean()
+        optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
+        loss_p = tf.keras.losses.CategoricalCrossentropy()
+        loss_v = tf.keras.losses.MeanSquaredError()
+        for x, (p, v) in dataset.batch(64):
+            with tf.GradientTape() as tape:
+                p_, v_ = self.model(x, training=True)
+                loss = loss_p(p, p_) * 0.8 + loss_v(v, v_) * 0.2
+                policy_accuracy.update_state(p, p_)
+                loss_mean.update_state(loss)
+            grads = tape.gradient(loss, self.model.trainable_variables)
+            optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+        return loss_mean.result(), policy_accuracy.result()
+
     def summary(self):
         self.model.summary()
 
@@ -198,29 +214,30 @@ class AlphaGoWeakV0(ModelBase):
         plot_model(self.model, to_file=to_file, show_shapes=True)
 
     def predict(self, board: GoBoardBase, player: GoPlayer):
-        cached = self.cached.get(hash(board), None)
-        if cached is None:
-            input_ = self.encode_input(player, board)
-            input_.shape = (1, *input_.shape)
-            policy_, value_ = self.model.predict(input_)
-            policy_.shape = policy_.shape[1:]
-            value_.shape = value_.shape[1:]
-            cached = policy_, float(value_)
-            self.cached[hash(board)] = cached
-        return cached
+        input_ = self.encode_input(player, board)
+        input_.shape = (1, *input_.shape)
+        policy_, value_ = self.model.predict(input_)
+        policy_.shape = policy_.shape[1:]
+        value_.shape = value_.shape[1:]
+        return policy_, float(value_)
 
-    def policy_evaluator(self, board: GoBoardBase, player: GoPlayer):
-        policy_ = self.predict(board, player)[0]
+    def state_calculator(self, board: GoBoardBase, player: GoPlayer):
+        policy_, value = self.predict(board, player)
         if policy_[-1] > 0.5:
             policy = [], []
         else:
             actions: List[GoPoint] = [pos for pos in board.valid_points(player) if board.eye_type(player, pos) < GoEyeType.unknown]
             weights: List[float] = [policy_.item(action.x * self.size + action.y) for action in actions]
             policy = actions, weights
-        return policy
+        return policy, value
 
-    def value_evaluator(self, board: GoBoardBase, player: GoPlayer, komi=6.5) -> float:
-        return self.predict(board, player)[1]
+    @staticmethod
+    def policy_evaluator(state, komi=6.5):
+        return state[0]
+
+    @staticmethod
+    def value_evaluator(state: np.ndarray, komi=6.5):
+        return state[1]
 
 
 AlphaGoWeak = AlphaGoWeakV0

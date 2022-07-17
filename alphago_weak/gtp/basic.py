@@ -25,13 +25,14 @@ __all__ = ["GTPClientBase"]
 PKG = "alphago_weak.gtp"
 
 
-def import_class_func(module: str, class_: str) -> Callable[[GoBoardBase, float], "GTPClientBase"]:
-    return lambda board=None, komi=6.5: getattr(import_module(module, "alphago_weak.gtp"), class_)(board, komi)
+def import_class_func(module: str, class_: str) -> Callable[[int, float], "GTPClientBase"]:
+    return lambda size=19, komi=6.5: getattr(import_module(module, "alphago_weak.gtp"), class_)(size, komi)
 
 
 class GTPClientBase(Cmd, metaclass=ABCMeta):
     __version__ = "1.0"
     prompt = ""
+    board: GoBoardBase
     name: str = None
     FACTORY_DICT = {
         "random_bot": import_class_func(".gtp_random_bot", "GTPRandomBot"),
@@ -46,11 +47,15 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
     COORDINATE = tuple("ABCDEFGHJKLMNOPQRSTUVWXYZ")
     COORDINATE_R = {coor: idx for idx, coor in enumerate(COORDINATE)}
 
-    def __init__(self, board: GoBoardBase = None, komi=6.5):
+    def __init__(self, size=19, komi=6.5):
         super().__init__()
-        self.board = board
+        self._size = size
         self.id = ""
         self.komi = komi
+
+    @property
+    def size(self) -> int:
+        return self._size
 
     def precmd(self, line: str) -> str:
         parsed = self.PRECMD_PAT.match(line)
@@ -142,7 +147,7 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
     @classmethod
     def _evaluate_one(cls, black: str, white: str, idx: int, board_size=19, komi=6.5, output: str = None):
         board = GoBoard(board_size)
-        bots: Dict[GoPlayer, "GTPClientBase"] = {player: cls.FACTORY_DICT[bot_name](board, komi)
+        bots: Dict[GoPlayer, "GTPClientBase"] = {player: cls.FACTORY_DICT[bot_name](board_size, komi)
                                                  for player, bot_name in ((GoPlayer.black, black), (GoPlayer.white, white))}
         seq: List[Tuple[GoPlayer, GoPoint]] = []
         current_player = GoPlayer.black
@@ -152,6 +157,8 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
             current_action = current_bot.genmove(current_player)
             if isinstance(current_action, GoPoint):
                 board.play(current_player, current_action)
+                for bot in bots.values():
+                    bot.play(current_player, current_action)
                 seq.append((current_player, current_action))
             elif current_action == "resign":
                 break
@@ -176,13 +183,14 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
         return black_count / num
 
     def boardsize(self, size):
-        self.board = self.board.__class__(size)
+        self._size = size
+        self.clear_board()
         return True
 
     def clear_board(self):
-        self.boardsize(self.board.size)
+        self.board = self.board.__class__(self._size)
 
-    def play(self, player, pos):
+    def play(self, player: GoPlayer, pos: GoPoint):
         self.board[pos] = player
         return True
 

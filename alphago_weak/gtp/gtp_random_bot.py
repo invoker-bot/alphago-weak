@@ -20,13 +20,13 @@ class GTPRandomBot(GTPClientBase):
     name = "random_bot"
     __version__ = "1.0"
 
-    def __init__(self, board: GoBoardBase = None, komi=6.5):
-        super().__init__(board, komi)
-        if self.board is None:
-            self.board = GoBoard()
+    def __init__(self, size=19, komi=6.5):
+        super().__init__(size, komi)
+        self.board = GoBoard(size)
 
-    def valid_points(self, player: GoPlayer) -> List[GoPoint]:
-        return [pos for pos in self.board.valid_points(player) if self.board.eye_type(player, pos) < GoEyeType.unknown]
+    @staticmethod
+    def valid_points(board: GoBoardBase, player: GoPlayer) -> List[GoPoint]:
+        return [pos for pos in board.valid_points(player) if board.eye_type(player, pos) < GoEyeType.unknown]
 
     def should_resign(self, player: GoPlayer):
         return math.log(self.board.size) * self.board.size + self.board.score(player, self.komi) < 0
@@ -34,7 +34,7 @@ class GTPRandomBot(GTPClientBase):
     def genmove(self, player):
         if self.should_resign(player):
             return "resign"
-        points = self.valid_points(player)
+        points = self.valid_points(self.board, player)
         if len(points) == 0:
             return "pass"
         else:
