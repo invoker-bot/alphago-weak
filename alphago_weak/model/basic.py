@@ -18,9 +18,7 @@ class ModelBase(metaclass=ABCMeta):
         self.root = root
         self.name = name
         self._size = size
-        makedirs(self.root, exist_ok=True)
         makedirs(self.model_dir, exist_ok=True)
-        makedirs(self.cache_dir, exist_ok=True)
 
     @property
     def size(self):
@@ -29,10 +27,6 @@ class ModelBase(metaclass=ABCMeta):
     @property
     def model_dir(self):
         return path.join(self.root, "model", self.name)
-
-    @property
-    def cache_dir(self):
-        return path.join(self.model_dir, ".cache")
 
     @property
     def weights_path(self):

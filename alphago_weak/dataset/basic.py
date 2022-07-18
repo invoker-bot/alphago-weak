@@ -7,9 +7,7 @@
 @Version : 1.1
 """
 
-import pickle
 import tarfile
-import argparse
 from importlib import import_module
 from os import path, makedirs, rename
 from glob import glob, iglob
@@ -76,22 +74,18 @@ class GameArchive(object):
         "u_go": lambda root: import_module(".u_go", PKG).UGoArchive(root),
     }
 
-    def __init__(self, root: str = None):
-        if root is None:
-            root = path.join(path.dirname(path.realpath(__file__)), "../..", ".data")
+    def __init__(self, root: str):
         self._root = root
-        makedirs(self._root, exist_ok=True)
         makedirs(self.archive_dir, exist_ok=True)
-        makedirs(self.data_dir, exist_ok=True)
-        self._data_files = glob(self.data_pattern)
+        self._data_files = glob(self.data_pattern, recursive=True)
 
     @property
     def archive_dir(self):
         return path.join(self._root, "archive")
 
     @property
-    def data_dir(self):
-        return path.join(self._root, "data")
+    def cache_dir(self):
+        return path.join(self._root, "cache")
 
     def retrieve(self, force=False):
         """
@@ -101,7 +95,7 @@ class GameArchive(object):
         pass
 
     def _unpack_one(self, archive: str, force=False):
-        dest_path = path.join(self.archive_dir, path.splitext(archive)[0])
+        dest_path = path.join(self.archive_dir, path.splitext(path.basename(archive))[0])
         tmp_path = dest_path + ".tmp"
         if force or not path.exists(dest_path):
             with tarfile.open(archive) as a:
@@ -116,40 +110,19 @@ class GameArchive(object):
         archives = list(glob(path.join(self.archive_dir, "*.tar.gz")))
         do_works_experimental(partial(self._unpack_one, force=force), archives, desc="Unpacking", unit="archive")
 
-    def _extract_one(self, file_name: str, force=True):
-        name = path.splitext(path.basename(file_name))[0]
-        data_path = path.join(self.data_dir, name + ".gamedata")
-        if force or not path.exists(data_path):
-            game_data = GameData.from_sgf(file_name)
-            if len(game_data.sequence) > 1:
-                with open(data_path, "wb") as data_f:
-                    pickle.dump(game_data, data_f)
-
-    def extract(self, force=True):
-        """Extract all game unpacked archives to Game Data Folder, every single game data file should
-            end with `.gamedata` and be named with it's size of the board.
-        """
-        files = glob(path.join(self.archive_dir, "**/*.sgf"), recursive=True)
-        do_works_experimental(partial(self._extract_one, force=force), files, desc="Extracting", unit="file")
-
     def download(self, force=False):
         self.retrieve(force=force)
         self.unpack(force=force)
-        self.extract(force=force)
 
     @property
     def data_pattern(self):
-        return path.join(self.data_dir, "*.gamedata")
+        return path.join(self.archive_dir, "**/*.sgf")
 
     def __iter__(self) -> Iterator[GameData]:
-        for game_data_path in self._data_files:
-            with open(game_data_path, "rb") as f:
-                yield pickle.load(f)
+        return map(GameData.from_sgf, self._data_files)
 
     def __getitem__(self, item: int) -> GameData:
-        with open(self._data_files[item], "rb") as f:
-            return pickle.load(f)
+        return GameData.from_sgf(self._data_files[item])
 
     def __len__(self):
         return len(self._data_files)
-

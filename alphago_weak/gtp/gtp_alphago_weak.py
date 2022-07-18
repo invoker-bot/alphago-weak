@@ -7,7 +7,6 @@
 @Version : 1.0
 """
 
-import tqdm
 import numpy as np
 from typing import *
 from .basic import *
@@ -50,7 +49,7 @@ class GTPAlphaGoWeakV0(GTPClientBase):
 
     def self_play(self, count=4):
         I, P, V = [], [], []
-        for _ in tqdm.tqdm(range(count), total=count, desc="Self Playing..."):
+        for _ in range(count):  # tqdm.tqdm(range(count), total=count, desc="Self Playing..."):
             self.clear_board()
             player = GoPlayer.black
             while True:
