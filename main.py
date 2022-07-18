@@ -13,6 +13,7 @@ import tensorflow as tf
 from alphago_weak.dataset import *
 from alphago_weak.gtp import *
 from alphago_weak.model.alpha_go_weak import *
+from alphago_weak.gtp.gtp_alphago_weak import *
 
 
 def download(args):
@@ -33,6 +34,17 @@ def train(args):
         dataset, steps = AlphaGoWeak.dataset_from_preprocess(archive)
         model = AlphaGoWeak(root=args.root)
     model.fit_from_dataset(dataset, steps, args.epochs, args.batch_size * strategy.num_replicas_in_sync)
+
+
+def self_play(args):
+ #  epochs=100, steps=4, board_size=19, komi=6.5):
+    bot = GTPAlphaGoWeakV0(args.board_size, args.komi, args.root)
+    for epoch in range(args.epochs):
+        X, P, V = bot.self_play(args.steps)
+        dataset = tf.data.Dataset.from_tensor_slices((X, (P, V)))
+        loss, acc = bot.model.fit_step_from_dataset(dataset)
+        bot.model.save()
+        print(f"epoch {epoch}: Total Loss: {loss:.04f}, Policy Accuracy: {acc:.3%}")
 
 
 def evaluate(args):
@@ -66,10 +78,14 @@ if __name__ == "__main__":
     train_parser.add_argument("--init", type=int, default=0, help="initialize with the specified size of dataset for training")
     train_parser.add_argument("--batch_size", type=int, default=512, help="training batch size")
     train_parser.add_argument("--epochs", type=int, default=100, help="max training epochs")
-    
-
-
     train_parser.set_defaults(func=train)
+
+    self_play_parser = sub_parser.add_parser("self_play", help="AlphaGo Weak reinforcement learning with MCTS self play strategy")
+    self_play_parser.add_argument("--steps", type=int, default=4, help="counts of self play matches per epoch")
+    self_play_parser.add_argument("--epochs", type=int, default=100, help="max self play epochs")
+    self_play_parser.add_argument("--board_size", type=int, default=19, help="the size of the board")
+    self_play_parser.add_argument("--komi", type=float, default=6.5, help="the extra scores given to white when scoring")
+    self_play_parser.set_defaults(func=self_play)
 
     evaluate_parser = sub_parser.add_parser("evaluate", help="evaluate the level of two bots from matches")
     evaluate_parser.add_argument("-b", "--black", choices=GTPClientBase.FACTORY_DICT.keys(), required=True, help="the type of the black bot")

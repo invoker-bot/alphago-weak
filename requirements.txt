@@ -1,5 +1,4 @@
 tqdm
-colorama
 sgfmill
 numpy
 tensorflow

@@ -30,7 +30,6 @@ def test_encode_v0():
     expected_b[6, 1, 1] = 1.0
     expected_b[10, 2, 3] = 1.0
     input_b = AlphaGoWeakV0.encode_input(b, b_)
-    res = input_b == expected_b
     assert np.all(input_b == expected_b)
 
 
