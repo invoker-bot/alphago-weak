@@ -37,7 +37,6 @@ def train(args):
 
 
 def self_play(args):
- #  epochs=100, steps=4, board_size=19, komi=6.5):
     bot = GTPAlphaGoWeakV0(args.board_size, args.komi, args.root)
     for epoch in range(args.epochs):
         X, P, V = bot.self_play(args.steps)
@@ -54,7 +53,7 @@ def evaluate(args):
 
 
 def play(args):
-    bot = GTPClientBase.FACTORY_DICT[args.type](None)
+    bot = GTPClientBase.FACTORY_DICT[args.type](19, 6.5, {"root":args.root})
     bot.cmdloop()
 
 

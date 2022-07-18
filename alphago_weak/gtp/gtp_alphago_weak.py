@@ -21,14 +21,14 @@ class GTPAlphaGoWeakV0(GTPClientBase):
     name = "alphago_weak_v0"
     __version__ = "0.0"
 
-    def __init__(self, size=19, komi=6.5, root = None):
+    def __init__(self, size=19, komi=6.5, **kwargs):
         super().__init__(size, komi)
         self.board = GoBoard(size)
-        self.model = AlphaGoWeakV0(size=size, root=root)
+        self.model = AlphaGoWeakV0(size=size, root=kwargs.get("root", "."))
         self.mcts = GoMCTSTree(self.board, self.model.state_calculator, self.model.policy_evaluator, self.model.value_evaluator, komi=komi)
 
     def genmove(self, player):
-        pos = self.mcts.evaluate(400)
+        pos = self.mcts.evaluate(player, 1600)
         if pos is not None:
             return pos
         return "pass"
@@ -65,8 +65,9 @@ class GTPAlphaGoWeakV0(GTPClientBase):
         return I, P, V
 
     def play(self, player, pos):
-        super().play(player, pos)
+        result = super().play(player, pos)
         self.mcts.play(player, pos)
+        return result
 
     def clear_board(self):
         super().clear_board()

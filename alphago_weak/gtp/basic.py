@@ -25,8 +25,8 @@ __all__ = ["GTPClientBase"]
 PKG = "alphago_weak.gtp"
 
 
-def import_class_func(module: str, class_: str) -> Callable[[int, float], "GTPClientBase"]:
-    return lambda size=19, komi=6.5: getattr(import_module(module, "alphago_weak.gtp"), class_)(size, komi)
+def import_class_func(module: str, class_: str) -> Callable[[int, float, dict], "GTPClientBase"]:
+    return lambda size, komi, kwargs: getattr(import_module(module, "alphago_weak.gtp"), class_)(size, komi, **kwargs)
 
 
 class GTPClientBase(Cmd, metaclass=ABCMeta):
@@ -147,7 +147,7 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
     @classmethod
     def _evaluate_one(cls, black: str, white: str, idx: int, board_size=19, komi=6.5, output: str = None):
         board = GoBoard(board_size)
-        bots: Dict[GoPlayer, "GTPClientBase"] = {player: cls.FACTORY_DICT[bot_name](board_size, komi)
+        bots: Dict[GoPlayer, "GTPClientBase"] = {player: cls.FACTORY_DICT[bot_name](board_size, komi, {})
                                                  for player, bot_name in ((GoPlayer.black, black), (GoPlayer.white, white))}
         seq: List[Tuple[GoPlayer, GoPoint]] = []
         current_player = GoPlayer.black

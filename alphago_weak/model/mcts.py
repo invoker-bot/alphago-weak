@@ -105,7 +105,7 @@ class GoMCTSTree(object):
         self._value_evaluator = value_evaluator
 
     def play(self, player: GoPlayer, pos: GoPoint):
-        if self.player == player:
+        if self.player == player and self.node.children is not None:
             for child in self.node.children:
                 if pos == child.pos:
                     child.parent = weakref.ref(child)
@@ -115,5 +115,6 @@ class GoMCTSTree(object):
         self.player = player.other
         self.node = GoMCTSNode()
 
-    def evaluate(self, num=1600) -> Optional[GoPoint]:
+    def evaluate(self, player, num=1600) -> Optional[GoPoint]:
+        assert player == self.player
         return self.node.evaluate(self.board, self.player, self._state_calculator, self._policy_evaluator, self._value_evaluator, self.komi, num)

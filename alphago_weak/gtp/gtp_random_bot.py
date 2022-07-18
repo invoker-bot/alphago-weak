@@ -20,7 +20,7 @@ class GTPRandomBot(GTPClientBase):
     name = "random_bot"
     __version__ = "1.0"
 
-    def __init__(self, size=19, komi=6.5):
+    def __init__(self, size=19, komi=6.5, **_kwargs):
         super().__init__(size, komi)
         self.board = GoBoard(size)
 

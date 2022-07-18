@@ -19,7 +19,7 @@ class GTPRandomBotMCTS(GTPRandomBot):
     name = "random_bot_plus"
     __version__ = "1.0"
 
-    def __init__(self, size=19, komi=6.5):
+    def __init__(self, size=19, komi=6.5, **_kwargs):
         super().__init__(size, komi)
         self.mcts = GoMCTSTree(self.board, self.state_calculator, self.policy_evaluator, self.value_evaluator, komi=komi)
 
@@ -63,8 +63,9 @@ class GTPRandomBotMCTS(GTPRandomBot):
             return "pass"
 
     def play(self, player, pos):
-        super().play(player, pos)
+        result = super().play(player, pos)
         self.mcts.play(player, pos)
+        return result
 
     def clear_board(self):
         super().clear_board()

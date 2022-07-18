@@ -17,6 +17,8 @@ B, W = GoPlayer.black, GoPlayer.white
 
 
 if __name__ == '__main__':
+    bot = GTPAlphaGoWeakV0()
+    print(bot.genmove(GoPlayer.black))
     # bot.model.save()
     # cpus = cpu_count() // 2
     # total = len(dataset)
