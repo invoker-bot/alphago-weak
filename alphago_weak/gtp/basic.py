@@ -123,6 +123,9 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
                 self.response()
             else:
                 move_parsed = self.MOVE.match(action)
+                if move_parsed is None:
+                    self.response("invalid coordinate", "?")
+                    return
                 x = self.COORDINATE_R[move_parsed["x"].upper()]
                 y = int(move_parsed["y"]) - 1
                 if self.play(GoPlayer.to_player(player), GoPoint(x, y)):
@@ -191,7 +194,10 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
         self.board = self.board.__class__(self._size)
 
     def play(self, player: GoPlayer, pos: GoPoint):
-        self.board[pos] = player
+        try:
+            self.board.play(player, pos)
+        except (GoIllegalActionError, IndexError):
+            return False
         return True
 
     @abstractmethod

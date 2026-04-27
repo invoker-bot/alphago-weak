@@ -8,7 +8,7 @@ Always reply in Chinese unless the user explicitly requests another language.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv` then `.\.venv\Scripts\Activate.ps1`: create and activate a Windows virtual environment.
-- `pip install -e .`: install PyTorch, PyTorch Ignite, Typer, pytest, SGF parsing, and the `alphago` console command.
+- `pip install -e .`: install PyTorch, Typer, pytest, SGF parsing, and the `alphago` console command.
 - `pytest`: run the full test suite, including benchmark-backed board tests.
 - `pytest test/test_board.py`: run board rules and SGF replay tests only.
 - `alphago --help`: list packaged CLI commands.

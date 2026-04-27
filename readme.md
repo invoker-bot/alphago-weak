@@ -16,7 +16,7 @@
 
 ### AlphaGo Weak v1.0
 
-The model structure is implemented with [**PyTorch**](https://pytorch.org/), and supervised training is managed with [**PyTorch Ignite**](https://pytorch.org/ignite/). This kind of network structure is very efficient, and can work half a time.
+The model structure and supervised training loop are implemented with [**PyTorch**](https://pytorch.org/). This kind of network structure is very efficient, and can work half a time.
 
 
 <img src=".\img\model.png"/>

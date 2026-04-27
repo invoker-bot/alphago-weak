@@ -1,7 +1,6 @@
 sgfmill
 numpy
 torch
-pytorch-ignite
 beautifulsoup4
 aiohttp
 typer

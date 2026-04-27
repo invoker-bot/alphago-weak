@@ -12,8 +12,6 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset, IterableDataset
-from ignite.engine import Engine, Events
-from ignite.handlers import EarlyStopping
 
 from .basic import ModelBase
 from ..board import *
@@ -285,57 +283,46 @@ class AlphaGoWeakV0(ModelBase):
         dataloader = DataLoader(dataset, batch_size=batch_size)
         batches_per_epoch = max(steps // batch_size, 1)
         optimizer = torch.optim.Adam(self.model.parameters())
+        best_loss = float("inf")
+        patience = 5
+        stale_epochs = 0
 
-        def train_step(engine: Engine, batch):
+        for epoch in range(epochs):
             self.model.train()
-            inputs, policies, values = self._batch_to_tensors(batch)
-            optimizer.zero_grad()
-            policy_pred, value_pred = self.model(inputs)
-            policy_loss = self._policy_loss(policy_pred, policies)
-            value_loss = F.mse_loss(value_pred, values)
-            loss = policy_loss * 0.7 + value_loss * 0.3
-            loss.backward()
-            optimizer.step()
+            epoch_loss = 0.0
+            epoch_batches = 0
+            epoch_correct = 0
+            epoch_count = 0
 
-            correct, count = self._policy_accuracy(policy_pred.detach(), policies)
-            return {"loss": float(loss.item()), "correct": correct, "count": count}
+            for batch_idx, batch in enumerate(dataloader):
+                if batch_idx >= batches_per_epoch:
+                    break
+                inputs, policies, values = self._batch_to_tensors(batch)
+                optimizer.zero_grad()
+                policy_pred, value_pred = self.model(inputs)
+                policy_loss = self._policy_loss(policy_pred, policies)
+                value_loss = F.mse_loss(value_pred, values)
+                loss = policy_loss * 0.7 + value_loss * 0.3
+                loss.backward()
+                optimizer.step()
 
-        trainer = Engine(train_step)
-        best_loss = {"value": float("inf")}
+                correct, count = self._policy_accuracy(policy_pred.detach(), policies)
+                epoch_loss += float(loss.item())
+                epoch_batches += 1
+                epoch_correct += correct
+                epoch_count += count
 
-        @trainer.on(Events.EPOCH_STARTED)
-        def reset_epoch_metrics(engine: Engine):
-            engine.state.epoch_loss = 0.0
-            engine.state.epoch_batches = 0
-            engine.state.epoch_correct = 0
-            engine.state.epoch_count = 0
-
-        @trainer.on(Events.ITERATION_COMPLETED)
-        def collect_epoch_metrics(engine: Engine):
-            output = engine.state.output
-            engine.state.epoch_loss += output["loss"]
-            engine.state.epoch_batches += 1
-            engine.state.epoch_correct += output["correct"]
-            engine.state.epoch_count += output["count"]
-
-        @trainer.on(Events.EPOCH_COMPLETED)
-        def report_and_checkpoint(engine: Engine):
-            loss = engine.state.epoch_loss / engine.state.epoch_batches if engine.state.epoch_batches else 0.0
-            acc = engine.state.epoch_correct / engine.state.epoch_count if engine.state.epoch_count else 0.0
-            engine.state.metrics = {"loss": loss, "policy_accuracy": acc}
-            print(f"epoch {engine.state.epoch - 1}: Total Loss: {loss:.04f}, Policy Accuracy: {acc:.3%}")
-            if loss < best_loss["value"]:
-                best_loss["value"] = loss
+            loss = epoch_loss / epoch_batches if epoch_batches else 0.0
+            acc = epoch_correct / epoch_count if epoch_count else 0.0
+            print(f"epoch {epoch}: Total Loss: {loss:.04f}, Policy Accuracy: {acc:.3%}")
+            if loss < best_loss:
+                best_loss = loss
+                stale_epochs = 0
                 self.save()
-
-        def early_stop_score(engine: Engine):
-            return -engine.state.metrics["loss"]
-
-        trainer.add_event_handler(
-            Events.EPOCH_COMPLETED,
-            EarlyStopping(patience=5, score_function=early_stop_score, trainer=trainer),
-        )
-        trainer.run(dataloader, max_epochs=epochs, epoch_length=batches_per_epoch)
+            else:
+                stale_epochs += 1
+                if stale_epochs >= patience:
+                    break
 
     def fit_step_from_dataset(self, dataset) -> Tuple[float, float]:
         dataloader = DataLoader(dataset, batch_size=64)

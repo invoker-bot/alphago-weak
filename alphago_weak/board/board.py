@@ -37,6 +37,12 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
     def _remove_stone(self, stone: GoPoint):
         self._place_stone(GoPlayer.none, stone)
 
+    def _setup_stone(self, player: GoPlayer, stone: GoPoint):
+        if not self.is_on_board(stone):
+            raise IndexError(stone)
+        self._place_stone(GoPlayer(player), stone)
+        self._robbery = None
+
     def __setitem__(self, pos, player):
         if pos is None:
             self._robbery = None
@@ -123,6 +129,8 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
             self._place_stone(GoPlayer.none, stone)
 
     def is_valid_point(self, player, pos):
+        if not self.is_on_board(pos):
+            return False
         if self[pos] != GoPlayer.none:
             return False
 

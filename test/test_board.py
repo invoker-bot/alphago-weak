@@ -38,6 +38,47 @@ def play_stones(board: GoBoardBase, player: GoPlayer, stones: List[Tuple[int, in
 
 
 @pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
+def test_board_rejects_out_of_bounds_points(Board: Type[GoBoardBase]):
+    b_ = Board(5)
+
+    for pos in (P(-1, 0), P(0, -1), P(5, 0), P(0, 5)):
+        assert not b_.is_valid_point(b, pos)
+        with pytest.raises(GoIllegalActionError):
+            b_.play(b, pos)
+
+
+@pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
+def test_board_area_score_counts_connected_territory(Board: Type[GoBoardBase]):
+    b_ = Board(5)
+    for x in range(5):
+        for y in range(5):
+            if x in (0, 4) or y in (0, 4):
+                b_.play(b, P(x, y))
+
+    assert b_.score(b, 0) == 25
+    assert b_.score(w, 0) == -25
+    assert b_.score(b, 6.5) == 18.5
+    assert b_.score(w, 6.5) == -18.5
+
+
+@pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
+def test_setup_stones_places_static_position_without_captures(Board: Type[GoBoardBase]):
+    b_ = Board(3)
+    black_stones = {P(0, 0), P(0, 1), P(0, 2), P(1, 0), P(1, 2), P(2, 0), P(2, 1), P(2, 2)}
+    white_stones = {P(1, 1)}
+
+    b_.setup_stones(black_stones, white_stones, set())
+
+    assert_board_status(
+        b_,
+        {
+            "black": list(map(tuple, black_stones)),
+            "white": [(1, 1)],
+        },
+    )
+
+
+@pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
 def test_board_basic(Board: Type[GoBoardBase]):
     b_ = Board(19)
     # take points and eye judgement
@@ -87,8 +128,8 @@ def test_board_basic(Board: Type[GoBoardBase]):
     black_stones.remove((8, 7))
     black_stones.remove((7, 8))
     assert_board_status(b_, {"white": white_stones, "black": black_stones})
-    assert b_.score(b, 6.5) == -58.5
-    assert b_.score(w, 6.5) == 58.5
+    assert b_.score(b, 6.5) == -36.5
+    assert b_.score(w, 6.5) == 36.5
 
 
 @pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])

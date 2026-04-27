@@ -64,7 +64,8 @@ class GTPRandomBotMCTS(GTPRandomBot):
 
     def play(self, player, pos):
         result = super().play(player, pos)
-        self.mcts.play(player, pos)
+        if result:
+            self.mcts.play(player, pos)
         return result
 
     def clear_board(self):

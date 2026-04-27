@@ -144,6 +144,14 @@ class GoBoardBase(metaclass=ABCMeta):
     def size(self):
         return self._size
 
+    def is_on_board(self, point: GoPoint) -> bool:
+        return 0 <= point.x < self.size and 0 <= point.y < self.size
+
+    def _setup_stone(self, player: GoPlayer, stone: GoPoint):
+        if not self.is_on_board(stone):
+            raise IndexError(stone)
+        self[stone] = player
+
     def _setup_stones(self, player: GoPlayer, stones: Iterable[GoPoint]):
         """Change stones on the Go board without checking.
 
@@ -154,7 +162,7 @@ class GoBoardBase(metaclass=ABCMeta):
             stones: The positions of the stones.
         """
         for stone in stones:
-            self[stone] = player
+            self._setup_stone(player, stone)
 
     def setup_stones(self, black_stones: Iterable[GoPoint], white_stones: Iterable[GoPoint], empty_stones: Iterable[GoPoint]):
         self._setup_stones(GoPlayer.black, black_stones)
@@ -163,14 +171,16 @@ class GoBoardBase(metaclass=ABCMeta):
 
     def neighbors(self, point: GoPoint) -> Iterable[GoPoint]:
         pts = ((point.x - 1, point.y), (point.x + 1, point.y), (point.x, point.y - 1), (point.x, point.y + 1))
-        return (GoPoint(x, y) for x, y in pts if 0 <= x < self.size and 0 <= y < self.size)
+        return (GoPoint(x, y) for x, y in pts if self.is_on_board(GoPoint(x, y)))
 
     def corners(self, point: GoPoint) -> Iterable[GoPoint]:
         lst = ((point.x - 1, point.y - 1), (point.x - 1, point.y + 1), (point.x + 1, point.y - 1), (point.x + 1, point.y + 1))
-        return (GoPoint(x, y) for x, y in lst if 0 <= x < self.size and 0 <= y < self.size)
+        return (GoPoint(x, y) for x, y in lst if self.is_on_board(GoPoint(x, y)))
 
     def is_eye_point(self, player: GoPlayer, point: GoPoint) -> bool:
         assert player != GoPlayer.none
+        if not self.is_on_board(point):
+            return False
         if self[point] != GoPlayer.none:
             return False
         return all(map(lambda p: self[p] == player, self.neighbors(point)))
@@ -236,7 +246,7 @@ class GoBoardBase(metaclass=ABCMeta):
         Raises:
             GoIllegalActionError: When performing an illegal action.
         """
-        if pos is not None and not self.is_valid_point(player, pos):
+        if pos is not None and (not self.is_on_board(pos) or not self.is_valid_point(player, pos)):
             raise GoIllegalActionError(player, pos)
         self[pos] = player
 
@@ -256,14 +266,34 @@ class GoBoardBase(metaclass=ABCMeta):
         return (pos for pos in self if self.is_valid_point(player, pos))
 
     def score(self, player: GoPlayer, komi=6.5) -> float:
-        stones: DefaultDict[GoPlayer, int] = defaultdict(lambda :0)
+        stones: DefaultDict[GoPlayer, int] = defaultdict(lambda: 0)
+        visited_empty: Set[GoPoint] = set()
+
         for pos, color in self.items():
             if color == GoPlayer.none:
-                c: Counter[GoPlayer] = Counter(map(self.__getitem__, self.neighbors(pos)))
-                if c[GoPlayer.black] == 0 and c[GoPlayer.white] > 0:
-                    stones[GoPlayer.white] += 1
-                elif c[GoPlayer.white] == 0 and c[GoPlayer.black] > 0:
-                    stones[GoPlayer.black] += 1
+                if pos in visited_empty:
+                    continue
+
+                territory: Set[GoPoint] = {pos}
+                border_players: Set[GoPlayer] = set()
+                visited_empty.add(pos)
+                queue = [pos]
+
+                while queue:
+                    current = queue.pop()
+                    for neighbor in self.neighbors(current):
+                        neighbor_color = self[neighbor]
+                        if neighbor_color == GoPlayer.none:
+                            if neighbor not in visited_empty:
+                                visited_empty.add(neighbor)
+                                territory.add(neighbor)
+                                queue.append(neighbor)
+                        else:
+                            border_players.add(neighbor_color)
+
+                if len(border_players) == 1:
+                    owner = next(iter(border_players))
+                    stones[owner] += len(territory)
             else:
                 stones[color] += 1
         if player == GoPlayer.black:
