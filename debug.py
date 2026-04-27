@@ -7,7 +7,6 @@
 @Data    : 2022/6/27
 @Version : 1.0
 """
-import tensorflow as tf
 from alphago_weak.board import *
 from alphago_weak.gtp.gtp_random_bot_mcts import *
 from alphago_weak.gtp.gtp_alphago_weak import *

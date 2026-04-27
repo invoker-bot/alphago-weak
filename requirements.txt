@@ -1,7 +1,10 @@
-tqdm
 sgfmill
 numpy
-tensorflow
+torch
+pytorch-ignite
 beautifulsoup4
+aiohttp
+typer
+rich
 pytest
 pytest-benchmark

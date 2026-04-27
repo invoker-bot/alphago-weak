@@ -111,11 +111,11 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
         # strings = []
         strings_map = np.full((self.size, self.size), False, dtype=np.bool_)
         for point in self:
-            if not strings_map.item(tuple(point)):
+            if not strings_map[point.x, point.y]:
                 string = self.get_string(point)
                 if string is not None:
                     for stone in string.stones:
-                        strings_map.itemset(tuple(stone), True)
+                        strings_map[tuple(stone)] = True
                     yield string
 
     def remove_string(self, string: GoString):
@@ -171,7 +171,7 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
                 if string.player == player:
                     liberties_offset = offset + min(len(string.liberties), length) - 1
                     for pos in string.stones:
-                        arr.itemset((liberties_offset, pos.x, pos.y), 1)
+                        arr[liberties_offset, pos.x, pos.y] = 1
         else:
             super().encode(arr, offset, encode_type, player, length=length)
 
@@ -180,14 +180,14 @@ class GoBoardAlpha(PyGoBoardBase):
 
     def __init__(self, size=19):
         super().__init__(size)
-        self._grid = np.full((size, size), GoPlayer.none, dtype=np.uint8)
+        self._grid = np.full((size, size), GoPlayer.none.value, dtype=np.uint8)
 
     def __getitem__(self, pos: GoPoint) -> GoPlayer:
-        return GoPlayer(self._grid.item(tuple(pos)))
+        return GoPlayer(int(self._grid[pos.x, pos.y]))
 
     def _place_stone(self, player, stone):
         super()._place_stone(player, stone)
-        self._grid.itemset(tuple(stone),player)
+        self._grid[tuple(stone)] = GoPlayer(player).value
 
 
 class GoBoardBeta(PyGoBoardBase):

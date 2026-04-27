@@ -5,6 +5,8 @@ old
 **/*/__pycache__
 **/*/.data
 **/*.h5
+**/*.pt
+*.egg-info/
 .pytest_cache/
 
 log

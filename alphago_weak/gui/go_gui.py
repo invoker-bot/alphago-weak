@@ -126,7 +126,7 @@ class BoardCanvas(Canvas, GoBoard):
                                       y - 5 * BoardCanvas.OffsetMap[self.shape],
                                       image=self.photoWBD[player.value])
             self.addtag_withtag('stone', stone)
-        self.__stones.itemset(pos, stone)
+        self.__stones[tuple(pos)] = stone
 
     def _place_stone(self, pos: GoPoint, player: GoPlayer = GoPlayer.none):
         GoBoard._place_stone(self, pos, player)

@@ -42,14 +42,14 @@ class GTPAlphaGoWeakV0(GTPClientBase):
         else:
             for child in node.children:
                 pos = child.pos
-                arr.itemset(pos.x * size + pos.y, child.n)
+                arr[pos.x * size + pos.y] = child.n
             arr **= 1 / node.t
             arr /= np.sum(arr)
         return arr
 
     def self_play(self, count=4):
         I, P, V = [], [], []
-        for _ in range(count):  # tqdm.tqdm(range(count), total=count, desc="Self Playing..."):
+        for _ in range(count):
             self.clear_board()
             player = GoPlayer.black
             while True:

@@ -274,9 +274,9 @@ class GoBoardBase(metaclass=ABCMeta):
         if encode_type == GoBoardEncodeType.player_stone:
             for pos, stone in self.items():
                 if stone == player:
-                    arr.itemset((offset, pos.x, pos.y), 1)
+                    arr[offset, pos.x, pos.y] = 1
         elif encode_type == GoBoardEncodeType.valid_point:
             for pos in self.valid_points(player):
-                arr.itemset((offset, pos.x, pos.y), 1)
+                arr[offset, pos.x, pos.y] = 1
         else:
             raise NotImplementedError("unsupported encoding type: %s" % encode_type)

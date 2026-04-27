@@ -1,25 +1,100 @@
 # -*- coding: utf-8 -*-
 
+import math
 import os
 import shutil
-import math
-import numpy as np
-import tensorflow as tf
 from functools import partial
+from os import makedirs, path
 from typing import *
-# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-# os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices"
-from tensorflow.keras.layers import Dense, Flatten, Conv2D, Input, add
-from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from tensorflow.keras.utils import plot_model
 
-from .basic import *
+import numpy as np
+import torch
+from torch import nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, Dataset, IterableDataset
+from ignite.engine import Engine, Events
+from ignite.handlers import EarlyStopping
+
+from .basic import ModelBase
 from ..board import *
 from ..dataset import *
-from ..utils.multi_works import do_cpu_intensive_works, do_works_experimental
+from ..utils.multi_works import do_cpu_intensive_works
 
 __all__ = ["AlphaGoWeakV0", "AlphaGoWeak"]
+
+
+class _AlphaGoWeakNet(nn.Module):
+    def __init__(self, size: int, input_planes: int, num_filters: int = 128):
+        super().__init__()
+        self.size = size
+        self.residual_input = nn.Conv2d(input_planes, num_filters, 5, padding=2)
+        hidden_layers = max(int(size * 2 // 3) - 1, 0)
+        self.residual_hidden = nn.ModuleList(
+            nn.Conv2d(num_filters, num_filters, 3, padding=1) for _ in range(hidden_layers)
+        )
+        self.policy_conv = nn.Conv2d(num_filters, 1, 1)
+        self.policy_output = nn.Linear(size * size, size * size + 1)
+        self.value_conv_input = nn.Conv2d(num_filters, num_filters, 3, padding=1)
+        self.value_conv_output = nn.Conv2d(num_filters, 1, 1)
+        self.value_hidden = nn.Linear(size * size, 256)
+        self.value_output = nn.Linear(256, 1)
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        residual_input = F.relu(self.residual_input(x))
+        layer = residual_input
+        for conv in self.residual_hidden:
+            layer = F.relu(conv(layer))
+        residual = residual_input + layer
+
+        policy = self.policy_conv(residual)
+        policy = torch.flatten(policy, start_dim=1)
+        policy = F.softmax(self.policy_output(policy), dim=1)
+
+        value = F.relu(self.value_conv_input(residual))
+        value = F.relu(self.value_conv_output(value))
+        value = torch.flatten(value, start_dim=1)
+        value = F.relu(self.value_hidden(value))
+        value = torch.sigmoid(self.value_output(value)).squeeze(-1)
+        return policy, value
+
+
+class _PreprocessedGameDataset(IterableDataset):
+    def __init__(self, cache_dir: str, cached_steps: int):
+        self.cache_dir = cache_dir
+        self.cached_steps = cached_steps
+
+    def __iter__(self):
+        length = len(os.listdir(self.cache_dir)) // 3
+        for idx in range(length):
+            inputs = np.load(path.join(self.cache_dir, f"{idx}.input.npy"))
+            policies = np.load(path.join(self.cache_dir, f"{idx}.policy_output.npy"))
+            values = np.load(path.join(self.cache_dir, f"{idx}.value_output.npy"))
+            for row in range(self.cached_steps):
+                yield inputs[row], (policies[row], values[row])
+
+
+class _ArchiveGameDataset(IterableDataset):
+    def __init__(self, archive: GameArchive):
+        self.archive = archive
+
+    def __iter__(self):
+        for data in self.archive:
+            yield from AlphaGoWeakV0.game_data_generator(data)
+
+
+class _ArrayGameDataset(Dataset):
+    def __init__(self, inputs: Sequence[np.ndarray], policies: Sequence[np.ndarray], values: Sequence[np.ndarray]):
+        if not (len(inputs) == len(policies) == len(values)):
+            raise ValueError("inputs, policies, and values must have the same length")
+        self.inputs = inputs
+        self.policies = policies
+        self.values = values
+
+    def __len__(self) -> int:
+        return len(self.inputs)
+
+    def __getitem__(self, idx: int):
+        return self.inputs[idx], (self.policies[idx], self.values[idx])
 
 
 class AlphaGoWeakV0(ModelBase):
@@ -53,68 +128,46 @@ class AlphaGoWeakV0(ModelBase):
     def encode_policy_output(size: int, pos: Optional[GoPoint]) -> np.ndarray:
         """
         Returns:
-             array(362)
+             array(size * size + 1)
         """
-        num = size * size + 1
-        output = np.zeros(num, dtype=np.float32)
+        output = np.zeros(size * size + 1, dtype=np.float32)
         if pos is not None:
-            output.itemset(pos.x * size + pos.y, 1.0)
+            output[pos.x * size + pos.y] = 1.0
         else:
-            output.itemset(-1, 1.0)
+            output[-1] = 1.0
         return output
 
     @staticmethod
     def encode_value_output(player: GoPlayer, winner: GoPlayer, decay=1.0) -> np.ndarray:
         """
         Returns:
-             array(1) represents black or white
+             scalar array in [0, 1]
         """
         value_ = decay if player == winner else 0.0 if winner == GoPlayer.none else -decay
         return np.array(0.5 * (1 + value_), dtype=np.float32)
 
-    def __init__(self, name: str = "alphago_weak_v0", root: str = None, size: int = 19, num_filters=128):
+    def __init__(self, name: str = "alphago_weak_v0", root: str = None, size: int = 19,
+                 num_filters: int = 128, device: Optional[Union[str, torch.device]] = None):
         ModelBase.__init__(self, name, root, size)
-        self.cached: Dict[int, Tuple[np.ndarray, float]] = {}
-        _input = Input(
-            shape=(self.FEATURES["length"], size, size), name="Input", dtype=tf.float32)
-        conv = Conv2D(num_filters, 5, padding="same", data_format="channels_first",
-                      activation="relu", name="Residual-Input")(_input)
-        layer = conv
-        for i in range(1, int(size * 2 // 3)):
-            layer = Conv2D(num_filters, 3, padding="same", data_format="channels_first",
-                           activation="relu", name="Residual-Hidden" + str(i))(layer)
-        residual = add([conv, layer], name="Residual-Output")
-        layer = residual
-        policy_network_output = Conv2D(1, 1, padding="same",
-                                       data_format="channels_first", activation="softmax",
-                                       name="Softmax")(residual)
-        policy_network_output = Flatten(name="PolicyNetwork-Flatten")(
-            policy_network_output)
-        policy_network_output = Dense(
-            size * size + 1, activation="softmax", name="PolicyOutput")(policy_network_output)
-        value_network_output = Conv2D(num_filters, 3, padding="same",
-                                      data_format="channels_first", activation="relu",
-                                      name="Relu-Input")(layer)
-        value_network_output = Conv2D(1, 1, padding="same",
-                                      data_format="channels_first", activation="relu",
-                                      name="Relu-Output")(value_network_output)
-        value_network_output = Flatten(name="Flatten")(value_network_output)
-        value_network_output = Dense(
-            256, activation="relu", name="Relu")(value_network_output)
-        value_network_output = Dense(
-            1, activation="sigmoid", name="ValueOutput")(value_network_output)
-        self.model = Model(inputs=[_input], outputs=[
-                           policy_network_output, value_network_output])
-        self.model.compile(loss=["categorical_crossentropy", "mean_squared_error"], loss_weights=[0.7, 0.3],
-                           optimizer="adam", metrics=[['accuracy'], None])
+        self.num_filters = num_filters
+        self.device = torch.device(device) if device is not None else torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
+        self.model = _AlphaGoWeakNet(size, self.FEATURES["length"], num_filters).to(self.device)
         if path.exists(self.weights_path):
             self.load()
 
     def load(self):
-        self.model.load_weights(self.weights_path)
+        checkpoint = torch.load(self.weights_path, map_location=self.device)
+        state_dict = checkpoint["model_state_dict"] if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint else checkpoint
+        self.model.load_state_dict(state_dict)
+        self.model.to(self.device)
 
     def save(self):
-        self.model.save_weights(self.weights_path)
+        torch.save({
+            "model_state_dict": self.model.state_dict(),
+            "size": self.size,
+            "num_filters": self.num_filters,
+        }, self.weights_path)
 
     @staticmethod
     def game_data_generator(data: GameData):
@@ -137,32 +190,31 @@ class AlphaGoWeakV0(ModelBase):
 
     @property
     def dataset_element_spec(self):
-        return tf.TensorSpec((self.FEATURES["length"], self.size, self.size)), (tf.TensorSpec((self.size * self.size + 1,)), tf.TensorSpec(()))
+        return (self.FEATURES["length"], self.size, self.size), ((self.size * self.size + 1,), ())
 
     @staticmethod
     def _preprocess_archive_one(archive: GameArchive, counts: int, idx: int):
-        I, P, V = [], [], []
+        inputs, policies, values = [], [], []
         steps = AlphaGoWeakV0.cached_steps
         cache_dir = archive.cache_dir
-        for i_ in range(idx, len(archive), counts):
-            for i, (p, v) in AlphaGoWeakV0.game_data_generator(archive[i_]):
-                I.append(i)
-                P.append(p)
-                V.append(v)
-            if len(I) >= steps:
-                np.save(path.join(cache_dir, f"{idx}.input"), np.array(
-                    I[:steps], dtype=np.float32))
-                np.save(path.join(cache_dir, f"{idx}.policy_output"), np.array(
-                    P[:steps], dtype=np.float32))
-                np.save(path.join(cache_dir, f"{idx}.value_output"), np.array(
-                    V[:steps], dtype=np.float32))
+        for data_idx in range(idx, len(archive), counts):
+            for input_, (policy, value) in AlphaGoWeakV0.game_data_generator(archive[data_idx]):
+                inputs.append(input_)
+                policies.append(policy)
+                values.append(value)
+            if len(inputs) >= steps:
+                np.save(path.join(cache_dir, f"{idx}.input"), np.array(inputs[:steps], dtype=np.float32))
+                np.save(path.join(cache_dir, f"{idx}.policy_output"), np.array(policies[:steps], dtype=np.float32))
+                np.save(path.join(cache_dir, f"{idx}.value_output"), np.array(values[:steps], dtype=np.float32))
                 return True
         return False
 
     @staticmethod
     def preprocess_archive(archive: GameArchive, counts: int = None):
         if counts is None:
-            counts = int(len(archive) * 128 / AlphaGoWeakV0.cached_steps)
+            counts = max(int(len(archive) * 128 / AlphaGoWeakV0.cached_steps), 1)
+        if counts <= 0:
+            raise ValueError("counts must be greater than zero")
         if path.exists(archive.cache_dir):
             shutil.rmtree(archive.cache_dir)
         makedirs(archive.cache_dir)
@@ -172,69 +224,141 @@ class AlphaGoWeakV0(ModelBase):
 
     @staticmethod
     def dataset_from_preprocess(archive: GameArchive):
-        def np_load(idx, suffix):
-            return np.load(path.join(archive.cache_dir, f"{int(idx)}.{suffix}.npy"))
-
-        def py_generator(length: int):
-            for i in range(length):
-                I, P, V = np_load(i, "input"), np_load(
-                    i, "policy_output"), np_load(i, "value_output")
-                for row in range(AlphaGoWeakV0.cached_steps):
-                    yield I[row], (P[row], V[row])
-
         length = len(os.listdir(archive.cache_dir)) // 3
-        dataset = tf.data.Dataset.from_generator(lambda: py_generator(length),
-                                                 output_signature=(tf.TensorSpec((AlphaGoWeakV0.FEATURES["length"], 19, 19)), (tf.TensorSpec((19 * 19 + 1,)), tf.TensorSpec(()))))
-        return dataset, length * AlphaGoWeakV0.cached_steps
+        return _PreprocessedGameDataset(archive.cache_dir, AlphaGoWeakV0.cached_steps), length * AlphaGoWeakV0.cached_steps
 
     def dataset_from_archive(self, archive: GameArchive):
-        def py_func(idx):
-            return tf.data.Dataset.from_generator(lambda idx: self.game_data_generator(archive[int(idx)]), args=(idx,),
-                                                  output_signature=self.dataset_element_spec)
+        return _ArchiveGameDataset(archive), int(len(archive) * 128)
 
-        dataset = tf.data.Dataset.range(len(archive)).interleave(
-            py_func, num_parallel_calls=tf.data.AUTOTUNE)
-        return dataset, int(len(archive) * 128)
+    @staticmethod
+    def dataset_from_arrays(inputs: Sequence[np.ndarray], policies: Sequence[np.ndarray], values: Sequence[np.ndarray]):
+        return _ArrayGameDataset(inputs, policies, values)
 
-    def fit_from_dataset(self, dataset: tf.data.Dataset, steps: int, epochs=100, batch_size=512):
-        self.model.fit(dataset.repeat(epochs).batch(batch_size).prefetch(512), steps_per_epoch=int(steps // batch_size), epochs=epochs,
-                       callbacks=[
-                           TensorBoard(log_dir=self.logs_dir),
-                           EarlyStopping("loss", patience=5),
-                           ModelCheckpoint(self.weights_path, "loss", save_best_only=True,
-                                           save_weights_only=True),
-        ])
+    def _batch_to_tensors(self, batch) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        inputs, (policies, values) = batch
+        inputs = torch.as_tensor(inputs, dtype=torch.float32, device=self.device)
+        policies = torch.as_tensor(policies, dtype=torch.float32, device=self.device)
+        values = torch.as_tensor(values, dtype=torch.float32, device=self.device).view(-1)
+        return inputs, policies, values
 
-    def fit_step_from_dataset(self, dataset: tf.data.Dataset) -> Tuple[float, float]:
-        policy_accuracy = tf.keras.metrics.CategoricalAccuracy()
-        loss_mean = tf.keras.metrics.Mean()
-        optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
-        loss_p = tf.keras.losses.CategoricalCrossentropy()
-        loss_v = tf.keras.losses.MeanSquaredError()
-        for x, (p, v) in dataset.batch(64):
-            with tf.GradientTape() as tape:
-                p_, v_ = self.model(x, training=True)
-                loss = loss_p(p, p_) * 0.8 + loss_v(v, v_) * 0.2
-                policy_accuracy.update_state(p, p_)
-                loss_mean.update_state(loss)
-            grads = tape.gradient(loss, self.model.trainable_variables)
-            optimizer.apply_gradients(
-                zip(grads, self.model.trainable_variables))
-        return loss_mean.result(), policy_accuracy.result()
+    @staticmethod
+    def _policy_loss(predicted: torch.Tensor, expected: torch.Tensor) -> torch.Tensor:
+        return -(expected * torch.log(predicted.clamp_min(1e-7))).sum(dim=1).mean()
+
+    @staticmethod
+    def _policy_accuracy(predicted: torch.Tensor, expected: torch.Tensor) -> Tuple[int, int]:
+        predicted_idx = torch.argmax(predicted, dim=1)
+        expected_idx = torch.argmax(expected, dim=1)
+        return int((predicted_idx == expected_idx).sum().item()), int(expected.shape[0])
+
+    def _fit_batches(self, dataloader: DataLoader, optimizer: torch.optim.Optimizer,
+                     max_batches: Optional[int] = None, policy_weight: float = 0.7) -> Tuple[float, float]:
+        self.model.train()
+        total_loss = 0.0
+        total_correct = 0
+        total_count = 0
+        batch_count = 0
+        for batch_idx, batch in enumerate(dataloader):
+            if max_batches is not None and batch_idx >= max_batches:
+                break
+            inputs, policies, values = self._batch_to_tensors(batch)
+            optimizer.zero_grad()
+            policy_pred, value_pred = self.model(inputs)
+            policy_loss = self._policy_loss(policy_pred, policies)
+            value_loss = F.mse_loss(value_pred, values)
+            loss = policy_loss * policy_weight + value_loss * (1.0 - policy_weight)
+            loss.backward()
+            optimizer.step()
+
+            correct, count = self._policy_accuracy(policy_pred.detach(), policies)
+            total_correct += correct
+            total_count += count
+            total_loss += float(loss.item())
+            batch_count += 1
+        mean_loss = total_loss / batch_count if batch_count else 0.0
+        accuracy = total_correct / total_count if total_count else 0.0
+        return mean_loss, accuracy
+
+    def fit_from_dataset(self, dataset, steps: int, epochs=100, batch_size=512):
+        if steps <= 0:
+            raise ValueError("dataset is empty; run download/preprocess first")
+        dataloader = DataLoader(dataset, batch_size=batch_size)
+        batches_per_epoch = max(steps // batch_size, 1)
+        optimizer = torch.optim.Adam(self.model.parameters())
+
+        def train_step(engine: Engine, batch):
+            self.model.train()
+            inputs, policies, values = self._batch_to_tensors(batch)
+            optimizer.zero_grad()
+            policy_pred, value_pred = self.model(inputs)
+            policy_loss = self._policy_loss(policy_pred, policies)
+            value_loss = F.mse_loss(value_pred, values)
+            loss = policy_loss * 0.7 + value_loss * 0.3
+            loss.backward()
+            optimizer.step()
+
+            correct, count = self._policy_accuracy(policy_pred.detach(), policies)
+            return {"loss": float(loss.item()), "correct": correct, "count": count}
+
+        trainer = Engine(train_step)
+        best_loss = {"value": float("inf")}
+
+        @trainer.on(Events.EPOCH_STARTED)
+        def reset_epoch_metrics(engine: Engine):
+            engine.state.epoch_loss = 0.0
+            engine.state.epoch_batches = 0
+            engine.state.epoch_correct = 0
+            engine.state.epoch_count = 0
+
+        @trainer.on(Events.ITERATION_COMPLETED)
+        def collect_epoch_metrics(engine: Engine):
+            output = engine.state.output
+            engine.state.epoch_loss += output["loss"]
+            engine.state.epoch_batches += 1
+            engine.state.epoch_correct += output["correct"]
+            engine.state.epoch_count += output["count"]
+
+        @trainer.on(Events.EPOCH_COMPLETED)
+        def report_and_checkpoint(engine: Engine):
+            loss = engine.state.epoch_loss / engine.state.epoch_batches if engine.state.epoch_batches else 0.0
+            acc = engine.state.epoch_correct / engine.state.epoch_count if engine.state.epoch_count else 0.0
+            engine.state.metrics = {"loss": loss, "policy_accuracy": acc}
+            print(f"epoch {engine.state.epoch - 1}: Total Loss: {loss:.04f}, Policy Accuracy: {acc:.3%}")
+            if loss < best_loss["value"]:
+                best_loss["value"] = loss
+                self.save()
+
+        def early_stop_score(engine: Engine):
+            return -engine.state.metrics["loss"]
+
+        trainer.add_event_handler(
+            Events.EPOCH_COMPLETED,
+            EarlyStopping(patience=5, score_function=early_stop_score, trainer=trainer),
+        )
+        trainer.run(dataloader, max_epochs=epochs, epoch_length=batches_per_epoch)
+
+    def fit_step_from_dataset(self, dataset) -> Tuple[float, float]:
+        dataloader = DataLoader(dataset, batch_size=64)
+        optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
+        return self._fit_batches(dataloader, optimizer, policy_weight=0.8)
 
     def summary(self):
-        self.model.summary()
+        print(self.model)
 
-    def plot(self, to_file: str = "model.png"):
-        plot_model(self.model, to_file=to_file, show_shapes=True)
+    def plot(self, to_file: str = "model.txt"):
+        dest_dir = path.dirname(to_file)
+        if dest_dir:
+            makedirs(dest_dir, exist_ok=True)
+        with open(to_file, "w", encoding="utf-8") as f:
+            f.write(str(self.model))
 
     def predict(self, board: GoBoardBase, player: GoPlayer):
         input_ = self.encode_input(player, board)
-        input_.shape = (1, *input_.shape)
-        policy_, value_ = self.model.predict(input_)
-        policy_.shape = policy_.shape[1:]
-        value_.shape = value_.shape[1:]
-        return policy_, float(value_)
+        input_ = torch.as_tensor(input_[None, ...], dtype=torch.float32, device=self.device)
+        self.model.eval()
+        with torch.no_grad():
+            policy_, value_ = self.model(input_)
+        return policy_[0].cpu().numpy(), float(value_[0].cpu().item())
 
     def state_calculator(self, board: GoBoardBase, player: GoPlayer):
         policy_, value = self.predict(board, player)
@@ -243,8 +367,7 @@ class AlphaGoWeakV0(ModelBase):
         else:
             actions: List[GoPoint] = [pos for pos in board.valid_points(
                 player) if board.eye_type(player, pos) < GoEyeType.unknown]
-            weights: List[float] = [policy_.item(
-                action.x * self.size + action.y) for action in actions]
+            weights: List[float] = [policy_.item(action.x * self.size + action.y) for action in actions]
             policy = actions, weights
         return policy, value
 
