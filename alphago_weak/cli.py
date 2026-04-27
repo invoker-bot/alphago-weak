@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import shutil
+import math
 from pathlib import Path
 from typing import Optional
 
 import click
 import typer
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from alphago_weak.dataset import GameArchive
 from alphago_weak.gtp import GTPClientBase
@@ -106,17 +108,89 @@ def self_play(
     ctx: typer.Context,
     steps: int = typer.Option(4, "--steps", help="Self-play matches per epoch."),
     epochs: int = typer.Option(100, "--epochs", help="Maximum self-play epochs."),
+    simulations: int = typer.Option(1600, "--simulations", help="MCTS simulations per self-play move."),
+    max_moves: Optional[int] = typer.Option(None, "--max-moves", "--max_moves", help="Maximum moves per self-play game."),
+    record_games: int = typer.Option(0, "--record-games", "--record_games", help="Self-play games to save as SGF per epoch."),
+    record_dir: Optional[Path] = typer.Option(None, "--record-dir", "--record_dir", help="Directory for sampled self-play SGF records."),
     board_size: int = typer.Option(19, "--board-size", "--board_size", help="Go board size."),
     komi: float = typer.Option(6.5, "--komi", help="Extra score given to white."),
 ):
-    """Run the experimental MCTS self-play fine-tuning loop."""
+    """Run the experimental AlphaGo Zero-style self-play loop."""
     bot = GTPAlphaGoWeakV0(board_size, komi, root=str(_root(ctx)))
-    for epoch in range(epochs):
-        inputs, policies, values = bot.self_play(steps)
-        dataset = bot.model.dataset_from_arrays(inputs, policies, values)
-        loss, acc = bot.model.fit_step_from_dataset(dataset)
-        bot.model.save()
-        typer.echo(f"epoch {epoch}: Total Loss: {loss:.04f}, Policy Accuracy: {acc:.3%}")
+    output_dir = record_dir if record_dir is not None else _root(ctx) / "self-play"
+    if record_games > 0:
+        output_dir.mkdir(parents=True, exist_ok=True)
+    move_limit = max_moves if max_moves is not None else board_size * board_size * 2
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+    ) as progress:
+        epoch_task = progress.add_task("epochs", total=epochs)
+        game_task = progress.add_task("games", total=steps)
+        move_task = progress.add_task("moves", total=move_limit, visible=False)
+        simulation_task = progress.add_task("simulations", total=simulations, visible=False)
+        training_task = progress.add_task("training", total=1, visible=False)
+
+        for epoch in range(epochs):
+            progress.update(game_task, completed=0, total=steps, description=f"epoch {epoch} games")
+
+            def record_game(game_idx, game_data):
+                if game_idx < record_games:
+                    game_data.to_sgf(str(output_dir / f"epoch-{epoch:04d}-game-{game_idx:04d}.sgf"))
+                progress.advance(game_task, 1)
+
+            def on_move(game_idx, move_idx, player, phase, pos):
+                if phase == "start":
+                    progress.update(
+                        move_task,
+                        completed=move_idx,
+                        total=move_limit,
+                        description=f"game {game_idx} moves",
+                        visible=True,
+                    )
+                    progress.update(
+                        simulation_task,
+                        completed=0,
+                        total=simulations,
+                        description=f"move {move_idx} simulations",
+                        visible=True,
+                    )
+                else:
+                    progress.update(move_task, completed=move_idx + 1)
+                    progress.update(simulation_task, visible=False)
+
+            def on_simulation(advance):
+                progress.advance(simulation_task, advance)
+
+            inputs, policies, values = bot.self_play(
+                steps,
+                simulations,
+                max_moves,
+                game_recorder=record_game,
+                move_callback=on_move,
+                simulation_callback=on_simulation,
+            )
+            progress.update(move_task, visible=False)
+            progress.update(simulation_task, visible=False)
+            training_batches = max(math.ceil(len(inputs) / 64), 1)
+            progress.update(
+                training_task,
+                completed=0,
+                total=training_batches,
+                description=f"training {len(inputs)} samples",
+                visible=True,
+            )
+            dataset = bot.model.dataset_from_arrays(inputs, policies, values)
+            loss, acc = bot.model.fit_step_from_dataset(dataset, progress_callback=lambda advance: progress.advance(training_task, advance))
+            progress.update(training_task, visible=False)
+            bot.model.save()
+            progress.advance(epoch_task, 1)
+            progress.console.print(f"epoch {epoch}: Total Loss: {loss:.04f}, Policy Accuracy: {acc:.3%}")
 
 
 @app.command()

@@ -16,8 +16,10 @@ from typing import *
 from alphago_weak.board import *
 
 StateCalculator = Callable[[GoBoardBase, GoPlayer], Any]
-PolicyEvaluator = Callable[[Any, float], Tuple[List[GoPoint], List[float]]]
+GoAction = Optional[GoPoint]
+PolicyEvaluator = Callable[[Any, float], Tuple[List[GoAction], List[float]]]
 ValueEvaluator = Callable[[Any, float], float]
+ProgressCallback = Optional[Callable[[int], None]]
 
 __all__ = ["GoMCTSNode", "GoMCTSTree"]
 
@@ -27,7 +29,7 @@ class GoMCTSNode:
     t = 0.5  # temperature
     depth = 1
 
-    def __init__(self, parent: "GoMCTSNode" = None, pos: GoPoint = None, explore_rate=1.0):
+    def __init__(self, parent: "GoMCTSNode" = None, pos: GoAction = None, explore_rate=1.0):
         if parent is None:
             parent = self
         self.parent = weakref.ref(parent)
@@ -50,26 +52,40 @@ class GoMCTSNode:
     def upper_confidence_bound(self) -> float:
         return self.win_rate + self.c * self.p * self.explore_decay
 
-    def evaluate(self, board: GoBoardBase, player: GoPlayer, state_calculator: StateCalculator, policy_evaluator: PolicyEvaluator, value_evaluator: ValueEvaluator, komi=6.5, num=1600) -> Optional[GoPoint]:
+    def evaluate(self, board: GoBoardBase, player: GoPlayer, state_calculator: StateCalculator,
+                 policy_evaluator: PolicyEvaluator, value_evaluator: ValueEvaluator, komi=6.5,
+                 num=1600, progress_callback: ProgressCallback = None) -> Optional[GoPoint]:
         for _ in range(num):
             b_ = copy.deepcopy(board)
             cur_player, node = self.choose(b_, player)
             state = node.expand(b_, cur_player, state_calculator, policy_evaluator, komi)
             node.update(node.rollout(b_, cur_player, state, value_evaluator, komi))
+            if progress_callback is not None:
+                progress_callback(1)
         return self.choose_point()
 
     def choose(self, board: GoBoardBase, player: GoPlayer) -> Tuple[GoPlayer, "GoMCTSNode"]:
         if self.children is None or len(self.children) == 0:
             return player, self
+        self.children = [
+            child for child in self.children
+            if child.pos is None or board.is_valid_point(player, child.pos)
+        ]
+        if len(self.children) == 0:
+            return player, self
         max_child = max(self.children, key=lambda node: node.upper_confidence_bound)
-        board[max_child.pos] = player
+        board.play(player, max_child.pos)
         return max_child.choose(board, player.other)
 
     def expand(self, board: GoBoardBase, player: GoPlayer, state_calculator: StateCalculator, policy_evaluator: PolicyEvaluator, komi=6.5):
         if self.children is None:
             state = state_calculator(board, player)
             actions, weights = policy_evaluator(state, komi)
-            self.children = [self.__class__(self, action, weight) for action, weight in zip(actions, weights)]
+            self.children = [
+                self.__class__(self, action, weight)
+                for action, weight in zip(actions, weights)
+                if action is None or board.is_valid_point(player, action)
+            ]
             return state
         return None
 
@@ -115,6 +131,15 @@ class GoMCTSTree(object):
         self.player = player.other
         self.node = GoMCTSNode()
 
-    def evaluate(self, player, num=1600) -> Optional[GoPoint]:
+    def evaluate(self, player, num=1600, progress_callback: ProgressCallback = None) -> Optional[GoPoint]:
         assert player == self.player
-        return self.node.evaluate(self.board, self.player, self._state_calculator, self._policy_evaluator, self._value_evaluator, self.komi, num)
+        return self.node.evaluate(
+            self.board,
+            self.player,
+            self._state_calculator,
+            self._policy_evaluator,
+            self._value_evaluator,
+            self.komi,
+            num,
+            progress_callback,
+        )

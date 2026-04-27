@@ -119,7 +119,12 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
         if parsed and parsed["move"]:
             player = parsed["player"].lower()
             action = parsed["move"].strip().lower()
-            if action == "pass" or action == "resign":
+            if action == "pass":
+                if self.play(GoPlayer.to_player(player), None):
+                    self.response()
+                else:
+                    self.response("illegal move", "?")
+            elif action == "resign":
                 self.response()
             else:
                 move_parsed = self.MOVE.match(action)
@@ -143,6 +148,8 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
             if not isinstance(result, str):
                 self.play(player, result)
                 result = self.COORDINATE[result.x] + str(result.y + 1)
+            elif result == "pass":
+                self.play(player, None)
             self.response(result)
         else:
             self.response("invalid player", "?")
@@ -193,7 +200,7 @@ class GTPClientBase(Cmd, metaclass=ABCMeta):
     def clear_board(self):
         self.board = self.board.__class__(self._size)
 
-    def play(self, player: GoPlayer, pos: GoPoint):
+    def play(self, player: GoPlayer, pos: Optional[GoPoint]):
         try:
             self.board.play(player, pos)
         except (GoIllegalActionError, IndexError):

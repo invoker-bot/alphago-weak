@@ -11,6 +11,7 @@ import numpy as np
 from typing import *
 from .basic import *
 from ..board import *
+from ..dataset import GameData
 from ..model.alpha_go_weak import *
 from ..model.mcts import *
 
@@ -33,35 +34,66 @@ class GTPAlphaGoWeakV0(GTPClientBase):
             return pos
         return "pass"
 
-    def encode_policy_output(self, pos: Union[GoPoint, str]):
+    def encode_policy_output(self):
         size = self.size
         node = self.mcts.node
         arr = np.zeros((size * size + 1,), dtype=np.float32)
-        if node.win_rate < 0.2 or not isinstance(pos, GoPoint):
+        if node.children is None or len(node.children) == 0:
             arr[-1] = 1.0
         else:
             for child in node.children:
                 pos = child.pos
-                arr[pos.x * size + pos.y] = child.n
-            arr **= 1 / node.t
-            arr /= np.sum(arr)
+                weight = child.n ** (1 / node.t)
+                if pos is None:
+                    arr[-1] = weight
+                else:
+                    arr[pos.x * size + pos.y] = weight
+            total = np.sum(arr)
+            if total > 0:
+                arr /= total
+            else:
+                arr[-1] = 1.0
         return arr
 
-    def self_play(self, count=4):
+    def _winner_by_score(self) -> GoPlayer:
+        return GoPlayer.black if self.board.score(GoPlayer.black, self.komi) > 0 else GoPlayer.white
+
+    def self_play(self, count=4, simulations=1600, max_moves: Optional[int] = None,
+                  game_recorder: Optional[Callable[[int, GameData], None]] = None,
+                  move_callback: Optional[Callable[[int, int, GoPlayer, str, Optional[GoPoint]], None]] = None,
+                  simulation_callback: Optional[Callable[[int], None]] = None):
         I, P, V = [], [], []
-        for _ in range(count):
+        for game_idx in range(count):
             self.clear_board()
             player = GoPlayer.black
-            while True:
-                pos = self.genmove(player)
-                I.append(self.model.encode_input(player, self.board))
-                P.append(self.encode_policy_output(pos))
-                V.append(np.array(1.0 - self.mcts.node.win_rate, dtype=np.float32))
-                if isinstance(pos, GoPoint):
-                    self.play(player, pos)
-                    player = player.other
+            game_inputs, game_policies, game_players = [], [], []
+            sequence: List[Tuple[GoPlayer, Optional[GoPoint]]] = []
+            consecutive_passes = 0
+            moves = 0
+            move_limit = max_moves if max_moves is not None else self.size * self.size * 2
+            while consecutive_passes < 2 and moves < move_limit:
+                if move_callback is not None:
+                    move_callback(game_idx, moves, player, "start", None)
+                pos = self.mcts.evaluate(player, simulations, progress_callback=simulation_callback)
+                game_inputs.append(self.model.encode_input(player, self.board))
+                game_policies.append(self.encode_policy_output())
+                game_players.append(player)
+                sequence.append((player, pos))
+                self.play(player, pos)
+                if move_callback is not None:
+                    move_callback(game_idx, moves, player, "end", pos)
+                if pos is None:
+                    consecutive_passes += 1
                 else:
-                    break
+                    consecutive_passes = 0
+                player = player.other
+                moves += 1
+            winner = self._winner_by_score()
+            I.extend(game_inputs)
+            P.extend(game_policies)
+            V.extend(AlphaGoWeakV0.encode_value_output(player, winner) for player in game_players)
+            if game_recorder is not None:
+                game_recorder(game_idx, GameData(self.size, winner, sequence, self.komi))
         return I, P, V
 
     def play(self, player, pos):

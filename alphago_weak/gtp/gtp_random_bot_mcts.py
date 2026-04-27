@@ -31,6 +31,7 @@ class GTPRandomBotMCTS(GTPRandomBot):
     def policy_evaluator(state: Tuple[GoBoardBase, GoPlayer], komi=6.5):
         b_, player = state
         actions = GTPRandomBotMCTS.valid_points(b_, player)
+        actions.append(None)
         weights = [1.0 for _ in range(len(actions))]
         return actions, weights
 
@@ -38,12 +39,25 @@ class GTPRandomBotMCTS(GTPRandomBot):
     def value_evaluator(state: Tuple[GoBoardBase, GoPlayer], komi=6.5):
         b_, player = state
         cur_player = player
+        consecutive_passes = 0
         while True:
             actions = GTPRandomBotMCTS.valid_points(b_, cur_player)
-            if len(actions) == 0:
+            random.shuffle(actions)
+            played = False
+            for pos in actions:
+                try:
+                    b_.play(cur_player, pos)
+                except GoIllegalActionError:
+                    continue
+                played = True
+                break
+            if played:
+                consecutive_passes = 0
+            else:
+                b_.play(cur_player, None)
+                consecutive_passes += 1
+            if consecutive_passes >= 2:
                 return float(b_.score(player, komi) > 0)
-            pos = random.choice(actions)
-            b_[pos] = cur_player
             cur_player = cur_player.other
 
     def space_count(self):
@@ -56,7 +70,7 @@ class GTPRandomBotMCTS(GTPRandomBot):
     def genmove(self, player: GoPlayer) -> Union[GoPoint, str]:
         if self.should_resign(player):
             return "resign"
-        pos = self.mcts.evaluate(num=400)
+        pos = self.mcts.evaluate(player, num=400)
         if pos is not None:
             return pos
         else:

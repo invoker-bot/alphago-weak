@@ -250,7 +250,8 @@ class AlphaGoWeakV0(ModelBase):
         return int((predicted_idx == expected_idx).sum().item()), int(expected.shape[0])
 
     def _fit_batches(self, dataloader: DataLoader, optimizer: torch.optim.Optimizer,
-                     max_batches: Optional[int] = None, policy_weight: float = 0.7) -> Tuple[float, float]:
+                     max_batches: Optional[int] = None, policy_weight: float = 0.7,
+                     progress_callback: Optional[Callable[[int], None]] = None) -> Tuple[float, float]:
         self.model.train()
         total_loss = 0.0
         total_correct = 0
@@ -273,6 +274,8 @@ class AlphaGoWeakV0(ModelBase):
             total_count += count
             total_loss += float(loss.item())
             batch_count += 1
+            if progress_callback is not None:
+                progress_callback(1)
         mean_loss = total_loss / batch_count if batch_count else 0.0
         accuracy = total_correct / total_count if total_count else 0.0
         return mean_loss, accuracy
@@ -324,10 +327,10 @@ class AlphaGoWeakV0(ModelBase):
                 if stale_epochs >= patience:
                     break
 
-    def fit_step_from_dataset(self, dataset) -> Tuple[float, float]:
+    def fit_step_from_dataset(self, dataset, progress_callback: Optional[Callable[[int], None]] = None) -> Tuple[float, float]:
         dataloader = DataLoader(dataset, batch_size=64)
         optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
-        return self._fit_batches(dataloader, optimizer, policy_weight=0.8)
+        return self._fit_batches(dataloader, optimizer, policy_weight=0.8, progress_callback=progress_callback)
 
     def summary(self):
         print(self.model)
@@ -349,13 +352,12 @@ class AlphaGoWeakV0(ModelBase):
 
     def state_calculator(self, board: GoBoardBase, player: GoPlayer):
         policy_, value = self.predict(board, player)
-        if policy_[-1] > 0.5:
-            policy = [], []
-        else:
-            actions: List[GoPoint] = [pos for pos in board.valid_points(
-                player) if board.eye_type(player, pos) < GoEyeType.unknown]
-            weights: List[float] = [policy_.item(action.x * self.size + action.y) for action in actions]
-            policy = actions, weights
+        actions: List[Optional[GoPoint]] = [pos for pos in board.valid_points(
+            player) if board.eye_type(player, pos) < GoEyeType.unknown]
+        weights: List[float] = [policy_.item(action.x * self.size + action.y) for action in actions]
+        actions.append(None)
+        weights.append(float(policy_[-1]))
+        policy = actions, weights
         return policy, value
 
     @staticmethod

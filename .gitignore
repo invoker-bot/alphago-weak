@@ -13,4 +13,5 @@ log
 todo
 .idea/
 .data/
+.data-*/
 docs/
