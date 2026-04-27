@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import copy as stdcopy
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -88,6 +89,31 @@ def test_mcts_expansion_filters_illegal_policy_actions_and_keeps_pass():
     assert (0, 0) not in actions
     assert (1, 1) in actions
     assert None in actions
+
+
+def test_mcts_evaluate_uses_board_copy_instead_of_generic_deepcopy(monkeypatch):
+    board = GoBoard(3)
+    copy_calls = []
+
+    def board_copy():
+        copy_calls.append(1)
+        return GoBoard(3)
+
+    def fail_deepcopy(_board):
+        raise AssertionError("generic deepcopy should not be used for MCTS board clones")
+
+    board.copy = board_copy
+    monkeypatch.setattr(stdcopy, "deepcopy", fail_deepcopy)
+    tree = GoMCTSTree(
+        board,
+        lambda copied_board, player: (copied_board, player),
+        lambda _state, komi=6.5: ([None], [1.0]),
+        lambda _state, komi=6.5: 0.5,
+    )
+
+    tree.evaluate(b, num=1)
+
+    assert copy_calls == [1]
 
 
 def test_mcts_choose_uses_legal_play_and_does_not_overwrite_illegal_child():

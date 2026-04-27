@@ -79,6 +79,47 @@ def test_setup_stones_places_static_position_without_captures(Board: Type[GoBoar
 
 
 @pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
+def test_board_copy_preserves_position_and_is_independent(Board: Type[GoBoardBase]):
+    b_ = Board(5)
+    b_.play(b, P(0, 0))
+    b_.play(w, P(1, 0))
+    b_.play(b, P(0, 1))
+    b_.play(w, P(2, 2))
+    b_.play(b, P(4, 4))
+
+    copied = b_.copy()
+
+    assert type(copied) is Board
+    assert copied.size == b_.size
+    assert hash(copied) == hash(b_)
+    assert_board_status(copied, dump_board_status(b_))
+
+    copied.play(w, P(3, 4))
+
+    assert copied[P(3, 4)] == w
+    assert b_[P(3, 4)] == none
+    assert hash(copied) != hash(b_)
+
+
+@pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
+def test_board_valid_points_match_point_legality(Board: Type[GoBoardBase]):
+    b_ = Board(5)
+    for player, pos in (
+        (b, P(0, 0)),
+        (w, P(1, 0)),
+        (b, P(0, 1)),
+        (w, P(2, 2)),
+        (b, P(4, 4)),
+    ):
+        b_.play(player, pos)
+
+    valid_from_iterator = set(b_.valid_points(w))
+    valid_from_points = {pos for pos in b_ if b_.is_valid_point(w, pos)}
+
+    assert valid_from_iterator == valid_from_points
+
+
+@pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
 def test_board_basic(Board: Type[GoBoardBase]):
     b_ = Board(19)
     # take points and eye judgement

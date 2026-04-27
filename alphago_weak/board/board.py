@@ -74,6 +74,10 @@ class PyGoBoardBase(GoBoardBase, metaclass=ABCMeta):
     def __hash__(self):
         return self.__hash
 
+    def _copy_base_state_to(self, other: "PyGoBoardBase"):
+        other._robbery = self._robbery
+        other.__hash = self.__hash
+
     def new_string(self, point: GoPoint):
         """Construct the chess string from the target point.
 
@@ -197,6 +201,15 @@ class GoBoardAlpha(PyGoBoardBase):
         super()._place_stone(player, stone)
         self._grid[tuple(stone)] = GoPlayer(player).value
 
+    def valid_points(self, player):
+        return GoBoardBase.valid_points(self, player)
+
+    def copy(self) -> "GoBoardAlpha":
+        other = self.__class__(self.size)
+        other._grid = self._grid.copy()
+        self._copy_base_state_to(other)
+        return other
+
 
 class GoBoardBeta(PyGoBoardBase):
     def __init__(self, size=19):
@@ -232,6 +245,17 @@ class GoBoardBeta(PyGoBoardBase):
                 for neighbor in self.neighbors(stone):
                     if self.get_string(neighbor) is None:
                         string.liberties.add(neighbor)
+
+    def copy(self) -> "GoBoardBeta":
+        other = self.__class__(self.size)
+        string_map: Dict[int, GoString] = {}
+        for string in self._grid.values():
+            key = id(string)
+            if key not in string_map:
+                string_map[key] = GoString(string.player, set(string.stones), set(string.liberties))
+        other._grid = {point: string_map[id(string)] for point, string in self._grid.items()}
+        self._copy_base_state_to(other)
+        return other
 
 
 GoBoard = GoBoardBeta

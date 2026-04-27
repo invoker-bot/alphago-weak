@@ -8,7 +8,6 @@
 @Version : 1.0
 """
 import math
-import copy
 import random
 import weakref
 from typing import *
@@ -62,7 +61,7 @@ class GoMCTSNode:
         if self.children is not None:
             noise_applied = self.add_dirichlet_noise(dirichlet_alpha, exploration_fraction)
         for _ in range(num):
-            b_ = copy.deepcopy(board)
+            b_ = board.copy()
             cur_player, node = self.choose(b_, player)
             state = node.expand(b_, cur_player, state_calculator, policy_evaluator, komi)
             if node is self and not noise_applied:

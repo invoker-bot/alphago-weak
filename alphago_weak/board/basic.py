@@ -232,6 +232,11 @@ class GoBoardBase(metaclass=ABCMeta):
             player: The player who owns the target stone placed.
         """
 
+    @abstractmethod
+    def copy(self) -> "GoBoardBase":
+        """Return an independent copy of the board state."""
+        ...
+
     def __delitem__(self, point: Optional[GoPoint]):
         self.__setitem__(point, GoPlayer.none)
 
