@@ -22,7 +22,7 @@ The model structure and supervised training loop are implemented with [**PyTorch
 <img src=".\img\model.png"/>
 
 
-The input of chessboard grid contains 11 features, which is few but very representative. Quite a lot of scholars like a large number of feature layers, and this will make the training network get twice the result with half the effort. But I think too many feature layers will not only reduce the efficiency of network operation, but also exert too much human influence and make the network rigid. So I used a few feature layers. Although the accuracy of prediction is less than that of multi feature layer, the accuracy of policy network can still reach about 42% just after a few hours of training. The project also includes an experimental AlphaGo Zero-style MCTS self-play command, but it should not be treated as a validated full reinforcement-learning pipeline.
+The input of chessboard grid contains 11 features, which is few but very representative. Quite a lot of scholars like a large number of feature layers, and this will make the training network get twice the result with half the effort. But I think too many feature layers will not only reduce the efficiency of network operation, but also exert too much human influence and make the network rigid. So I used a few feature layers. Although the accuracy of prediction is less than that of multi feature layer, the accuracy of policy network can still reach about 42% just after a few hours of training. The project also includes an experimental AlphaGo Zero-style MCTS self-play command with replay-buffer training, but it should not be treated as a validated full reinforcement-learning pipeline.
 
 | Feature name      | Number of planes | Description                                                         |
 |  ---------------  | ---------------- | ------------------------------------------------------------------- |
@@ -43,7 +43,7 @@ The input of chessboard grid contains 11 features, which is few but very represe
 
 4. Run command `alphago train --init 4096` to train your model. The `.pt` weights file is saved and loaded automatically.
 
-5. Run `alphago self-play --steps 1 --epochs 1 --simulations 1 --max-moves 2 --record-games 1` to smoke-test the experimental AlphaGo Zero-style self-play loop and save one sample SGF.
+5. Run `alphago self-play --steps 1 --epochs 1 --simulations 1 --max-moves 2 --record-games 1 --replay-buffer-size 128` to smoke-test the experimental AlphaGo Zero-style self-play loop, replay-buffer training, and one sample SGF.
 
 6. More commands are not written because they are experimental at now.
 

@@ -7,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typer.testing import CliRunner
 
+import alphago_weak.cli as cli
 from alphago_weak.board import GoBoard, GoPlayer, GoPoint
 from alphago_weak.cli import app
 from alphago_weak.gtp.gtp_alphago_weak import GTPAlphaGoWeakV0
@@ -310,3 +311,81 @@ def test_fit_step_reports_training_progress(tmp_path):
     model.fit_step_from_dataset(dataset, progress_callback=lambda advance: progress.append(advance))
 
     assert progress == [1, 1]
+
+
+def test_fit_step_accepts_optimizer_batch_size_and_max_batches(tmp_path):
+    model = AlphaGoWeakV0(size=3, root=str(tmp_path), num_filters=4, device="cpu")
+    inputs = [np.zeros((model.FEATURES["length"], 3, 3), dtype=np.float32) for _ in range(33)]
+    policies = [AlphaGoWeakV0.encode_policy_output(3, None) for _ in inputs]
+    values = [np.array(0.5, dtype=np.float32) for _ in inputs]
+    dataset = model.dataset_from_arrays(inputs, policies, values)
+    optimizer = model.make_optimizer(learning_rate=0.003)
+    progress = []
+
+    model.fit_step_from_dataset(
+        dataset,
+        batch_size=8,
+        max_batches=2,
+        optimizer=optimizer,
+        progress_callback=lambda advance: progress.append(advance),
+    )
+
+    assert optimizer.param_groups[0]["lr"] == 0.003
+    assert progress == [1, 1]
+
+
+def test_self_play_cli_trains_from_replay_buffer(monkeypatch):
+    trained_lengths = []
+    optimizer_ids = []
+
+    class FakeModel:
+        def make_optimizer(self, learning_rate=0.01):
+            self.optimizer = object()
+            self.learning_rate = learning_rate
+            return self.optimizer
+
+        @staticmethod
+        def dataset_from_arrays(inputs, policies, values):
+            return list(zip(inputs, policies, values))
+
+        def fit_step_from_dataset(self, dataset, **kwargs):
+            trained_lengths.append(len(dataset))
+            optimizer_ids.append(id(kwargs["optimizer"]))
+            kwargs["progress_callback"](1)
+            return 0.25, 0.75
+
+        def save(self):
+            return None
+
+    class FakeBot:
+        def __init__(self, size=19, komi=6.5, **kwargs):
+            self.model = FakeModel()
+            self.calls = 0
+
+        def self_play(self, count=4, simulations=1600, max_moves=None, **kwargs):
+            self.calls += 1
+            inputs = [np.array([self.calls, idx], dtype=np.float32) for idx in range(2)]
+            policies = [np.array([1.0], dtype=np.float32) for _ in inputs]
+            values = [np.array(0.5, dtype=np.float32) for _ in inputs]
+            return inputs, policies, values
+
+    monkeypatch.setattr(cli, "GTPAlphaGoWeakV0", FakeBot)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli.app,
+        [
+            "self-play",
+            "--steps", "1",
+            "--epochs", "2",
+            "--simulations", "1",
+            "--max-moves", "2",
+            "--replay-buffer-size", "3",
+            "--train-batch-size", "2",
+            "--train-steps", "1",
+            "--learning-rate", "0.003",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert trained_lengths == [2, 3]
+    assert len(set(optimizer_ids)) == 1

@@ -2,6 +2,7 @@
 
 import shutil
 import math
+from collections import deque
 from pathlib import Path
 from typing import Optional
 
@@ -112,11 +113,23 @@ def self_play(
     max_moves: Optional[int] = typer.Option(None, "--max-moves", "--max_moves", help="Maximum moves per self-play game."),
     record_games: int = typer.Option(0, "--record-games", "--record_games", help="Self-play games to save as SGF per epoch."),
     record_dir: Optional[Path] = typer.Option(None, "--record-dir", "--record_dir", help="Directory for sampled self-play SGF records."),
+    replay_buffer_size: int = typer.Option(8192, "--replay-buffer-size", "--replay_buffer_size", help="Maximum self-play positions retained for training."),
+    train_batch_size: int = typer.Option(64, "--train-batch-size", "--train_batch_size", help="Self-play training batch size."),
+    train_steps: Optional[int] = typer.Option(None, "--train-steps", "--train_steps", help="Maximum training batches per epoch."),
+    learning_rate: float = typer.Option(0.01, "--learning-rate", "--learning_rate", help="Self-play optimizer learning rate."),
     board_size: int = typer.Option(19, "--board-size", "--board_size", help="Go board size."),
     komi: float = typer.Option(6.5, "--komi", help="Extra score given to white."),
 ):
     """Run the experimental AlphaGo Zero-style self-play loop."""
+    if replay_buffer_size <= 0:
+        raise click.BadParameter("replay-buffer-size must be greater than zero")
+    if train_batch_size <= 0:
+        raise click.BadParameter("train-batch-size must be greater than zero")
+    if train_steps is not None and train_steps <= 0:
+        raise click.BadParameter("train-steps must be greater than zero")
     bot = GTPAlphaGoWeakV0(board_size, komi, root=str(_root(ctx)))
+    optimizer = bot.model.make_optimizer(learning_rate)
+    replay_buffer = deque(maxlen=replay_buffer_size)
     output_dir = record_dir if record_dir is not None else _root(ctx) / "self-play"
     if record_games > 0:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -175,18 +188,32 @@ def self_play(
                 move_callback=on_move,
                 simulation_callback=on_simulation,
             )
+            replay_buffer.extend(zip(inputs, policies, values))
+            replay_samples = list(replay_buffer)
+            train_inputs = [sample[0] for sample in replay_samples]
+            train_policies = [sample[1] for sample in replay_samples]
+            train_values = [sample[2] for sample in replay_samples]
             progress.update(move_task, visible=False)
             progress.update(simulation_task, visible=False)
-            training_batches = max(math.ceil(len(inputs) / 64), 1)
+            training_batches = max(math.ceil(len(train_inputs) / train_batch_size), 1)
+            if train_steps is not None:
+                training_batches = min(training_batches, train_steps)
             progress.update(
                 training_task,
                 completed=0,
                 total=training_batches,
-                description=f"training {len(inputs)} samples",
+                description=f"training {len(train_inputs)} replay samples",
                 visible=True,
             )
-            dataset = bot.model.dataset_from_arrays(inputs, policies, values)
-            loss, acc = bot.model.fit_step_from_dataset(dataset, progress_callback=lambda advance: progress.advance(training_task, advance))
+            dataset = bot.model.dataset_from_arrays(train_inputs, train_policies, train_values)
+            loss, acc = bot.model.fit_step_from_dataset(
+                dataset,
+                batch_size=train_batch_size,
+                max_batches=train_steps,
+                optimizer=optimizer,
+                learning_rate=learning_rate,
+                progress_callback=lambda advance: progress.advance(training_task, advance),
+            )
             progress.update(training_task, visible=False)
             bot.model.save()
             progress.advance(epoch_task, 1)

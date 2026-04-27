@@ -327,10 +327,22 @@ class AlphaGoWeakV0(ModelBase):
                 if stale_epochs >= patience:
                     break
 
-    def fit_step_from_dataset(self, dataset, progress_callback: Optional[Callable[[int], None]] = None) -> Tuple[float, float]:
-        dataloader = DataLoader(dataset, batch_size=64)
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
-        return self._fit_batches(dataloader, optimizer, policy_weight=0.8, progress_callback=progress_callback)
+    def make_optimizer(self, learning_rate: float = 0.01, momentum: float = 0.9) -> torch.optim.Optimizer:
+        return torch.optim.SGD(self.model.parameters(), lr=learning_rate, momentum=momentum)
+
+    def fit_step_from_dataset(self, dataset, batch_size: int = 64, max_batches: Optional[int] = None,
+                              optimizer: Optional[torch.optim.Optimizer] = None,
+                              learning_rate: float = 0.01,
+                              progress_callback: Optional[Callable[[int], None]] = None) -> Tuple[float, float]:
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than zero")
+        if max_batches is not None and max_batches <= 0:
+            raise ValueError("max_batches must be greater than zero")
+        shuffle = not isinstance(dataset, IterableDataset)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+        if optimizer is None:
+            optimizer = self.make_optimizer(learning_rate)
+        return self._fit_batches(dataloader, optimizer, max_batches=max_batches, policy_weight=0.8, progress_callback=progress_callback)
 
     def summary(self):
         print(self.model)
