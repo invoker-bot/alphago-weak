@@ -54,15 +54,23 @@ class GoMCTSNode:
 
     def evaluate(self, board: GoBoardBase, player: GoPlayer, state_calculator: StateCalculator,
                  policy_evaluator: PolicyEvaluator, value_evaluator: ValueEvaluator, komi=6.5,
-                 num=1600, progress_callback: ProgressCallback = None) -> Optional[GoPoint]:
+                 num=1600, progress_callback: ProgressCallback = None,
+                 temperature: Optional[float] = None,
+                 dirichlet_alpha: Optional[float] = None,
+                 exploration_fraction: float = 0.25) -> Optional[GoPoint]:
+        noise_applied = False
+        if self.children is not None:
+            noise_applied = self.add_dirichlet_noise(dirichlet_alpha, exploration_fraction)
         for _ in range(num):
             b_ = copy.deepcopy(board)
             cur_player, node = self.choose(b_, player)
             state = node.expand(b_, cur_player, state_calculator, policy_evaluator, komi)
+            if node is self and not noise_applied:
+                noise_applied = self.add_dirichlet_noise(dirichlet_alpha, exploration_fraction)
             node.update(node.rollout(b_, cur_player, state, value_evaluator, komi))
             if progress_callback is not None:
                 progress_callback(1)
-        return self.choose_point()
+        return self.choose_point(temperature)
 
     def choose(self, board: GoBoardBase, player: GoPlayer) -> Tuple[GoPlayer, "GoMCTSNode"]:
         if self.children is None or len(self.children) == 0:
@@ -86,6 +94,7 @@ class GoMCTSNode:
                 for action, weight in zip(actions, weights)
                 if action is None or board.is_valid_point(player, action)
             ]
+            self.normalize_child_priors()
             return state
         return None
 
@@ -102,10 +111,63 @@ class GoMCTSNode:
         if parent is not self:
             parent.update(1 - w)
 
-    def choose_point(self) -> Optional[GoPoint]:
+    def normalize_child_priors(self):
+        if self.children is None or len(self.children) == 0:
+            return
+        for child in self.children:
+            if not math.isfinite(child.p) or child.p < 0:
+                child.p = 0.0
+        total = sum(child.p for child in self.children)
+        if total <= 0:
+            uniform = 1.0 / len(self.children)
+            for child in self.children:
+                child.p = uniform
+            return
+        for child in self.children:
+            child.p /= total
+
+    def add_dirichlet_noise(self, alpha: Optional[float], exploration_fraction: float = 0.25,
+                            noise: Optional[Sequence[float]] = None) -> bool:
+        if alpha is None or alpha <= 0 or exploration_fraction <= 0:
+            return False
+        if self.children is None or len(self.children) == 0:
+            return False
+        fraction = min(max(exploration_fraction, 0.0), 1.0)
+        if noise is None:
+            noise = [random.gammavariate(alpha, 1.0) for _ in self.children]
+        if len(noise) != len(self.children):
+            raise ValueError("noise length must match child count")
+        total_noise = sum(max(float(value), 0.0) for value in noise)
+        if total_noise <= 0:
+            noise = [1.0 / len(self.children) for _ in self.children]
+        else:
+            noise = [max(float(value), 0.0) / total_noise for value in noise]
+        self.normalize_child_priors()
+        for child, noise_value in zip(self.children, noise):
+            child.p = (1.0 - fraction) * child.p + fraction * noise_value
+        self.normalize_child_priors()
+        return True
+
+    def visit_policy(self, temperature: Optional[float] = None) -> Tuple[List[GoAction], List[float]]:
+        if self.children is None or len(self.children) == 0:
+            return [], []
+        if temperature is None:
+            temperature = self.t
+        if temperature <= 0:
+            best_child = max(self.children, key=lambda node: node.n)
+            return [child.pos for child in self.children], [1.0 if child is best_child else 0.0 for child in self.children]
+        weights = [child.n ** (1 / temperature) for child in self.children]
+        total = sum(weights)
+        if total <= 0:
+            weights = [1.0 / len(self.children) for _ in self.children]
+        else:
+            weights = [weight / total for weight in weights]
+        return [child.pos for child in self.children], weights
+
+    def choose_point(self, temperature: Optional[float] = None) -> Optional[GoPoint]:
         if self.children is None or len(self.children) == 0:
             return None
-        points, weights = zip(*map(lambda node: (node.pos, node.n ** (1 / self.t)), self.children))
+        points, weights = self.visit_policy(temperature)
         return random.choices(points, weights)[0]
 
 
@@ -131,7 +193,10 @@ class GoMCTSTree(object):
         self.player = player.other
         self.node = GoMCTSNode()
 
-    def evaluate(self, player, num=1600, progress_callback: ProgressCallback = None) -> Optional[GoPoint]:
+    def evaluate(self, player, num=1600, progress_callback: ProgressCallback = None,
+                 temperature: Optional[float] = None,
+                 dirichlet_alpha: Optional[float] = None,
+                 exploration_fraction: float = 0.25) -> Optional[GoPoint]:
         assert player == self.player
         return self.node.evaluate(
             self.board,
@@ -142,4 +207,7 @@ class GoMCTSTree(object):
             self.komi,
             num,
             progress_callback,
+            temperature,
+            dirichlet_alpha,
+            exploration_fraction,
         )

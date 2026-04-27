@@ -158,6 +158,45 @@ def test_alphago_policy_encoding_handles_pass_child():
     assert np.isclose(encoded.sum(), 1.0)
 
 
+def test_mcts_choose_point_temperature_zero_uses_most_visited_child():
+    root = GoMCTSNode()
+    low_visit = GoMCTSNode(root, P(0, 0), 1.0)
+    high_visit = GoMCTSNode(root, P(1, 1), 1.0)
+    low_visit.n = 2
+    high_visit.n = 10
+    root.children = [low_visit, high_visit]
+
+    assert root.choose_point(temperature=0.0) == P(1, 1)
+
+
+def test_mcts_root_dirichlet_noise_mixes_child_priors():
+    root = GoMCTSNode()
+    first = GoMCTSNode(root, P(0, 0), 1.0)
+    second = GoMCTSNode(root, P(1, 1), 0.0)
+    root.children = [first, second]
+
+    root.add_dirichlet_noise(alpha=0.3, exploration_fraction=0.25, noise=[0.0, 1.0])
+
+    assert np.isclose(first.p, 0.75)
+    assert np.isclose(second.p, 0.25)
+
+
+def test_alphago_policy_encoding_uses_temperature_zero_as_one_hot():
+    bot = GTPAlphaGoWeakV0.__new__(GTPAlphaGoWeakV0)
+    bot._size = 3
+    root = GoMCTSNode()
+    low_visit = GoMCTSNode(root, P(0, 0), 1.0)
+    high_visit = GoMCTSNode(root, None, 1.0)
+    low_visit.n = 2
+    high_visit.n = 10
+    root.children = [low_visit, high_visit]
+    bot.mcts = SimpleNamespace(node=root)
+
+    encoded = bot.encode_policy_output(temperature=0.0)
+
+    assert np.allclose(encoded, np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=np.float32))
+
+
 def test_alphago_zero_self_play_uses_final_winner_for_value_targets():
     bot = GTPAlphaGoWeakV0.__new__(GTPAlphaGoWeakV0)
     bot._size = 3
@@ -275,7 +314,7 @@ def test_alphago_zero_self_play_reports_move_and_simulation_progress():
             self.node = root
             self.moves = [None, None]
 
-        def evaluate(self, player, num=1600, progress_callback=None):
+        def evaluate(self, player, num=1600, progress_callback=None, **_kwargs):
             if progress_callback is not None:
                 for _ in range(num):
                     progress_callback(1)
@@ -298,6 +337,61 @@ def test_alphago_zero_self_play_reports_move_and_simulation_progress():
 
     assert [event[3] for event in moves] == ["start", "end", "start", "end"]
     assert simulations == [1, 1, 1, 1, 1, 1]
+
+
+def test_alphago_zero_self_play_passes_temperature_and_dirichlet_options():
+    bot = GTPAlphaGoWeakV0.__new__(GTPAlphaGoWeakV0)
+    bot._size = 3
+    bot.komi = 0.5
+    bot.board = GoBoard(3)
+    bot.model = SimpleNamespace(size=3, root=".", encode_input=lambda _player, _board: np.zeros(1, dtype=np.float32))
+
+    root = GoMCTSNode()
+    first = GoMCTSNode(root, P(0, 0), 1.0)
+    second = GoMCTSNode(root, None, 1.0)
+    first.n = 2
+    second.n = 10
+    root.children = [first, second]
+
+    class FakeMCTS:
+        def __init__(self):
+            self.node = root
+            self.moves = [P(0, 0), None, None]
+            self.calls = []
+
+        def evaluate(self, player, num=1600, **kwargs):
+            self.calls.append(kwargs)
+            return self.moves.pop(0)
+
+        def play(self, player, pos):
+            return None
+
+    holder = {}
+
+    def clear_board():
+        bot.board = GoBoard(3)
+        bot.mcts = FakeMCTS()
+        holder["mcts"] = bot.mcts
+
+    bot.clear_board = clear_board
+
+    inputs, policies, values = bot.self_play(
+        count=1,
+        simulations=1,
+        max_moves=3,
+        temperature=1.0,
+        temperature_drop=1,
+        temperature_after_drop=0.0,
+        dirichlet_alpha=0.3,
+        dirichlet_epsilon=0.25,
+    )
+
+    calls = holder["mcts"].calls
+    assert [call["temperature"] for call in calls] == [1.0, 0.0, 0.0]
+    assert all(call["dirichlet_alpha"] == 0.3 for call in calls)
+    assert all(call["exploration_fraction"] == 0.25 for call in calls)
+    assert np.isclose(policies[0].sum(), 1.0)
+    assert np.allclose(policies[1], np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=np.float32))
 
 
 def test_fit_step_reports_training_progress(tmp_path):

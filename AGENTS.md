@@ -14,7 +14,7 @@ Always reply in Chinese unless the user explicitly requests another language.
 - `alphago --help`: list packaged CLI commands.
 - `alphago download --type u-go`: download training data into `.data/`.
 - `alphago train --init 4096 --epochs 1`: smoke-test preprocessing and training with a short run.
-- `alphago self-play --steps 1 --epochs 1 --simulations 1 --max-moves 2 --record-games 1 --replay-buffer-size 128`: smoke-test the experimental AlphaGo Zero-style self-play loop, replay-buffer training, and sample SGF output; do not treat it as a validated full reinforcement-learning pipeline.
+- `alphago self-play --steps 1 --epochs 1 --simulations 1 --max-moves 2 --record-games 1 --replay-buffer-size 128 --temperature-drop 1`: smoke-test the experimental AlphaGo Zero-style self-play loop, replay-buffer training, exploration controls, and sample SGF output; do not treat it as a validated full reinforcement-learning pipeline.
 
 ## Coding Style & Naming Conventions
 Use Python with 4-space indentation. Keep modules, functions, and variables in `snake_case`; classes in `CamelCase`; constants uppercase where practical. Preserve domain prefixes such as `Go*`, `GTP*`, and `AlphaGoWeak*`. Prefer type hints for public helpers. No formatter or linter is configured, so group imports as standard library, third-party, then local package imports.

@@ -34,16 +34,15 @@ class GTPAlphaGoWeakV0(GTPClientBase):
             return pos
         return "pass"
 
-    def encode_policy_output(self):
+    def encode_policy_output(self, temperature: Optional[float] = None):
         size = self.size
         node = self.mcts.node
         arr = np.zeros((size * size + 1,), dtype=np.float32)
         if node.children is None or len(node.children) == 0:
             arr[-1] = 1.0
         else:
-            for child in node.children:
-                pos = child.pos
-                weight = child.n ** (1 / node.t)
+            actions, weights = node.visit_policy(temperature)
+            for pos, weight in zip(actions, weights):
                 if pos is None:
                     arr[-1] = weight
                 else:
@@ -59,6 +58,11 @@ class GTPAlphaGoWeakV0(GTPClientBase):
         return GoPlayer.black if self.board.score(GoPlayer.black, self.komi) > 0 else GoPlayer.white
 
     def self_play(self, count=4, simulations=1600, max_moves: Optional[int] = None,
+                  temperature: float = 1.0,
+                  temperature_drop: Optional[int] = 30,
+                  temperature_after_drop: float = 0.0,
+                  dirichlet_alpha: Optional[float] = 0.03,
+                  dirichlet_epsilon: float = 0.25,
                   game_recorder: Optional[Callable[[int, GameData], None]] = None,
                   move_callback: Optional[Callable[[int, int, GoPlayer, str, Optional[GoPoint]], None]] = None,
                   simulation_callback: Optional[Callable[[int], None]] = None):
@@ -72,11 +76,19 @@ class GTPAlphaGoWeakV0(GTPClientBase):
             moves = 0
             move_limit = max_moves if max_moves is not None else self.size * self.size * 2
             while consecutive_passes < 2 and moves < move_limit:
+                move_temperature = temperature if temperature_drop is None or moves < temperature_drop else temperature_after_drop
                 if move_callback is not None:
                     move_callback(game_idx, moves, player, "start", None)
-                pos = self.mcts.evaluate(player, simulations, progress_callback=simulation_callback)
+                pos = self.mcts.evaluate(
+                    player,
+                    simulations,
+                    progress_callback=simulation_callback,
+                    temperature=move_temperature,
+                    dirichlet_alpha=dirichlet_alpha,
+                    exploration_fraction=dirichlet_epsilon,
+                )
                 game_inputs.append(self.model.encode_input(player, self.board))
-                game_policies.append(self.encode_policy_output())
+                game_policies.append(self.encode_policy_output(move_temperature))
                 game_players.append(player)
                 sequence.append((player, pos))
                 self.play(player, pos)

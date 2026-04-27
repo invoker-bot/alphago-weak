@@ -110,6 +110,11 @@ def self_play(
     steps: int = typer.Option(4, "--steps", help="Self-play matches per epoch."),
     epochs: int = typer.Option(100, "--epochs", help="Maximum self-play epochs."),
     simulations: int = typer.Option(1600, "--simulations", help="MCTS simulations per self-play move."),
+    temperature: float = typer.Option(1.0, "--temperature", help="Visit-count sampling temperature before the drop move."),
+    temperature_drop: int = typer.Option(30, "--temperature-drop", "--temperature_drop", help="Move index where self-play switches to the lower temperature."),
+    temperature_after_drop: float = typer.Option(0.0, "--temperature-after-drop", "--temperature_after_drop", help="Visit-count sampling temperature after the drop move."),
+    dirichlet_alpha: float = typer.Option(0.03, "--dirichlet-alpha", "--dirichlet_alpha", help="Root Dirichlet noise alpha; set 0 to disable."),
+    dirichlet_epsilon: float = typer.Option(0.25, "--dirichlet-epsilon", "--dirichlet_epsilon", help="Root Dirichlet noise mixing fraction."),
     max_moves: Optional[int] = typer.Option(None, "--max-moves", "--max_moves", help="Maximum moves per self-play game."),
     record_games: int = typer.Option(0, "--record-games", "--record_games", help="Self-play games to save as SGF per epoch."),
     record_dir: Optional[Path] = typer.Option(None, "--record-dir", "--record_dir", help="Directory for sampled self-play SGF records."),
@@ -127,6 +132,14 @@ def self_play(
         raise click.BadParameter("train-batch-size must be greater than zero")
     if train_steps is not None and train_steps <= 0:
         raise click.BadParameter("train-steps must be greater than zero")
+    if temperature < 0 or temperature_after_drop < 0:
+        raise click.BadParameter("temperature values must be greater than or equal to zero")
+    if temperature_drop < 0:
+        raise click.BadParameter("temperature-drop must be greater than or equal to zero")
+    if dirichlet_alpha < 0:
+        raise click.BadParameter("dirichlet-alpha must be greater than or equal to zero")
+    if not 0 <= dirichlet_epsilon <= 1:
+        raise click.BadParameter("dirichlet-epsilon must be between 0 and 1")
     bot = GTPAlphaGoWeakV0(board_size, komi, root=str(_root(ctx)))
     optimizer = bot.model.make_optimizer(learning_rate)
     replay_buffer = deque(maxlen=replay_buffer_size)
@@ -184,6 +197,11 @@ def self_play(
                 steps,
                 simulations,
                 max_moves,
+                temperature=temperature,
+                temperature_drop=temperature_drop,
+                temperature_after_drop=temperature_after_drop,
+                dirichlet_alpha=dirichlet_alpha,
+                dirichlet_epsilon=dirichlet_epsilon,
                 game_recorder=record_game,
                 move_callback=on_move,
                 simulation_callback=on_simulation,
