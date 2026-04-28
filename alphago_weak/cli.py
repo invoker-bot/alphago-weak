@@ -410,7 +410,9 @@ def zero_ladder(
         elif event["event"] == "epoch":
             typer.echo(
                 f"attempt {event['attempt']} epoch {event['epoch']}: "
-                f"loss={event['loss']:.4f}, acc={event['accuracy']:.1%}, samples={event['samples']}"
+                f"loss={event['loss']:.4f}, acc={event['accuracy']:.1%}, "
+                f"entropy={event['policy_entropy_ratio']:.1%}, value={event['value_mean']:+.2f}, "
+                f"samples={event['samples']}"
             )
         elif event["event"] == "attempt_result":
             status = "accepted" if event["accepted"] else "rejected"

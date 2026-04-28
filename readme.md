@@ -16,7 +16,7 @@ AlphaGo Weak 是一个用于学习和实验的围棋程序。它不是论文级�
 | Search | MCTS self-play and batched neural-network inference |
 | Training | Supervised learning plus experimental AlphaGo Zero-style replay training |
 | Evaluation | Champion/candidate gate, paired color-swap games, Elo-style ladder |
-| Reports | Local bilingual HTML reports with metrics, charts, and sample SGF records |
+| Reports | Local bilingual HTML reports with Elo, gate confidence, policy entropy, value targets, and sample SGF records |
 
 ## Latest 7x7 Result
 
@@ -104,6 +104,7 @@ alphago --root .data-ladder-10-strong-gate zero-ladder `
 If a long CUDA run stops midway, rerun the same command with `--resume` instead of `--force`. The report is refreshed after every complete attempt.
 `zero-ladder` also persists replay buffers and an in-progress candidate checkpoint during training, so a resumed run keeps the candidate training window instead of falling back to champion checkpoints only.
 New runs recheck borderline gates by default with extra paired games; use `--gate-recheck-games 0` only when you need the older fixed-20-game behavior.
+Fresh reports also include MCTS policy-target entropy and value-target statistics, which help diagnose whether self-play is producing sharper search targets or drifting into one-sided outcomes.
 
 ## Other Useful Commands
 

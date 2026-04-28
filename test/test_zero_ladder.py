@@ -16,6 +16,7 @@ from alphago_weak.zero_ladder import (
     load_replay_buffers,
     save_replay_buffers,
     shuffled_players,
+    training_sample_stats,
     wilson_score_interval,
 )
 
@@ -103,6 +104,22 @@ def test_match_results_combine_counts_and_weighted_averages():
     assert np.isclose(combined["avg_moves"], 65.0)
 
 
+def test_training_sample_stats_track_policy_entropy_and_value_targets():
+    policies = [
+        np.array([0.5, 0.5, 0.0], dtype=np.float32),
+        np.array([1.0, 0.0, 0.0], dtype=np.float32),
+    ]
+    values = [np.array([1.0], dtype=np.float32), np.array([-1.0], dtype=np.float32)]
+
+    stats = training_sample_stats(policies, values)
+
+    assert stats["policy_entropy"] > 0
+    assert 0 < stats["policy_entropy_ratio"] < 1
+    assert np.isclose(stats["value_mean"], 0.0)
+    assert np.isclose(stats["value_abs_mean"], 1.0)
+    assert np.isclose(stats["value_std"], 1.0)
+
+
 def test_zero_ladder_cli_writes_report_and_initial_model():
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -132,6 +149,7 @@ def test_zero_ladder_cli_writes_report_and_initial_model():
         assert "data-en=\"Generation-gated training report" in html
         assert "Candidate Win Rate" in html
         assert "Gate Confidence" in html
+        assert "Entropy / Value" in html
         assert "Progress Analysis" in html
         assert metrics["summary"]["accepted_generations"] == 0
         assert metrics["config"]["board_size"] == 3

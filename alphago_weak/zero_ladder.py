@@ -202,6 +202,7 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
             )
             if games:
                 games[0].to_sgf(str(sgf_dir / f"attempt-{attempt:03d}-epoch-{epoch:03d}.sgf"))
+            sample_stats = training_sample_stats(policies, values)
             training_metrics.append(
                 {
                     "epoch": epoch,
@@ -211,6 +212,7 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
                     "replay_size": len(attempt_buffer),
                     "train_size": len(train_inputs),
                     "avg_moves": float(np.mean([len(game.sequence) for game in games])) if games else 0.0,
+                    **sample_stats,
                 }
             )
             report_progress(
@@ -222,6 +224,7 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
                     "loss": loss,
                     "accuracy": accuracy,
                     "samples": len(inputs),
+                    **sample_stats,
                 },
             )
             epoch_candidate_state = snapshot_state(candidate.model)
@@ -403,6 +406,30 @@ def run_ladder_self_play_sequential(candidate: GTPAlphaGoWeakV0, generation_conf
 
 def samples_to_arrays(samples: Sequence[Tuple[np.ndarray, np.ndarray, np.ndarray]]):
     return [sample[0] for sample in samples], [sample[1] for sample in samples], [sample[2] for sample in samples]
+
+
+def training_sample_stats(policies: Sequence[np.ndarray], values: Sequence[np.ndarray]) -> Dict[str, float]:
+    policy_array = np.asarray(policies, dtype=np.float32)
+    value_array = np.asarray(values, dtype=np.float32)
+    if policy_array.size == 0:
+        return {
+            "policy_entropy": 0.0,
+            "policy_entropy_ratio": 0.0,
+            "value_mean": 0.0,
+            "value_abs_mean": 0.0,
+            "value_std": 0.0,
+        }
+    clipped = np.clip(policy_array, 1e-8, 1.0)
+    entropy = -np.sum(clipped * np.log(clipped), axis=1)
+    max_entropy = math.log(policy_array.shape[1]) if policy_array.ndim == 2 and policy_array.shape[1] > 1 else 1.0
+    flat_values = value_array.reshape(-1) if value_array.size else np.asarray([0.0], dtype=np.float32)
+    return {
+        "policy_entropy": float(np.mean(entropy)),
+        "policy_entropy_ratio": float(np.mean(entropy) / max_entropy) if max_entropy > 0 else 0.0,
+        "value_mean": float(np.mean(flat_values)),
+        "value_abs_mean": float(np.mean(np.abs(flat_values))),
+        "value_std": float(np.std(flat_values)),
+    }
 
 
 def save_replay_buffers(path: Path, replay_buffer: Sequence[Tuple[np.ndarray, np.ndarray, np.ndarray]],
@@ -870,6 +897,7 @@ def table_header() -> str:
         ("Elo Δ", "Elo Δ"),
         ("累计 Elo", "Cumulative Elo"),
         ("Loss / Acc", "Loss / Acc"),
+        ("Entropy / Value", "Entropy / Value"),
     ]
     return "".join(f"<th>{i18n_text(zh, en)}</th>" for zh, en in headers)
 
@@ -893,9 +921,23 @@ def render_progress_analysis(report: Dict[str, Any]) -> str:
             f"Training moved from loss {first_train['loss']:.4f} / policy accuracy {first_train['accuracy']:.1%} "
             f"to loss {last_train['loss']:.4f} / policy accuracy {last_train['accuracy']:.1%}."
         )
+        entropy_zh = (
+            f"MCTS 目标策略的归一化熵从 {first_train.get('policy_entropy_ratio', 0.0):.1%} "
+            f"变化到 {last_train.get('policy_entropy_ratio', 0.0):.1%}；"
+            f"value target 均值从 {first_train.get('value_mean', 0.0):+.2f} "
+            f"到 {last_train.get('value_mean', 0.0):+.2f}。"
+        )
+        entropy_en = (
+            f"Normalized MCTS policy-target entropy moved from {first_train.get('policy_entropy_ratio', 0.0):.1%} "
+            f"to {last_train.get('policy_entropy_ratio', 0.0):.1%}; "
+            f"value-target mean moved from {first_train.get('value_mean', 0.0):+.2f} "
+            f"to {last_train.get('value_mean', 0.0):+.2f}."
+        )
     else:
         learning_zh = "没有可用的训练指标。"
         learning_en = "No training metrics are available."
+        entropy_zh = "没有可用的策略熵或 value target 指标。"
+        entropy_en = "No policy entropy or value-target metrics are available."
     gate_zh = (
         f"本次运行完成 {summary['accepted_generations']}/{summary['target_generations']} 代晋级，"
         f"共 {len(attempts)} 次 attempt，其中 {accepted} 次通过、{rejected} 次拒绝。"
@@ -926,6 +968,7 @@ def render_progress_analysis(report: Dict[str, Any]) -> str:
         f"<p>{i18n_text(gate_zh, gate_en)}</p>"
         f"<p>{i18n_text(cadence_zh, cadence_en)}</p>"
         f"<p>{i18n_text(learning_zh, learning_en)}</p>"
+        f"<p>{i18n_text(entropy_zh, entropy_en)}</p>"
         f"<p>{i18n_text(noise_zh, noise_en)}</p>"
     )
 
@@ -945,7 +988,8 @@ def render_attempt_row(attempt: Dict[str, Any]) -> str:
         f"<td>{gate_assessment}</td>"
         f"<td>{match['candidate_black_win_rate']:.0%} / {match['candidate_white_win_rate']:.0%}</td>"
         f"<td>{same_gen_black_rate:.0%}</td><td>{attempt['elo_delta']:+.1f}</td>"
-        f"<td>{attempt['cumulative_elo']:.1f}</td><td>{last_train['loss']:.4f} / {last_train['accuracy']:.1%}</td></tr>"
+        f"<td>{attempt['cumulative_elo']:.1f}</td><td>{last_train['loss']:.4f} / {last_train['accuracy']:.1%}</td>"
+        f"<td>{last_train.get('policy_entropy_ratio', 0.0):.1%} / {last_train.get('value_mean', 0.0):+.2f}</td></tr>"
     )
 
 
