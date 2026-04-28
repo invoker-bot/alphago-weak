@@ -175,67 +175,72 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
         optimizer = candidate.model.make_optimizer(config.learning_rate, optimizer=config.optimizer_name)
         attempt_buffer = deque(candidate_buffer, maxlen=config.replay_buffer_size)
         training_metrics: List[Dict[str, Any]] = []
-
-        for epoch in range(1, epochs_before_gate + 1):
-            epoch_seed = config.seed + attempt * 1000 + epoch
-            inputs, policies, values, games = run_ladder_self_play_epoch(
-                candidate,
-                generation_config,
-                work_root,
-                epoch_seed,
-                worker_count,
-                progress_callback,
-                attempt,
-                epoch,
-            )
-            attempt_buffer.extend(zip(inputs, policies, values))
-            train_inputs, train_policies, train_values = samples_to_arrays(attempt_buffer)
-            if config.augment_training:
-                train_inputs, train_policies, train_values = augment_samples(train_inputs, train_policies, train_values, config.board_size)
-            dataset = candidate.model.dataset_from_arrays(train_inputs, train_policies, train_values)
-            loss, accuracy = candidate.model.fit_step_from_dataset(
-                dataset,
-                batch_size=config.train_batch_size,
-                max_batches=config.train_steps,
-                optimizer=optimizer,
-                learning_rate=config.learning_rate,
-            )
-            if games:
-                games[0].to_sgf(str(sgf_dir / f"attempt-{attempt:03d}-epoch-{epoch:03d}.sgf"))
-            sample_stats = training_sample_stats(policies, values)
-            training_metrics.append(
-                {
-                    "epoch": epoch,
-                    "loss": loss,
-                    "accuracy": accuracy,
-                    "samples": len(inputs),
-                    "replay_size": len(attempt_buffer),
-                    "train_size": len(train_inputs),
-                    "avg_moves": float(np.mean([len(game.sequence) for game in games])) if games else 0.0,
-                    **sample_stats,
-                }
-            )
-            report_progress(
-                progress_callback,
-                {
-                    "event": "epoch",
-                    "attempt": attempt,
-                    "epoch": epoch,
-                    "loss": loss,
-                    "accuracy": accuracy,
-                    "samples": len(inputs),
-                    **sample_stats,
-                },
-            )
-            epoch_candidate_state = snapshot_state(candidate.model)
-            save_snapshot_file(
-                in_progress_candidate_path,
-                epoch_candidate_state,
-                config,
-                generation=accepted + 1,
-                elo=cumulative_elo,
-            )
-            save_replay_buffers(replay_path, replay_buffer, attempt_buffer, accepted, attempt)
+        self_play_executor = ProcessPoolExecutor(max_workers=worker_count) if worker_count > 1 else None
+        try:
+            for epoch in range(1, epochs_before_gate + 1):
+                epoch_seed = config.seed + attempt * 1000 + epoch
+                inputs, policies, values, games = run_ladder_self_play_epoch(
+                    candidate,
+                    generation_config,
+                    work_root,
+                    epoch_seed,
+                    worker_count,
+                    progress_callback,
+                    attempt,
+                    epoch,
+                    self_play_executor,
+                )
+                attempt_buffer.extend(zip(inputs, policies, values))
+                train_inputs, train_policies, train_values = samples_to_arrays(attempt_buffer)
+                if config.augment_training:
+                    train_inputs, train_policies, train_values = augment_samples(train_inputs, train_policies, train_values, config.board_size)
+                dataset = candidate.model.dataset_from_arrays(train_inputs, train_policies, train_values)
+                loss, accuracy = candidate.model.fit_step_from_dataset(
+                    dataset,
+                    batch_size=config.train_batch_size,
+                    max_batches=config.train_steps,
+                    optimizer=optimizer,
+                    learning_rate=config.learning_rate,
+                )
+                if games:
+                    games[0].to_sgf(str(sgf_dir / f"attempt-{attempt:03d}-epoch-{epoch:03d}.sgf"))
+                sample_stats = training_sample_stats(policies, values)
+                training_metrics.append(
+                    {
+                        "epoch": epoch,
+                        "loss": loss,
+                        "accuracy": accuracy,
+                        "samples": len(inputs),
+                        "replay_size": len(attempt_buffer),
+                        "train_size": len(train_inputs),
+                        "avg_moves": float(np.mean([len(game.sequence) for game in games])) if games else 0.0,
+                        **sample_stats,
+                    }
+                )
+                report_progress(
+                    progress_callback,
+                    {
+                        "event": "epoch",
+                        "attempt": attempt,
+                        "epoch": epoch,
+                        "loss": loss,
+                        "accuracy": accuracy,
+                        "samples": len(inputs),
+                        **sample_stats,
+                    },
+                )
+                epoch_candidate_state = snapshot_state(candidate.model)
+                save_snapshot_file(
+                    in_progress_candidate_path,
+                    epoch_candidate_state,
+                    config,
+                    generation=accepted + 1,
+                    elo=cumulative_elo,
+                )
+                save_replay_buffers(replay_path, replay_buffer, attempt_buffer, accepted, attempt)
+        finally:
+            if self_play_executor is not None:
+                self_play_executor.shutdown()
 
         candidate_state = snapshot_state(candidate.model)
         match = evaluate_generation_match(
@@ -366,19 +371,19 @@ def write_ladder_report(config: ZeroLadderConfig, work_root: Path, generation_pa
 def run_ladder_self_play_epoch(candidate: GTPAlphaGoWeakV0, generation_config: ZeroReportConfig, work_root: Path,
                                epoch_seed: int, worker_count: int,
                                progress_callback: Optional[Callable[[Dict[str, Any]], None]],
-                               attempt: int, epoch: int):
-    if worker_count <= 1:
+                               attempt: int, epoch: int,
+                               executor: Optional[ProcessPoolExecutor] = None):
+    if worker_count <= 1 or executor is None:
         return run_ladder_self_play_sequential(candidate, generation_config)
     try:
-        with ProcessPoolExecutor(max_workers=worker_count) as executor:
-            return run_parallel_self_play(
-                generation_config,
-                work_root,
-                snapshot_state(candidate.model),
-                epoch_seed,
-                executor,
-                worker_count,
-            )
+        return run_parallel_self_play(
+            generation_config,
+            work_root,
+            snapshot_state(candidate.model),
+            epoch_seed,
+            executor,
+            worker_count,
+        )
     except Exception as exc:
         report_progress(
             progress_callback,
