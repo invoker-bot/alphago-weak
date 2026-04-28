@@ -334,7 +334,8 @@ def zero_ladder(
     komi: float = typer.Option(2.5, "--komi", help="Base komi before relative calibration."),
     generations: int = typer.Option(20, "--generations", help="Accepted champion generations to advance."),
     max_attempts: Optional[int] = typer.Option(None, "--max-attempts", "--max_attempts", help="Maximum candidate attempts before stopping."),
-    candidate_epochs: int = typer.Option(2, "--candidate-epochs", "--candidate_epochs", help="Self-play training epochs per candidate attempt."),
+    candidate_epochs: int = typer.Option(2, "--candidate-epochs", "--candidate_epochs", help="Self-play training epochs per pre-gate round."),
+    gate_training_rounds: int = typer.Option(4, "--gate-training-rounds", "--gate_training_rounds", help="Pre-gate training rounds before each formal candidate-vs-champion gate."),
     steps: int = typer.Option(4, "--steps", help="Self-play games per candidate epoch."),
     simulations: int = typer.Option(12, "--simulations", help="MCTS simulations per self-play move."),
     max_moves: int = typer.Option(98, "--max-moves", "--max_moves", help="Maximum moves per self-play or evaluation game."),
@@ -368,8 +369,8 @@ def zero_ladder(
         raise click.BadParameter("generations must be non-negative")
     if max_attempts is not None and max_attempts < generations:
         raise click.BadParameter("max-attempts must be greater than or equal to generations")
-    if candidate_epochs <= 0 or steps <= 0 or simulations <= 0 or max_moves <= 0:
-        raise click.BadParameter("candidate-epochs, steps, simulations, and max-moves must be positive")
+    if candidate_epochs <= 0 or gate_training_rounds <= 0 or steps <= 0 or simulations <= 0 or max_moves <= 0:
+        raise click.BadParameter("candidate-epochs, gate-training-rounds, steps, simulations, and max-moves must be positive")
     if eval_games < 0 or eval_simulations <= 0 or eval_opening_moves < 0:
         raise click.BadParameter("evaluation settings are invalid")
     if generations > 0 and eval_games <= 0:
@@ -393,7 +394,10 @@ def zero_ladder(
 
     def show_progress(event):
         if event["event"] == "attempt_start":
-            typer.echo(f"attempt {event['attempt']}: current generation {event['accepted']}/{event['target']}")
+            typer.echo(
+                f"attempt {event['attempt']}: current generation {event['accepted']}/{event['target']}, "
+                f"training {event['epochs_before_gate']} epochs before gate"
+            )
         elif event["event"] == "komi":
             typer.echo(f"attempt {event['attempt']}: relative komi {event['komi']:.2f}")
         elif event["event"] == "epoch":
@@ -422,6 +426,7 @@ def zero_ladder(
                 generations=generations,
                 max_attempts=max_attempts,
                 candidate_epochs=candidate_epochs,
+                gate_training_rounds=gate_training_rounds,
                 games_per_epoch=steps,
                 simulations=simulations,
                 max_moves=max_moves,

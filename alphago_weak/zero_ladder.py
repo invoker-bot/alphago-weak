@@ -43,6 +43,7 @@ class ZeroLadderConfig:
     generations: int = 20
     max_attempts: Optional[int] = None
     candidate_epochs: int = 2
+    gate_training_rounds: int = 4
     games_per_epoch: int = 4
     simulations: int = 12
     max_moves: int = 98
@@ -127,11 +128,21 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
     candidate_buffer = deque(maxlen=config.replay_buffer_size)
     max_attempts = config.max_attempts if config.max_attempts is not None else max(config.generations * 3, config.generations)
     worker_count = min(max(config.workers, 1), max(config.games_per_epoch, 1))
+    epochs_before_gate = config.candidate_epochs * config.gate_training_rounds
 
     while accepted < config.generations and attempt < max_attempts:
         attempt += 1
         source_generation = accepted
-        report_progress(progress_callback, {"event": "attempt_start", "attempt": attempt, "accepted": accepted, "target": config.generations})
+        report_progress(
+            progress_callback,
+            {
+                "event": "attempt_start",
+                "attempt": attempt,
+                "accepted": accepted,
+                "target": config.generations,
+                "epochs_before_gate": epochs_before_gate,
+            },
+        )
         calibration = calibrate_relative_komi(champion_state, config, work_root, config.seed + attempt * 100000)
         report_progress(progress_callback, {"event": "komi", "attempt": attempt, "komi": calibration["komi"]})
         generation_config = to_zero_report_config(config, calibration["komi"])
@@ -148,7 +159,7 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
         attempt_buffer = deque(candidate_buffer, maxlen=config.replay_buffer_size)
         training_metrics: List[Dict[str, Any]] = []
 
-        for epoch in range(1, config.candidate_epochs + 1):
+        for epoch in range(1, epochs_before_gate + 1):
             epoch_seed = config.seed + attempt * 1000 + epoch
             inputs, policies, values, games = run_ladder_self_play_epoch(
                 candidate,
@@ -236,6 +247,7 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
                 "accepted": accepted_candidate,
                 "komi": calibration["komi"],
                 "calibration": calibration,
+                "epochs_before_gate": epochs_before_gate,
                 "training": training_metrics,
                 "match": match,
                 "elo_delta": elo_delta,
@@ -338,7 +350,7 @@ def to_zero_report_config(config: ZeroLadderConfig, komi: float) -> ZeroReportCo
         output=config.output,
         board_size=config.board_size,
         komi=komi,
-        epochs=config.candidate_epochs,
+        epochs=config.candidate_epochs * config.gate_training_rounds,
         games_per_epoch=config.games_per_epoch,
         simulations=config.simulations,
         max_moves=config.max_moves,
@@ -636,6 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {{
 {metric_card("实际晋级", "Accepted Advances", str(summary['accepted_generations']))}
 {metric_card("最终 Elo", "Final Elo", f"{summary['final_elo']:.1f}")}
 {metric_card("晋级阈值", "Gate Threshold", f"{summary['gate_win_rate']:.0%}")}
+{metric_card("每次 Gate 训练", "Epochs per Gate", str(config['candidate_epochs'] * config['gate_training_rounds']))}
 {metric_card("设备", "Device", html.escape(config['device']))}
 </section>
 <section class="card" style="margin-top:16px">
@@ -717,6 +730,16 @@ def render_progress_analysis(report: Dict[str, Any]) -> str:
         f"This run advanced {summary['accepted_generations']}/{summary['target_generations']} generations "
         f"in {len(attempts)} attempts: {accepted} accepted and {rejected} rejected."
     )
+    cadence_zh = (
+        f"每次正式 gate 前训练 {config['candidate_epochs']} x {config['gate_training_rounds']} = "
+        f"{config['candidate_epochs'] * config['gate_training_rounds']} 个 self-play epoch；"
+        f"如果仍出现过多拒绝，应继续增大 --gate-training-rounds 或 --candidate-epochs。"
+    )
+    cadence_en = (
+        f"Before each formal gate, the candidate trains for {config['candidate_epochs']} x "
+        f"{config['gate_training_rounds']} = {config['candidate_epochs'] * config['gate_training_rounds']} "
+        f"self-play epochs; if rejections are still high, increase --gate-training-rounds or --candidate-epochs."
+    )
     noise_zh = (
         f"评估每次 gate 使用 {config['eval_games']} 局，因此 Elo 数值偏噪；更可靠的强度估计需要增加 "
         f"--eval-games 和 --eval-simulations。"
@@ -727,6 +750,7 @@ def render_progress_analysis(report: Dict[str, Any]) -> str:
     )
     return (
         f"<p>{i18n_text(gate_zh, gate_en)}</p>"
+        f"<p>{i18n_text(cadence_zh, cadence_en)}</p>"
         f"<p>{i18n_text(learning_zh, learning_en)}</p>"
         f"<p>{i18n_text(noise_zh, noise_en)}</p>"
     )

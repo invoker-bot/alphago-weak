@@ -4,7 +4,7 @@
 Always reply in Chinese unless the user explicitly requests another language.
 
 ## Project Structure & Module Organization
-`alphago_weak/` is the main package: `board/` has Go rules, `dataset/` parses SGF data, `model/` contains PyTorch neural-network and MCTS code, `gtp/` contains bots, `gui/` contains the interface, and `utils/` has helpers. `main.py` exposes dataset download, supervised training, experimental MCTS self-play, evaluation, and GTP play modes. Tests are in `test/`, fixtures in `test/sgf/`, and images in `img/`. Generated datasets, logs, weights, `.pt`, `.h5`, and `.data/` stay ignored.
+`alphago_weak/` is the main package: `board/` has Go rules, `dataset/` parses SGF data, `model/` contains PyTorch neural-network and MCTS code, `gtp/` contains bots, `gui/` contains the interface, and `utils/` has helpers. `main.py` exposes dataset download, supervised training, experimental MCTS self-play, evaluation, and GTP play modes. Tests are in `test/`, fixtures in `test/sgf/`, and images in `img/`. Generated datasets, reports, logs, weights, `.pt`, `.h5`, `.data/`, and `.data-*` stay ignored.
 
 ## Build, Test, and Development Commands
 - `python -m venv .venv` then `.\.venv\Scripts\Activate.ps1`: create and activate a Windows virtual environment.
@@ -15,7 +15,8 @@ Always reply in Chinese unless the user explicitly requests another language.
 - `alphago download --type u-go`: download training data into `.data/`.
 - `alphago train --init 4096 --epochs 1`: smoke-test preprocessing and training with a short run.
 - `alphago self-play --steps 1 --epochs 1 --simulations 1 --max-moves 2 --record-games 1 --replay-buffer-size 128 --temperature-drop 1`: smoke-test the experimental AlphaGo Zero-style self-play loop, replay-buffer training, exploration controls, and sample SGF output; do not treat it as a validated full reinforcement-learning pipeline.
-- `alphago zero-report --force`: regenerate the small 7x7 from-scratch training report under `reports/7x7-zero/`.
+- `alphago zero-report --force`: regenerate the small 7x7 from-scratch training report under ignored `reports/7x7-zero/`.
+- `alphago zero-ladder --candidate-epochs 3 --gate-training-rounds 4 --generations 20 --force`: run a 7x7 champion ladder with longer training before each formal gate.
 
 ## Coding Style & Naming Conventions
 Use Python with 4-space indentation. Keep modules, functions, and variables in `snake_case`; classes in `CamelCase`; constants uppercase where practical. Preserve domain prefixes such as `Go*`, `GTP*`, and `AlphaGoWeak*`. Prefer type hints for public helpers. No formatter or linter is configured, so group imports as standard library, third-party, then local package imports.
@@ -27,4 +28,4 @@ Tests use `pytest` and `pytest-benchmark`. Name files `test_*.py` and functions 
 History uses short imperative commit messages such as `Add MCTS self-play logic.` or `Edit some docs.` Keep each commit focused. Pull requests should describe behavior changes, list tests run, note training-data or model-weight implications, link issues, and include screenshots when GUI or documentation images change.
 
 ## Security & Configuration Tips
-Do not commit datasets, trained weights, logs, virtual environments, or generated `.pt`/`.h5` files. Keep large experiments under ignored paths such as `.data/` or `weights/`.
+Do not commit datasets, reports, trained weights, logs, virtual environments, or generated `.pt`/`.h5` files. Keep large experiments under ignored paths such as `.data/`, `.data-*`, `reports/`, or `weights/`.

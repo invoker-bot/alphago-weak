@@ -36,6 +36,7 @@ def test_zero_ladder_cli_writes_report_and_initial_model():
                 "--output", "reports/ladder/index.html",
                 "--board-size", "3",
                 "--generations", "0",
+                "--gate-training-rounds", "3",
                 "--num-filters", "4",
                 "--self-play-device", "cpu",
                 "--force",
@@ -55,6 +56,7 @@ def test_zero_ladder_cli_writes_report_and_initial_model():
         assert "Progress Analysis" in html
         assert metrics["summary"]["accepted_generations"] == 0
         assert metrics["config"]["board_size"] == 3
+        assert metrics["config"]["gate_training_rounds"] == 3
         assert model_path.exists()
 
         resumed = runner.invoke(
@@ -65,6 +67,7 @@ def test_zero_ladder_cli_writes_report_and_initial_model():
                 "--output", "reports/ladder/index.html",
                 "--board-size", "3",
                 "--generations", "0",
+                "--gate-training-rounds", "3",
                 "--num-filters", "4",
                 "--self-play-device", "cpu",
                 "--resume",
