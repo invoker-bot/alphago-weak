@@ -26,6 +26,16 @@ AlphaGo Weak 是一个用于学习和实验的围棋程序。当前代码已经�
 
 训练指标从 loss 3.1471 / policy accuracy 6.0% 改善到 loss 2.0525 / policy accuracy 28.0%，replay buffer 达到 8192 样本。旧报告无法体现变强的主要原因是评估没有配对换先，且 7x7 使用 komi 0.5 会让结果被先手优势主导；现在的头对头评估会对同一随机开局分别交换候选模型执黑/执白。结论是：当前小规模流程已经能观察到相对初始模型的提升，但仍不是论文级棋力复现。
 
+## 7x7 代际 Ladder 报告
+
+新增的 `zero-ladder` 会保存每一代 champion，并使用候选模型对上一代 champion 的配对换先胜率作为晋级标准。候选胜率达到 55% 才记为前进一代，并把胜率换算成 Elo 增量。
+
+- [打开 Ladder HTML 报告](reports/7x7-ladder/index.html)
+- [查看 Ladder 指标 JSON](reports/7x7-ladder/metrics.json)
+- 样例 SGF: [reports/7x7-ladder/sgf](reports/7x7-ladder/sgf)
+
+当前示例运行目标前进 2 代，两次候选都以 70% 胜率通过 gate，累计 Elo 约 +294。相对贴目校准让同代黑棋胜率在被选贴目下接近 50%，因此表格中的候选胜率主要反映代际模型差异，而不是固定贴目带来的颜色偏差。模型文件保存在本地 `reports/7x7-ladder/models/generation-*.pt`，默认不纳入 Git。
+
 复现实验：
 
 ```powershell
@@ -61,9 +71,12 @@ alphago download --type u-go
 alphago train --init 4096 --epochs 1
 alphago self-play --board-size 9 --steps 4 --epochs 10 --simulations 32
 alphago zero-report --force
+alphago zero-ladder --generations 20 --force
 ```
 
 `self-play` 会自动从同一 `--root` 下的历史权重继续训练，并在每个 epoch 后保存模型。`--inference-batch-size` 会把 MCTS leaf 局面合并后批量送入模型，在 CUDA 版 PyTorch 下能减少单样本 GPU 调用开销。`zero-report` 在多 worker + CUDA 时默认启用共享推理服务；可用 `--no-shared-inference` 退回每个 worker 独立推理。`zero-report` 专门用于从零开始生成可浏览报告；它会使用 root 下的 `zero-report-{board_size}x{board_size}` 工作目录。
+
+`zero-ladder` 会按 AlphaGo Zero 的 gating 思路训练候选模型：候选从当前 champion 权重继续训练，和上一代配对换先评估，胜率达到 `--gate-win-rate`（默认 55%）才晋级为下一代，并保存 `reports/7x7-ladder/models/generation-*.pt`。`--generations 20` 表示目标前进 20 代；默认会用相对贴目校准同代黑白胜率，降低颜色偏差。
 
 ## 项目结构
 

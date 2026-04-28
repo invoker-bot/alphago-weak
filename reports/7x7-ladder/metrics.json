@@ -1,0 +1,230 @@
+{
+  "config": {
+    "board_size": 7,
+    "komi": 2.5,
+    "generations": 2,
+    "max_attempts": 4,
+    "candidate_epochs": 2,
+    "games_per_epoch": 4,
+    "simulations": 8,
+    "max_moves": 98,
+    "eval_games": 10,
+    "eval_simulations": 4,
+    "eval_opening_moves": 4,
+    "gate_win_rate": 0.55,
+    "calibrate_komi": true,
+    "komi_window": 2,
+    "komi_step": 1.0,
+    "komi_eval_games": 4,
+    "train_batch_size": 32,
+    "train_steps": 48,
+    "replay_buffer_size": 4096,
+    "learning_rate": 0.001,
+    "optimizer_name": "adam",
+    "augment_training": true,
+    "num_filters": 16,
+    "workers": 4,
+    "inference_batch_size": 16,
+    "self_play_device": "cuda",
+    "shared_inference": true,
+    "seed": 11,
+    "force": true,
+    "root": ".data-ladder-demo",
+    "work_root": ".data-ladder-demo\\zero-ladder-7x7",
+    "output": "reports\\7x7-ladder\\index.html",
+    "device": "cuda"
+  },
+  "generations": [
+    {
+      "generation": 0,
+      "elo": 0.0,
+      "path": "reports\\7x7-ladder\\models\\generation-000.pt"
+    },
+    {
+      "generation": 1,
+      "elo": 147.19071411783773,
+      "path": "reports\\7x7-ladder\\models\\generation-001.pt"
+    },
+    {
+      "generation": 2,
+      "elo": 294.38142823567546,
+      "path": "reports\\7x7-ladder\\models\\generation-002.pt"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "from_generation": 0,
+      "to_generation": 1,
+      "accepted": true,
+      "komi": 4.5,
+      "calibration": {
+        "komi": 4.5,
+        "enabled": true,
+        "candidates": [
+          {
+            "komi": 0.5,
+            "black_win_rate": 1.0,
+            "avg_black_margin": 19.5,
+            "balance_error": 0.5
+          },
+          {
+            "komi": 1.5,
+            "black_win_rate": 0.0,
+            "avg_black_margin": -1.5,
+            "balance_error": 0.5
+          },
+          {
+            "komi": 2.5,
+            "black_win_rate": 0.5,
+            "avg_black_margin": -6.5,
+            "balance_error": 0.0
+          },
+          {
+            "komi": 3.5,
+            "black_win_rate": 0.0,
+            "avg_black_margin": -27.5,
+            "balance_error": 0.5
+          },
+          {
+            "komi": 4.5,
+            "black_win_rate": 0.5,
+            "avg_black_margin": 3.5,
+            "balance_error": 0.0
+          }
+        ]
+      },
+      "training": [
+        {
+          "epoch": 1,
+          "loss": 3.176695793867111,
+          "accuracy": 0.031901041666666664,
+          "samples": 244,
+          "replay_size": 244,
+          "train_size": 1952,
+          "avg_moves": 61.0
+        },
+        {
+          "epoch": 2,
+          "loss": 3.1409125377734504,
+          "accuracy": 0.052734375,
+          "samples": 249,
+          "replay_size": 493,
+          "train_size": 3944,
+          "avg_moves": 62.25
+        }
+      ],
+      "match": {
+        "games": 10,
+        "candidate_wins": 7,
+        "candidate_win_rate": 0.7,
+        "candidate_avg_margin": 9.2,
+        "candidate_black_games": 5,
+        "candidate_black_wins": 3,
+        "candidate_black_win_rate": 0.6,
+        "candidate_white_games": 5,
+        "candidate_white_wins": 4,
+        "candidate_white_win_rate": 0.8,
+        "black_wins": 4,
+        "black_win_rate": 0.4,
+        "avg_black_margin": -1.5,
+        "avg_moves": 59.4
+      },
+      "elo_delta": 147.19071411783773,
+      "cumulative_elo": 147.19071411783773,
+      "candidate_path": "reports\\7x7-ladder\\models\\candidate-attempt-001.pt",
+      "champion_path": "reports\\7x7-ladder\\models\\generation-001.pt"
+    },
+    {
+      "attempt": 2,
+      "from_generation": 1,
+      "to_generation": 2,
+      "accepted": true,
+      "komi": 1.5,
+      "calibration": {
+        "komi": 1.5,
+        "enabled": true,
+        "candidates": [
+          {
+            "komi": 0.5,
+            "black_win_rate": 1.0,
+            "avg_black_margin": 34.5,
+            "balance_error": 0.5
+          },
+          {
+            "komi": 1.5,
+            "black_win_rate": 0.5,
+            "avg_black_margin": -0.5,
+            "balance_error": 0.0
+          },
+          {
+            "komi": 2.5,
+            "black_win_rate": 1.0,
+            "avg_black_margin": 12.5,
+            "balance_error": 0.5
+          },
+          {
+            "komi": 3.5,
+            "black_win_rate": 0.0,
+            "avg_black_margin": -12.5,
+            "balance_error": 0.5
+          },
+          {
+            "komi": 4.5,
+            "black_win_rate": 0.5,
+            "avg_black_margin": 0.5,
+            "balance_error": 0.0
+          }
+        ]
+      },
+      "training": [
+        {
+          "epoch": 1,
+          "loss": 3.0935438573360443,
+          "accuracy": 0.06315104166666667,
+          "samples": 308,
+          "replay_size": 801,
+          "train_size": 6408,
+          "avg_moves": 77.0
+        },
+        {
+          "epoch": 2,
+          "loss": 3.081467146674792,
+          "accuracy": 0.05859375,
+          "samples": 256,
+          "replay_size": 1057,
+          "train_size": 8456,
+          "avg_moves": 64.0
+        }
+      ],
+      "match": {
+        "games": 10,
+        "candidate_wins": 7,
+        "candidate_win_rate": 0.7,
+        "candidate_avg_margin": 17.2,
+        "candidate_black_games": 5,
+        "candidate_black_wins": 5,
+        "candidate_black_win_rate": 1.0,
+        "candidate_white_games": 5,
+        "candidate_white_wins": 2,
+        "candidate_white_win_rate": 0.4,
+        "black_wins": 8,
+        "black_win_rate": 0.8,
+        "avg_black_margin": 15.1,
+        "avg_moves": 69.5
+      },
+      "elo_delta": 147.19071411783773,
+      "cumulative_elo": 294.38142823567546,
+      "candidate_path": "reports\\7x7-ladder\\models\\candidate-attempt-002.pt",
+      "champion_path": "reports\\7x7-ladder\\models\\generation-002.pt"
+    }
+  ],
+  "summary": {
+    "accepted_generations": 2,
+    "attempts": 2,
+    "target_generations": 2,
+    "final_elo": 294.38142823567546,
+    "gate_win_rate": 0.55
+  },
+  "generated_at": "2026-04-28T18:29:44"
+}

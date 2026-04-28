@@ -14,6 +14,7 @@ from alphago_weak.dataset import GameArchive
 from alphago_weak.gtp import GTPClientBase
 from alphago_weak.gtp.gtp_alphago_weak import GTPAlphaGoWeakV0
 from alphago_weak.model.alpha_go_weak import AlphaGoWeak
+from alphago_weak.zero_ladder import ZeroLadderConfig, run_zero_ladder
 from alphago_weak.zero_report import ZeroReportConfig, run_zero_report
 
 VERSION = "AlphaGo Weak v1.0"
@@ -323,6 +324,132 @@ def zero_report(
         raise click.ClickException(f"zero report failed: {exc}") from exc
     typer.echo(f"Wrote {output}")
     typer.echo(f"Checkpoints: {', '.join(str(stage['epoch']) for stage in report['stages'])}")
+
+
+@app.command("zero-ladder")
+def zero_ladder(
+    ctx: typer.Context,
+    output: Path = typer.Option(Path("reports/7x7-ladder/index.html"), "--output", "-o", help="HTML ladder report output path."),
+    board_size: int = typer.Option(7, "--board-size", "--board_size", help="Go board size for ladder training."),
+    komi: float = typer.Option(2.5, "--komi", help="Base komi before relative calibration."),
+    generations: int = typer.Option(20, "--generations", help="Accepted champion generations to advance."),
+    max_attempts: Optional[int] = typer.Option(None, "--max-attempts", "--max_attempts", help="Maximum candidate attempts before stopping."),
+    candidate_epochs: int = typer.Option(2, "--candidate-epochs", "--candidate_epochs", help="Self-play training epochs per candidate attempt."),
+    steps: int = typer.Option(4, "--steps", help="Self-play games per candidate epoch."),
+    simulations: int = typer.Option(12, "--simulations", help="MCTS simulations per self-play move."),
+    max_moves: int = typer.Option(98, "--max-moves", "--max_moves", help="Maximum moves per self-play or evaluation game."),
+    eval_games: int = typer.Option(20, "--eval-games", "--eval_games", help="Paired games for candidate vs champion gating."),
+    eval_simulations: int = typer.Option(8, "--eval-simulations", "--eval_simulations", help="MCTS simulations per model move during gating."),
+    eval_opening_moves: int = typer.Option(4, "--eval-opening-moves", "--eval_opening_moves", help="Random opening plies before paired evaluation."),
+    gate_win_rate: float = typer.Option(0.55, "--gate-win-rate", "--gate_win_rate", help="Candidate win rate required to advance."),
+    calibrate_komi: bool = typer.Option(True, "--calibrate-komi/--fixed-komi", help="Choose relative komi from same-generation color balance."),
+    komi_window: int = typer.Option(2, "--komi-window", "--komi_window", help="Number of komi steps to test on each side of base komi."),
+    komi_step: float = typer.Option(1.0, "--komi-step", "--komi_step", help="Komi spacing for relative calibration."),
+    komi_eval_games: int = typer.Option(6, "--komi-eval-games", "--komi_eval_games", help="Same-generation games per komi candidate."),
+    train_batch_size: int = typer.Option(32, "--train-batch-size", "--train_batch_size", help="Replay training batch size."),
+    train_steps: int = typer.Option(96, "--train-steps", "--train_steps", help="Maximum replay training batches per candidate epoch."),
+    replay_buffer_size: int = typer.Option(8192, "--replay-buffer-size", "--replay_buffer_size", help="Maximum accepted replay positions retained."),
+    learning_rate: float = typer.Option(0.001, "--learning-rate", "--learning_rate", help="Candidate optimizer learning rate."),
+    optimizer_name: str = typer.Option("adam", "--optimizer", help="Replay optimizer. Choices: sgd, adam."),
+    augment_training: bool = typer.Option(True, "--augment/--no-augment", help="Use 8-way board symmetry augmentation for replay training."),
+    num_filters: int = typer.Option(16, "--num-filters", "--num_filters", help="Network filter count for ladder training."),
+    workers: int = typer.Option(4, "--workers", help="Worker processes for self-play game generation."),
+    inference_batch_size: int = typer.Option(16, "--inference-batch-size", "--inference_batch_size", help="MCTS leaf evaluations to batch per model call."),
+    self_play_device: str = typer.Option("auto", "--self-play-device", "--self_play_device", help="Self-play inference device. Choices: auto, cpu, cuda."),
+    shared_inference: bool = typer.Option(True, "--shared-inference/--no-shared-inference", help="Share one CUDA inference server across self-play workers."),
+    seed: int = typer.Option(7, "--seed", help="Random seed."),
+    force: bool = typer.Option(False, "--force", help="Delete the ladder work directory before running."),
+):
+    """Train AlphaGo Zero-style candidates and gate them through a champion Elo ladder."""
+    if board_size <= 1:
+        raise click.BadParameter("board-size must be greater than one")
+    if generations < 0:
+        raise click.BadParameter("generations must be non-negative")
+    if max_attempts is not None and max_attempts < generations:
+        raise click.BadParameter("max-attempts must be greater than or equal to generations")
+    if candidate_epochs <= 0 or steps <= 0 or simulations <= 0 or max_moves <= 0:
+        raise click.BadParameter("candidate-epochs, steps, simulations, and max-moves must be positive")
+    if eval_games < 0 or eval_simulations <= 0 or eval_opening_moves < 0:
+        raise click.BadParameter("evaluation settings are invalid")
+    if generations > 0 and eval_games <= 0:
+        raise click.BadParameter("eval-games must be positive when generations is greater than zero")
+    if not 0 < gate_win_rate < 1:
+        raise click.BadParameter("gate-win-rate must be between zero and one")
+    if komi_window < 0 or komi_step <= 0 or komi_eval_games < 0:
+        raise click.BadParameter("komi calibration settings are invalid")
+    if train_batch_size <= 0 or train_steps <= 0 or replay_buffer_size <= 0:
+        raise click.BadParameter("training sizes must be positive")
+    if workers <= 0:
+        raise click.BadParameter("workers must be positive")
+    if inference_batch_size <= 0:
+        raise click.BadParameter("inference-batch-size must be greater than zero")
+    if self_play_device not in {"auto", "cpu", "cuda"}:
+        raise click.BadParameter("self-play-device must be one of: auto, cpu, cuda")
+    if optimizer_name not in {"sgd", "adam"}:
+        raise click.BadParameter("optimizer must be one of: sgd, adam")
+
+    def show_progress(event):
+        if event["event"] == "attempt_start":
+            typer.echo(f"attempt {event['attempt']}: current generation {event['accepted']}/{event['target']}")
+        elif event["event"] == "komi":
+            typer.echo(f"attempt {event['attempt']}: relative komi {event['komi']:.2f}")
+        elif event["event"] == "epoch":
+            typer.echo(
+                f"attempt {event['attempt']} epoch {event['epoch']}: "
+                f"loss={event['loss']:.4f}, acc={event['accuracy']:.1%}, samples={event['samples']}"
+            )
+        elif event["event"] == "attempt_result":
+            status = "accepted" if event["accepted"] else "rejected"
+            typer.echo(
+                f"attempt {event['attempt']}: {status}, win={event['candidate_win_rate']:.1%}, "
+                f"elo_delta={event['elo_delta']:+.1f}, elo={event['cumulative_elo']:.1f}"
+            )
+
+    try:
+        report = run_zero_ladder(
+            ZeroLadderConfig(
+                root=_root(ctx),
+                output=output,
+                board_size=board_size,
+                komi=komi,
+                generations=generations,
+                max_attempts=max_attempts,
+                candidate_epochs=candidate_epochs,
+                games_per_epoch=steps,
+                simulations=simulations,
+                max_moves=max_moves,
+                eval_games=eval_games,
+                eval_simulations=eval_simulations,
+                eval_opening_moves=eval_opening_moves,
+                gate_win_rate=gate_win_rate,
+                calibrate_komi=calibrate_komi,
+                komi_window=komi_window,
+                komi_step=komi_step,
+                komi_eval_games=komi_eval_games,
+                train_batch_size=train_batch_size,
+                train_steps=train_steps,
+                replay_buffer_size=replay_buffer_size,
+                learning_rate=learning_rate,
+                optimizer_name=optimizer_name,
+                augment_training=augment_training,
+                num_filters=num_filters,
+                workers=workers,
+                inference_batch_size=inference_batch_size,
+                self_play_device=self_play_device,
+                shared_inference=shared_inference,
+                seed=seed,
+                force=force,
+            ),
+            progress_callback=show_progress,
+        )
+    except Exception as exc:
+        raise click.ClickException(f"zero ladder failed: {exc}") from exc
+    typer.echo(f"Wrote {output}")
+    typer.echo(
+        f"Accepted generations: {report['summary']['accepted_generations']}/"
+        f"{report['summary']['target_generations']} in {report['summary']['attempts']} attempts"
+    )
+    typer.echo(f"Final Elo: {report['summary']['final_elo']:.1f}")
 
 
 @app.command()

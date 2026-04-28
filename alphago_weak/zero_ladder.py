@@ -1,0 +1,599 @@
+# -*- coding: utf-8 -*-
+
+import copy
+import html
+import json
+import math
+import random
+import shutil
+from collections import deque
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+
+import numpy as np
+import torch
+
+from alphago_weak.board import GoBoard, GoPlayer
+from alphago_weak.dataset import GameData
+from alphago_weak.gtp.gtp_alphago_weak import GTPAlphaGoWeakV0
+from alphago_weak.model.alpha_go_weak import AlphaGoWeakV0
+from alphago_weak.model.mcts import GoMCTSTree
+from alphago_weak.zero_report import (
+    ZeroReportConfig,
+    augment_samples,
+    json_default,
+    load_snapshot,
+    play_random_opening,
+    resolve_torch_device,
+    run_parallel_self_play,
+    set_seed,
+    snapshot_state,
+)
+
+
+@dataclass
+class ZeroLadderConfig:
+    root: Path
+    output: Path
+    board_size: int = 7
+    komi: float = 2.5
+    generations: int = 20
+    max_attempts: Optional[int] = None
+    candidate_epochs: int = 2
+    games_per_epoch: int = 4
+    simulations: int = 12
+    max_moves: int = 98
+    eval_games: int = 20
+    eval_simulations: int = 8
+    eval_opening_moves: int = 4
+    gate_win_rate: float = 0.55
+    calibrate_komi: bool = True
+    komi_window: int = 2
+    komi_step: float = 1.0
+    komi_eval_games: int = 6
+    train_batch_size: int = 32
+    train_steps: int = 96
+    replay_buffer_size: int = 8192
+    learning_rate: float = 0.001
+    optimizer_name: str = "adam"
+    augment_training: bool = True
+    num_filters: int = 16
+    workers: int = 4
+    inference_batch_size: int = 16
+    self_play_device: str = "auto"
+    shared_inference: bool = True
+    seed: int = 7
+    force: bool = False
+
+
+def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
+    set_seed(config.seed)
+    work_root = config.root / f"zero-ladder-{config.board_size}x{config.board_size}"
+    if work_root.exists():
+        if not config.force:
+            raise FileExistsError(f"{work_root} already exists; pass --force to rerun from scratch")
+        shutil.rmtree(work_root)
+    work_root.mkdir(parents=True, exist_ok=True)
+    config.output.parent.mkdir(parents=True, exist_ok=True)
+    model_dir = config.output.parent / "models"
+    sgf_dir = config.output.parent / "sgf"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    sgf_dir.mkdir(parents=True, exist_ok=True)
+
+    device = resolve_torch_device(config.self_play_device)
+    bot = GTPAlphaGoWeakV0(
+        config.board_size,
+        config.komi,
+        root=str(work_root),
+        num_filters=config.num_filters,
+        device=device,
+        inference_batch_size=config.inference_batch_size,
+    )
+    champion_state = snapshot_state(bot.model)
+    save_snapshot_file(model_dir / "generation-000.pt", champion_state, config, generation=0, elo=0.0)
+
+    accepted = 0
+    attempt = 0
+    cumulative_elo = 0.0
+    replay_buffer = deque(maxlen=config.replay_buffer_size)
+    records: List[Dict[str, Any]] = []
+    generation_paths = [{"generation": 0, "elo": 0.0, "path": str(model_dir / "generation-000.pt")}]
+    max_attempts = config.max_attempts if config.max_attempts is not None else max(config.generations * 3, config.generations)
+    worker_count = min(max(config.workers, 1), max(config.games_per_epoch, 1))
+    executor = ProcessPoolExecutor(max_workers=worker_count) if worker_count > 1 and config.generations > 0 else None
+
+    try:
+        while accepted < config.generations and attempt < max_attempts:
+            attempt += 1
+            report_progress(progress_callback, {"event": "attempt_start", "attempt": attempt, "accepted": accepted, "target": config.generations})
+            calibration = calibrate_relative_komi(champion_state, config, work_root, config.seed + attempt * 100000)
+            report_progress(progress_callback, {"event": "komi", "attempt": attempt, "komi": calibration["komi"]})
+            generation_config = to_zero_report_config(config, calibration["komi"])
+            candidate = GTPAlphaGoWeakV0(
+                config.board_size,
+                calibration["komi"],
+                root=str(work_root),
+                num_filters=config.num_filters,
+                device=device,
+                inference_batch_size=config.inference_batch_size,
+            )
+            load_snapshot(candidate.model, champion_state)
+            optimizer = candidate.model.make_optimizer(config.learning_rate, optimizer=config.optimizer_name)
+            attempt_buffer = deque(replay_buffer, maxlen=config.replay_buffer_size)
+            training_metrics: List[Dict[str, Any]] = []
+
+            for epoch in range(1, config.candidate_epochs + 1):
+                games: List[GameData] = []
+                epoch_seed = config.seed + attempt * 1000 + epoch
+                if executor is None:
+                    inputs, policies, values = candidate.self_play(
+                        count=config.games_per_epoch,
+                        simulations=config.simulations,
+                        max_moves=config.max_moves,
+                        inference_batch_size=config.inference_batch_size,
+                        game_recorder=lambda _idx, game: games.append(game),
+                    )
+                else:
+                    inputs, policies, values, games = run_parallel_self_play(
+                        generation_config,
+                        work_root,
+                        snapshot_state(candidate.model),
+                        epoch_seed,
+                        executor,
+                        worker_count,
+                    )
+                attempt_buffer.extend(zip(inputs, policies, values))
+                train_inputs, train_policies, train_values = samples_to_arrays(attempt_buffer)
+                if config.augment_training:
+                    train_inputs, train_policies, train_values = augment_samples(train_inputs, train_policies, train_values, config.board_size)
+                dataset = candidate.model.dataset_from_arrays(train_inputs, train_policies, train_values)
+                loss, accuracy = candidate.model.fit_step_from_dataset(
+                    dataset,
+                    batch_size=config.train_batch_size,
+                    max_batches=config.train_steps,
+                    optimizer=optimizer,
+                    learning_rate=config.learning_rate,
+                )
+                if games:
+                    games[0].to_sgf(str(sgf_dir / f"attempt-{attempt:03d}-epoch-{epoch:03d}.sgf"))
+                training_metrics.append(
+                    {
+                        "epoch": epoch,
+                        "loss": loss,
+                        "accuracy": accuracy,
+                        "samples": len(inputs),
+                        "replay_size": len(attempt_buffer),
+                        "train_size": len(train_inputs),
+                        "avg_moves": float(np.mean([len(game.sequence) for game in games])) if games else 0.0,
+                    }
+                )
+                report_progress(
+                    progress_callback,
+                    {
+                        "event": "epoch",
+                        "attempt": attempt,
+                        "epoch": epoch,
+                        "loss": loss,
+                        "accuracy": accuracy,
+                        "samples": len(inputs),
+                    },
+                )
+
+            candidate_state = snapshot_state(candidate.model)
+            match = evaluate_generation_match(
+                candidate_state,
+                champion_state,
+                generation_config,
+                work_root,
+                config.seed + attempt * 100000 + 50000,
+            )
+            elo_delta = elo_delta_from_win_rate(match["candidate_win_rate"])
+            accepted_candidate = match["candidate_win_rate"] >= config.gate_win_rate
+            candidate_path = model_dir / f"candidate-attempt-{attempt:03d}.pt"
+            save_snapshot_file(candidate_path, candidate_state, config, generation=accepted + 1, elo=cumulative_elo + elo_delta)
+
+            if accepted_candidate:
+                accepted += 1
+                cumulative_elo += elo_delta
+                champion_state = candidate_state
+                replay_buffer = attempt_buffer
+                champion_path = model_dir / f"generation-{accepted:03d}.pt"
+                save_snapshot_file(champion_path, champion_state, config, generation=accepted, elo=cumulative_elo)
+                generation_paths.append({"generation": accepted, "elo": cumulative_elo, "path": str(champion_path)})
+            else:
+                champion_path = None
+
+            records.append(
+                {
+                    "attempt": attempt,
+                    "from_generation": accepted - 1 if accepted_candidate else accepted,
+                    "to_generation": accepted if accepted_candidate else None,
+                    "accepted": accepted_candidate,
+                    "komi": calibration["komi"],
+                    "calibration": calibration,
+                    "training": training_metrics,
+                    "match": match,
+                    "elo_delta": elo_delta,
+                    "cumulative_elo": cumulative_elo,
+                    "candidate_path": str(candidate_path),
+                    "champion_path": str(champion_path) if champion_path is not None else None,
+                }
+            )
+            report_progress(
+                progress_callback,
+                {
+                    "event": "attempt_result",
+                    "attempt": attempt,
+                    "accepted": accepted_candidate,
+                    "accepted_generations": accepted,
+                    "candidate_win_rate": match["candidate_win_rate"],
+                    "elo_delta": elo_delta,
+                    "cumulative_elo": cumulative_elo,
+                },
+            )
+    finally:
+        if executor is not None:
+            executor.shutdown()
+
+    report = {
+        "config": config_to_dict(config, work_root),
+        "generations": generation_paths,
+        "attempts": records,
+        "summary": {
+            "accepted_generations": accepted,
+            "attempts": attempt,
+            "target_generations": config.generations,
+            "final_elo": cumulative_elo,
+            "gate_win_rate": config.gate_win_rate,
+        },
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    (config.output.parent / "metrics.json").write_text(json.dumps(report, default=json_default, indent=2), encoding="utf-8")
+    config.output.write_text(render_ladder_report(report), encoding="utf-8")
+    return report
+
+
+def samples_to_arrays(samples: Sequence[Tuple[np.ndarray, np.ndarray, np.ndarray]]):
+    return [sample[0] for sample in samples], [sample[1] for sample in samples], [sample[2] for sample in samples]
+
+
+def report_progress(progress_callback: Optional[Callable[[Dict[str, Any]], None]], event: Dict[str, Any]):
+    if progress_callback is not None:
+        progress_callback(event)
+
+
+def to_zero_report_config(config: ZeroLadderConfig, komi: float) -> ZeroReportConfig:
+    return ZeroReportConfig(
+        root=config.root,
+        output=config.output,
+        board_size=config.board_size,
+        komi=komi,
+        epochs=config.candidate_epochs,
+        games_per_epoch=config.games_per_epoch,
+        simulations=config.simulations,
+        max_moves=config.max_moves,
+        eval_games=config.eval_games,
+        eval_simulations=config.eval_simulations,
+        eval_opening_moves=config.eval_opening_moves,
+        train_batch_size=config.train_batch_size,
+        train_steps=config.train_steps,
+        replay_buffer_size=config.replay_buffer_size,
+        learning_rate=config.learning_rate,
+        optimizer_name=config.optimizer_name,
+        augment_training=config.augment_training,
+        num_filters=config.num_filters,
+        workers=config.workers,
+        inference_batch_size=config.inference_batch_size,
+        self_play_device=config.self_play_device,
+        shared_inference=config.shared_inference,
+        seed=config.seed,
+        force=config.force,
+    )
+
+
+def config_to_dict(config: ZeroLadderConfig, work_root: Path) -> Dict[str, Any]:
+    data = {key: value for key, value in config.__dict__.items() if key not in {"root", "output"}}
+    data["root"] = str(config.root)
+    data["work_root"] = str(work_root)
+    data["output"] = str(config.output)
+    data["device"] = resolve_torch_device(config.self_play_device)
+    return data
+
+
+def save_snapshot_file(path: Path, state: Dict[str, torch.Tensor], config: ZeroLadderConfig, generation: int, elo: float):
+    torch.save(
+        {
+            "model_state_dict": copy.deepcopy(state),
+            "size": config.board_size,
+            "num_filters": config.num_filters,
+            "generation": generation,
+            "elo": elo,
+        },
+        path,
+    )
+
+
+def elo_delta_from_win_rate(win_rate: float) -> float:
+    p = min(max(float(win_rate), 1e-6), 1.0 - 1e-6)
+    return 400.0 * math.log10(p / (1.0 - p))
+
+
+def calibrate_relative_komi(state: Dict[str, torch.Tensor], config: ZeroLadderConfig, work_root: Path, seed: int) -> Dict[str, Any]:
+    if not config.calibrate_komi or config.komi_eval_games <= 0:
+        return {"komi": config.komi, "enabled": False, "candidates": []}
+    candidates = []
+    for idx, offset in enumerate(range(-config.komi_window, config.komi_window + 1)):
+        komi = config.komi + offset * config.komi_step
+        eval_config = to_zero_report_config(config, komi)
+        eval_config.eval_games = config.komi_eval_games
+        result = evaluate_generation_match(state, state, eval_config, work_root, seed + idx)
+        candidates.append(
+            {
+                "komi": komi,
+                "black_win_rate": result["black_win_rate"],
+                "avg_black_margin": result["avg_black_margin"],
+                "balance_error": abs(result["black_win_rate"] - 0.5),
+            }
+        )
+    best = min(candidates, key=lambda item: (item["balance_error"], abs(item["avg_black_margin"])))
+    return {"komi": best["komi"], "enabled": True, "candidates": candidates}
+
+
+def evaluate_generation_match(candidate_state: Dict[str, torch.Tensor], baseline_state: Dict[str, torch.Tensor],
+                              config: ZeroReportConfig, work_root: Path, seed: int) -> Dict[str, Any]:
+    if config.eval_games <= 0:
+        return empty_match_result()
+    device = resolve_torch_device(config.self_play_device)
+    candidate = AlphaGoWeakV0(
+        name="zero_ladder_candidate",
+        root=str(work_root),
+        size=config.board_size,
+        num_filters=config.num_filters,
+        device=device,
+    )
+    baseline = AlphaGoWeakV0(
+        name="zero_ladder_baseline",
+        root=str(work_root),
+        size=config.board_size,
+        num_filters=config.num_filters,
+        device=device,
+    )
+    load_snapshot(candidate, candidate_state)
+    load_snapshot(baseline, baseline_state)
+    set_seed(seed)
+    rng = np.random.default_rng(seed)
+    py_rng = random.Random(seed)
+    candidate_wins = 0
+    candidate_black_games = 0
+    candidate_black_wins = 0
+    candidate_white_games = 0
+    candidate_white_wins = 0
+    black_wins = 0
+    candidate_margins: List[float] = []
+    black_margins: List[float] = []
+    lengths: List[int] = []
+    played_games = 0
+
+    while played_games < config.eval_games:
+        opening_board = GoBoard(config.board_size)
+        next_player, opening_passes, opening_length = play_random_opening(
+            opening_board,
+            config.eval_opening_moves,
+            GoPlayer.black,
+            py_rng,
+        )
+        for candidate_player in shuffled_players(rng):
+            if played_games >= config.eval_games:
+                break
+            board = opening_board.copy()
+            player = next_player
+            consecutive_passes = opening_passes
+            moves = opening_length
+            candidate_tree = GoMCTSTree(
+                board,
+                candidate.state_calculator,
+                candidate.policy_evaluator,
+                candidate.value_evaluator,
+                player=player,
+                komi=config.komi,
+                batch_state_calculator=candidate.state_calculator_batch,
+            )
+            baseline_tree = GoMCTSTree(
+                board,
+                baseline.state_calculator,
+                baseline.policy_evaluator,
+                baseline.value_evaluator,
+                player=player,
+                komi=config.komi,
+                batch_state_calculator=baseline.state_calculator_batch,
+            )
+            while consecutive_passes < 2 and moves < config.max_moves:
+                if player == candidate_player:
+                    pos = candidate_tree.evaluate(
+                        player,
+                        num=config.eval_simulations,
+                        temperature=0.0,
+                        dirichlet_alpha=0.0,
+                        inference_batch_size=config.inference_batch_size,
+                    )
+                else:
+                    pos = baseline_tree.evaluate(
+                        player,
+                        num=config.eval_simulations,
+                        temperature=0.0,
+                        dirichlet_alpha=0.0,
+                        inference_batch_size=config.inference_batch_size,
+                    )
+                board.play(player, pos)
+                candidate_tree.play(player, pos)
+                baseline_tree.play(player, pos)
+                consecutive_passes = consecutive_passes + 1 if pos is None else 0
+                player = player.other
+                moves += 1
+            black_margin = board.score(GoPlayer.black, config.komi)
+            winner = GoPlayer.black if black_margin > 0 else GoPlayer.white
+            candidate_won = winner == candidate_player
+            candidate_wins += int(candidate_won)
+            black_wins += int(winner == GoPlayer.black)
+            if candidate_player == GoPlayer.black:
+                candidate_black_games += 1
+                candidate_black_wins += int(candidate_won)
+                candidate_margins.append(black_margin)
+            else:
+                candidate_white_games += 1
+                candidate_white_wins += int(candidate_won)
+                candidate_margins.append(-black_margin)
+            black_margins.append(black_margin)
+            lengths.append(moves)
+            played_games += 1
+
+    return {
+        "games": config.eval_games,
+        "candidate_wins": candidate_wins,
+        "candidate_win_rate": candidate_wins / config.eval_games,
+        "candidate_avg_margin": float(np.mean(candidate_margins)),
+        "candidate_black_games": candidate_black_games,
+        "candidate_black_wins": candidate_black_wins,
+        "candidate_black_win_rate": candidate_black_wins / candidate_black_games if candidate_black_games else 0.0,
+        "candidate_white_games": candidate_white_games,
+        "candidate_white_wins": candidate_white_wins,
+        "candidate_white_win_rate": candidate_white_wins / candidate_white_games if candidate_white_games else 0.0,
+        "black_wins": black_wins,
+        "black_win_rate": black_wins / config.eval_games,
+        "avg_black_margin": float(np.mean(black_margins)),
+        "avg_moves": float(np.mean(lengths)),
+    }
+
+
+def shuffled_players(rng: np.random.Generator) -> Tuple[GoPlayer, GoPlayer]:
+    return (GoPlayer.black, GoPlayer.white) if bool(rng.integers(0, 2)) else (GoPlayer.white, GoPlayer.black)
+
+
+def empty_match_result() -> Dict[str, Any]:
+    return {
+        "games": 0,
+        "candidate_wins": 0,
+        "candidate_win_rate": 0.0,
+        "candidate_avg_margin": 0.0,
+        "candidate_black_games": 0,
+        "candidate_black_wins": 0,
+        "candidate_black_win_rate": 0.0,
+        "candidate_white_games": 0,
+        "candidate_white_wins": 0,
+        "candidate_white_win_rate": 0.0,
+        "black_wins": 0,
+        "black_win_rate": 0.0,
+        "avg_black_margin": 0.0,
+        "avg_moves": 0.0,
+    }
+
+
+def render_ladder_report(report: Dict[str, Any]) -> str:
+    config = report["config"]
+    summary = report["summary"]
+    rows = "\n".join(render_attempt_row(attempt) for attempt in report["attempts"])
+    chart = render_elo_chart(report["generations"])
+    return f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AlphaGo Weak Zero Ladder</title>
+<style>
+body {{ margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17202a; background: #f7f8fa; }}
+header {{ padding: 28px 36px; background: #111827; color: white; }}
+main {{ max-width: 1180px; margin: 0 auto; padding: 26px 18px 48px; }}
+h1, h2 {{ margin: 0 0 12px; }}
+p {{ line-height: 1.55; }}
+.grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }}
+.card {{ background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }}
+.metric {{ font-size: 28px; font-weight: 700; }}
+table {{ width: 100%; border-collapse: collapse; background: white; border: 1px solid #e2e8f0; }}
+th, td {{ padding: 9px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }}
+th {{ background: #eef2f7; }}
+.accepted {{ color: #12783a; font-weight: 700; }}
+.rejected {{ color: #a33a2f; font-weight: 700; }}
+.note {{ color: #526071; }}
+code {{ background: #eef2f7; padding: 2px 5px; border-radius: 4px; }}
+</style>
+</head>
+<body>
+<header>
+<h1>AlphaGo Weak Zero Ladder</h1>
+<p>代际晋级训练报告。生成时间：{html.escape(report['generated_at'])}</p>
+</header>
+<main>
+<section class="grid">
+<div class="card"><div class="note">棋盘</div><div class="metric">{config['board_size']}x{config['board_size']}</div></div>
+<div class="card"><div class="note">目标晋级</div><div class="metric">{summary['target_generations']}</div></div>
+<div class="card"><div class="note">实际晋级</div><div class="metric">{summary['accepted_generations']}</div></div>
+<div class="card"><div class="note">最终 Elo</div><div class="metric">{summary['final_elo']:.1f}</div></div>
+<div class="card"><div class="note">晋级阈值</div><div class="metric">{summary['gate_win_rate']:.0%}</div></div>
+<div class="card"><div class="note">设备</div><div class="metric">{html.escape(config['device'])}</div></div>
+</section>
+<section class="card" style="margin-top:16px">
+<h2>方法</h2>
+<p>每个候选模型从当前 champion 权重初始化，使用自身 self-play 生成样本并训练；随后和上一代 champion 做配对换先评估。候选胜率达到阈值才晋级为下一代，并按胜率换算 Elo 增量。报告不使用随机 bot 作为主指标。</p>
+<p>相对贴目通过 champion 对自身的同代评估选择，使黑棋胜率尽量接近 50%。这样候选胜率主要反映模型差异，而不是固定贴目带来的颜色偏差。</p>
+</section>
+<section class="card" style="margin-top:16px">
+<h2>Elo 曲线</h2>
+{chart}
+</section>
+<section class="card" style="margin-top:16px">
+<h2>代际尝试</h2>
+<table><thead><tr><th>Attempt</th><th>结果</th><th>晋级</th><th>Komi</th><th>候选胜率</th><th>候选黑/白</th><th>同代黑胜率</th><th>Elo Δ</th><th>累计 Elo</th><th>Loss / Acc</th></tr></thead><tbody>{rows}</tbody></table>
+</section>
+</main>
+</body>
+</html>
+"""
+
+
+def render_attempt_row(attempt: Dict[str, Any]) -> str:
+    match = attempt["match"]
+    last_train = attempt["training"][-1] if attempt["training"] else {"loss": 0.0, "accuracy": 0.0}
+    status = "通过" if attempt["accepted"] else "拒绝"
+    status_class = "accepted" if attempt["accepted"] else "rejected"
+    to_generation = attempt["to_generation"] if attempt["to_generation"] is not None else "-"
+    same_gen_black = attempt["calibration"]["candidates"]
+    same_gen_black_rate = min(same_gen_black, key=lambda item: abs(item["komi"] - attempt["komi"]))["black_win_rate"] if same_gen_black else 0.0
+    return (
+        f"<tr><td>{attempt['attempt']}</td><td class=\"{status_class}\">{status}</td><td>{to_generation}</td>"
+        f"<td>{attempt['komi']:.2f}</td><td>{match['candidate_win_rate']:.0%}</td>"
+        f"<td>{match['candidate_black_win_rate']:.0%} / {match['candidate_white_win_rate']:.0%}</td>"
+        f"<td>{same_gen_black_rate:.0%}</td><td>{attempt['elo_delta']:+.1f}</td>"
+        f"<td>{attempt['cumulative_elo']:.1f}</td><td>{last_train['loss']:.4f} / {last_train['accuracy']:.1%}</td></tr>"
+    )
+
+
+def render_elo_chart(generations: Sequence[Dict[str, Any]]) -> str:
+    if not generations:
+        return "<p>暂无晋级数据。</p>"
+    width, height, pad = 720, 220, 34
+    elos = [row["elo"] for row in generations]
+    min_elo = min(min(elos), 0.0)
+    max_elo = max(max(elos), 1.0)
+    span = max(max_elo - min_elo, 1.0)
+
+    def point(idx: int, value: float) -> Tuple[float, float]:
+        x = pad + idx * (width - pad * 2) / max(len(generations) - 1, 1)
+        y = height - pad - ((value - min_elo) / span) * (height - pad * 2)
+        return x, y
+
+    points = " ".join(f"{x:.1f},{y:.1f}" for x, y in (point(idx, row["elo"]) for idx, row in enumerate(generations)))
+    labels = "".join(
+        f'<text x="{point(idx, row["elo"])[0]:.1f}" y="{height - 8}" font-size="11" text-anchor="middle">{row["generation"]}</text>'
+        for idx, row in enumerate(generations)
+    )
+    return f"""<svg viewBox="0 0 {width} {height}" style="width:100%;max-width:{width}px">
+<rect x="0" y="0" width="{width}" height="{height}" fill="#ffffff"/>
+<line x1="{pad}" y1="{height-pad}" x2="{width-pad}" y2="{height-pad}" stroke="#9aa4b2"/>
+<line x1="{pad}" y1="{pad}" x2="{pad}" y2="{height-pad}" stroke="#9aa4b2"/>
+<polyline points="{points}" fill="none" stroke="#1d7f5f" stroke-width="3"/>
+{labels}
+<text x="{pad}" y="20" font-size="13" fill="#1d7f5f">accepted generation Elo</text>
+</svg>"""
