@@ -5,7 +5,7 @@
   Small-board self-play, MCTS, GTP bots, SGF data tools, and bilingual HTML reports.
 </p>
 
-AlphaGo Weak 是一个用于学习和实验的围棋程序。它不是论文级复现，而是一个能在本地跑通的研究脚手架：先在 7x7/9x9 小棋盘验证规则、搜索、训练和测评，再逐步放大实验规模。
+AlphaGo Weak 是一个用于学习和实验的围棋程序。它不是论文级复现，而是一个能在本地跑通的研究脚手架：当前重点是在 7x7 小棋盘上把规则、搜索、训练、测评和报告链路做扎实。
 
 ## What It Does
 
@@ -111,9 +111,9 @@ Fresh reports also include MCTS policy-target entropy and value-target statistic
 ```powershell
 alphago download --type u-go
 alphago train --init 4096 --epochs 1
-alphago self-play --board-size 9 --steps 4 --epochs 10 --simulations 32
+alphago self-play --board-size 7 --steps 4 --epochs 10 --simulations 32
 alphago zero-report --force
-alphago zero-ladder --generations 10 --force
+alphago zero-ladder --generations 10 --candidate-epochs 3 --gate-training-rounds 4 --eval-games 20 --gate-recheck-games 20 --force
 ```
 
 `self-play` continues from the same `--root` weights and saves after every epoch. `--inference-batch-size` batches MCTS leaf positions before neural-network inference, which is important for CUDA utilization.
