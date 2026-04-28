@@ -359,6 +359,7 @@ def zero_ladder(
     shared_inference: bool = typer.Option(True, "--shared-inference/--no-shared-inference", help="Share one CUDA inference server across self-play workers."),
     seed: int = typer.Option(7, "--seed", help="Random seed."),
     force: bool = typer.Option(False, "--force", help="Delete the ladder work directory before running."),
+    resume: bool = typer.Option(False, "--resume", help="Resume from the output directory's metrics.json and latest champion checkpoint."),
 ):
     """Train AlphaGo Zero-style candidates and gate them through a champion Elo ladder."""
     if board_size <= 1:
@@ -387,6 +388,8 @@ def zero_ladder(
         raise click.BadParameter("self-play-device must be one of: auto, cpu, cuda")
     if optimizer_name not in {"sgd", "adam"}:
         raise click.BadParameter("optimizer must be one of: sgd, adam")
+    if force and resume:
+        raise click.BadParameter("--force and --resume cannot be used together")
 
     def show_progress(event):
         if event["event"] == "attempt_start":
@@ -443,6 +446,7 @@ def zero_ladder(
                 shared_inference=shared_inference,
                 seed=seed,
                 force=force,
+                resume=resume,
             ),
             progress_callback=show_progress,
         )

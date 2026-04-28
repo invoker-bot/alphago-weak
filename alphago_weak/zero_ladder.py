@@ -67,15 +67,23 @@ class ZeroLadderConfig:
     shared_inference: bool = True
     seed: int = 7
     force: bool = False
+    resume: bool = False
 
 
 def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
     set_seed(config.seed)
     work_root = config.root / f"zero-ladder-{config.board_size}x{config.board_size}"
+    if config.force and config.resume:
+        raise ValueError("force and resume cannot be used together")
     if work_root.exists():
-        if not config.force:
+        if config.resume:
+            pass
+        elif not config.force:
             raise FileExistsError(f"{work_root} already exists; pass --force to rerun from scratch")
-        shutil.rmtree(work_root)
+        else:
+            shutil.rmtree(work_root)
+    elif config.resume:
+        raise FileNotFoundError(f"{work_root} does not exist; cannot resume")
     work_root.mkdir(parents=True, exist_ok=True)
     config.output.parent.mkdir(parents=True, exist_ok=True)
     model_dir = config.output.parent / "models"
@@ -84,25 +92,39 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
     sgf_dir.mkdir(parents=True, exist_ok=True)
 
     device = resolve_torch_device(config.self_play_device)
-    bot = GTPAlphaGoWeakV0(
-        config.board_size,
-        config.komi,
-        root=str(work_root),
-        num_filters=config.num_filters,
-        device=device,
-        inference_batch_size=config.inference_batch_size,
-    )
-    champion_state = snapshot_state(bot.model)
-    save_snapshot_file(model_dir / "generation-000.pt", champion_state, config, generation=0, elo=0.0)
-
-    accepted = 0
-    attempt = 0
-    cumulative_elo = 0.0
+    if config.resume:
+        metrics_path = config.output.parent / "metrics.json"
+        if not metrics_path.exists():
+            raise FileNotFoundError(f"{metrics_path} does not exist; cannot resume")
+        previous_report = json.loads(metrics_path.read_text(encoding="utf-8"))
+        records = list(previous_report.get("attempts", []))
+        generation_paths = list(previous_report.get("generations", []))
+        if not generation_paths:
+            raise ValueError("resume report does not contain generation checkpoints")
+        summary = previous_report.get("summary", {})
+        accepted = int(summary.get("accepted_generations", 0))
+        attempt = int(summary.get("attempts", len(records)))
+        cumulative_elo = float(summary.get("final_elo", 0.0))
+        champion_state = load_snapshot_file(Path(generation_paths[-1]["path"]))
+    else:
+        bot = GTPAlphaGoWeakV0(
+            config.board_size,
+            config.komi,
+            root=str(work_root),
+            num_filters=config.num_filters,
+            device=device,
+            inference_batch_size=config.inference_batch_size,
+        )
+        champion_state = snapshot_state(bot.model)
+        save_snapshot_file(model_dir / "generation-000.pt", champion_state, config, generation=0, elo=0.0)
+        accepted = 0
+        attempt = 0
+        cumulative_elo = 0.0
+        records: List[Dict[str, Any]] = []
+        generation_paths = [{"generation": 0, "elo": 0.0, "path": str(model_dir / "generation-000.pt")}]
     replay_buffer = deque(maxlen=config.replay_buffer_size)
     candidate_state = champion_state
     candidate_buffer = deque(maxlen=config.replay_buffer_size)
-    records: List[Dict[str, Any]] = []
-    generation_paths = [{"generation": 0, "elo": 0.0, "path": str(model_dir / "generation-000.pt")}]
     max_attempts = config.max_attempts if config.max_attempts is not None else max(config.generations * 3, config.generations)
     worker_count = min(max(config.workers, 1), max(config.games_per_epoch, 1))
 
@@ -361,6 +383,16 @@ def save_snapshot_file(path: Path, state: Dict[str, torch.Tensor], config: ZeroL
     )
 
 
+def load_snapshot_file(path: Path) -> Dict[str, torch.Tensor]:
+    try:
+        checkpoint = torch.load(path, map_location="cpu", weights_only=True)
+    except TypeError:
+        checkpoint = torch.load(path, map_location="cpu")
+    if not isinstance(checkpoint, dict) or "model_state_dict" not in checkpoint:
+        raise ValueError(f"{path} is not a zero ladder checkpoint")
+    return checkpoint["model_state_dict"]
+
+
 def elo_delta_from_win_rate(win_rate: float) -> float:
     p = min(max(float(win_rate), 1e-6), 1.0 - 1e-6)
     return 400.0 * math.log10(p / (1.0 - p))
@@ -546,7 +578,7 @@ def render_ladder_report(report: Dict[str, Any]) -> str:
     chart = render_elo_chart(report["generations"])
     analysis = render_progress_analysis(report)
     return f"""<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -584,17 +616,17 @@ function setLanguage(lang) {{
   localStorage.setItem("zeroLadderLanguage", key);
 }}
 document.addEventListener("DOMContentLoaded", () => {{
-  setLanguage(localStorage.getItem("zeroLadderLanguage") || "zh");
+  setLanguage(localStorage.getItem("zeroLadderLanguage") || "en");
 }});
 </script>
 </head>
 <body>
 <header>
-<h1 data-zh="AlphaGo Weak Zero Ladder 代际训练" data-en="AlphaGo Weak Zero Ladder">AlphaGo Weak Zero Ladder 代际训练</h1>
-<p data-zh="代际晋级训练报告。生成时间：{html.escape(report['generated_at'])}" data-en="Generation-gated training report. Generated at: {html.escape(report['generated_at'])}">代际晋级训练报告。生成时间：{html.escape(report['generated_at'])}</p>
+<h1 data-zh="AlphaGo Weak Zero Ladder 代际训练" data-en="AlphaGo Weak Zero Ladder">AlphaGo Weak Zero Ladder</h1>
+<p data-zh="代际晋级训练报告。生成时间：{html.escape(report['generated_at'])}" data-en="Generation-gated training report. Generated at: {html.escape(report['generated_at'])}">Generation-gated training report. Generated at: {html.escape(report['generated_at'])}</p>
 <div class="lang-switch" aria-label="Language">
-<button type="button" data-lang="zh" onclick="setLanguage('zh')">中文</button>
 <button type="button" data-lang="en" onclick="setLanguage('en')">English</button>
+<button type="button" data-lang="zh" onclick="setLanguage('zh')">中文</button>
 </div>
 </header>
 <main>
@@ -607,20 +639,20 @@ document.addEventListener("DOMContentLoaded", () => {{
 {metric_card("设备", "Device", html.escape(config['device']))}
 </section>
 <section class="card" style="margin-top:16px">
-<h2 data-zh="方法" data-en="Method">方法</h2>
-<p data-zh="候选模型轨道从当前 champion 权重初始化，使用自身 self-play 生成样本并持续训练；被拒后继续训练同一个候选，直到某次配对换先评估达到阈值才晋级为下一代。胜率会换算为 Elo 增量。报告不使用随机 bot 作为主指标。" data-en="The candidate track starts from the current champion weights and keeps training on its own self-play samples. If a candidate is rejected, the same candidate continues training; it advances only when a paired color-swapped gate match reaches the threshold. The win rate is converted into an Elo delta. Random-bot games are not used as the main strength metric.">候选模型轨道从当前 champion 权重初始化，使用自身 self-play 生成样本并持续训练；被拒后继续训练同一个候选，直到某次配对换先评估达到阈值才晋级为下一代。胜率会换算为 Elo 增量。报告不使用随机 bot 作为主指标。</p>
-<p data-zh="相对贴目通过 champion 对自身的同代评估选择，使黑棋胜率尽量接近 50%。这样候选胜率主要反映模型差异，而不是固定贴目带来的颜色偏差。" data-en="Relative komi is selected by same-generation champion mirror matches so that black's win rate is as close to 50% as the sampled grid allows. Candidate win rate therefore reflects model differences more than fixed-komi color bias.">相对贴目通过 champion 对自身的同代评估选择，使黑棋胜率尽量接近 50%。这样候选胜率主要反映模型差异，而不是固定贴目带来的颜色偏差。</p>
+<h2 data-zh="方法" data-en="Method">Method</h2>
+<p data-zh="候选模型轨道从当前 champion 权重初始化，使用自身 self-play 生成样本并持续训练；被拒后继续训练同一个候选，直到某次配对换先评估达到阈值才晋级为下一代。胜率会换算为 Elo 增量。报告不使用随机 bot 作为主指标。" data-en="The candidate track starts from the current champion weights and keeps training on its own self-play samples. If a candidate is rejected, the same candidate continues training; it advances only when a paired color-swapped gate match reaches the threshold. The win rate is converted into an Elo delta. Random-bot games are not used as the main strength metric.">The candidate track starts from the current champion weights and keeps training on its own self-play samples. If a candidate is rejected, the same candidate continues training; it advances only when a paired color-swapped gate match reaches the threshold. The win rate is converted into an Elo delta. Random-bot games are not used as the main strength metric.</p>
+<p data-zh="相对贴目通过 champion 对自身的同代评估选择，使黑棋胜率尽量接近 50%。这样候选胜率主要反映模型差异，而不是固定贴目带来的颜色偏差。" data-en="Relative komi is selected by same-generation champion mirror matches so that black's win rate is as close to 50% as the sampled grid allows. Candidate win rate therefore reflects model differences more than fixed-komi color bias.">Relative komi is selected by same-generation champion mirror matches so that black's win rate is as close to 50% as the sampled grid allows. Candidate win rate therefore reflects model differences more than fixed-komi color bias.</p>
 </section>
 <section class="card" style="margin-top:16px">
-<h2 data-zh="进步分析" data-en="Progress Analysis">进步分析</h2>
+<h2 data-zh="进步分析" data-en="Progress Analysis">Progress Analysis</h2>
 {analysis}
 </section>
 <section class="card" style="margin-top:16px">
-<h2 data-zh="Elo 曲线" data-en="Elo Curve">Elo 曲线</h2>
+<h2 data-zh="Elo 曲线" data-en="Elo Curve">Elo Curve</h2>
 {chart}
 </section>
 <section class="card" style="margin-top:16px">
-<h2 data-zh="代际尝试" data-en="Generation Attempts">代际尝试</h2>
+<h2 data-zh="代际尝试" data-en="Generation Attempts">Generation Attempts</h2>
 <table><thead><tr>{table_header()}</tr></thead><tbody>{rows}</tbody></table>
 </section>
 </main>
@@ -632,7 +664,7 @@ document.addEventListener("DOMContentLoaded", () => {{
 def i18n_text(zh: str, en: str) -> str:
     zh_attr = html.escape(zh, quote=True)
     en_attr = html.escape(en, quote=True)
-    return f'<span data-zh="{zh_attr}" data-en="{en_attr}">{html.escape(zh)}</span>'
+    return f'<span data-zh="{zh_attr}" data-en="{en_attr}">{html.escape(en)}</span>'
 
 
 def metric_card(zh: str, en: str, value: str) -> str:

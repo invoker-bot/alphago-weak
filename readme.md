@@ -30,30 +30,32 @@ AlphaGo Weak 是一个用于学习和实验的围棋程序。当前代码已经�
 
 新增的 `zero-ladder` 会保存每一代 champion，并使用候选模型对上一代 champion 的配对换先胜率作为晋级标准。候选胜率达到 55% 才记为前进一代，并把胜率换算成 Elo 增量。
 
-- [打开 20 代中英 Ladder HTML 报告](reports/7x7-ladder-20-bilingual-v6/index.html)
-- [查看 20 代 Ladder 指标 JSON](reports/7x7-ladder-20-bilingual-v6/metrics.json)
-- 样例 SGF: [reports/7x7-ladder-20-bilingual-v6/sgf](reports/7x7-ladder-20-bilingual-v6/sgf)
+- [打开 20 代中英 Ladder HTML 报告](reports/7x7-ladder-20-eval-bilingual-v7/index.html)
+- [查看 20 代 Ladder 指标 JSON](reports/7x7-ladder-20-eval-bilingual-v7/metrics.json)
+- 样例 SGF: [reports/7x7-ladder-20-eval-bilingual-v7/sgf](reports/7x7-ladder-20-eval-bilingual-v7/sgf)
 
-当前 20 代示例从随机初始化开始，目标前进 20 代，实际在 38 次 candidate attempt 后完成 20/20 次晋级；其中 20 次通过、18 次拒绝，最终累计 Elo 为 +4760.6。训练指标从首轮 loss 3.1402 / policy accuracy 5.1% 改善到末轮 loss 2.1221 / policy accuracy 30.3%。相对贴目校准让同代黑棋胜率尽量接近 50%，因此表格中的候选胜率主要反映代际模型差异，而不是固定贴目带来的颜色偏差。
+当前 20 代示例从随机初始化开始，目标前进 20 代，实际在 51 次 candidate attempt 后完成 20/20 次晋级；其中 20 次通过、31 次拒绝，最终累计 Elo 为 +1434.1。训练指标从首轮 loss 3.1303 / policy accuracy 6.0% 改善到末轮 loss 1.8837 / policy accuracy 41.6%。相对贴目校准让同代黑棋胜率尽量接近 50%，因此表格中的候选胜率主要反映代际模型差异，而不是固定贴目带来的颜色偏差。
 
-报告支持中文/English 切换，并记录每次 attempt 的 gate 结果、Elo 变化、loss/accuracy、相对贴目和样例 SGF。为保证本地可快速复现，本次报告使用 `eval-games=5` 和较小 MCTS simulation，Elo 曲线方向可用于观察进步，但数值会比长评估更噪。模型文件保存在本地 `reports/7x7-ladder-20-bilingual-v6/models/generation-*.pt`，默认不纳入 Git。
+报告默认显示英文，并支持中文/English 切换；它记录每次 attempt 的 gate 结果、Elo 变化、loss/accuracy、相对贴目和样例 SGF。本次报告使用 `eval-games=20` 做 gate 评估，并使用 `komi-eval-games=20` 做相对贴目校准。模型文件保存在本地 `reports/7x7-ladder-20-eval-bilingual-v7/models/generation-*.pt`，默认不纳入 Git。
 
 复现 20 代 ladder 实验：
 
 ```powershell
-alphago --root .data-ladder-20-bilingual-v6 zero-ladder `
-  --output reports/7x7-ladder-20-bilingual-v6/index.html `
+alphago --root .data-ladder-20-eval-bilingual-v7 zero-ladder `
+  --output reports/7x7-ladder-20-eval-bilingual-v7/index.html `
   --board-size 7 --komi 2.5 `
-  --generations 20 --max-attempts 80 `
+  --generations 20 --max-attempts 120 `
   --candidate-epochs 2 --steps 2 --simulations 6 --max-moves 98 `
-  --eval-games 5 --eval-simulations 3 --eval-opening-moves 4 `
-  --gate-win-rate 0.55 --komi-eval-games 4 --komi-window 2 `
+  --eval-games 20 --eval-simulations 3 --eval-opening-moves 4 `
+  --gate-win-rate 0.55 --komi-eval-games 20 --komi-window 2 `
   --train-batch-size 32 --train-steps 32 `
   --replay-buffer-size 4096 --learning-rate 0.001 `
   --optimizer adam --augment --workers 1 `
   --inference-batch-size 8 --self-play-device cuda `
   --num-filters 16 --seed 7 --force
 ```
+
+长时间 CUDA 运行如果中断，可以去掉 `--force` 并加上 `--resume`，命令会从已写入的 `metrics.json` 和最新 champion checkpoint 继续；报告会在每个完整 attempt 后刷新。
 
 复现基础 zero-report 实验：
 
@@ -107,12 +109,12 @@ alphago zero-ladder --generations 20 --force
 - `alphago_weak/zero_ladder.py`: 代际 champion/candidate gating、Elo ladder 和中英 HTML 报告。
 - `test/`: pytest 回归测试。
 - `reports/7x7-zero/`: 当前提交包含的基础 self-play 训练报告。
-- `reports/7x7-ladder-20-bilingual-v6/`: 当前提交包含的 20 代中英 ladder 报告。
+- `reports/7x7-ladder-20-eval-bilingual-v7/`: 当前提交包含的 20 局 gate/komi 中英 ladder 报告。
 
 ## 当前限制
 
 - MCTS 搜索和规则引擎仍主要是 Python 代码，GPU 只负责批量网络推理和训练。
-- 已有 AlphaGo Zero-style 新旧模型胜率 gating，但评估局数较少时 Elo 噪声很大。
+- 已有 AlphaGo Zero-style 新旧模型胜率 gating；更高精度 Elo 仍需要更多评估局和更高 MCTS simulation。
 - replay buffer 只在单次命令运行内存在，暂未持久化为可恢复训练队列。
 - 当前 7x7 报告只证明小规模相对提升，不代表模型已经具备可靠围棋棋力。
 - 需要继续改进批量推理稳定性、value 校准、持久化 replay 和更长训练。

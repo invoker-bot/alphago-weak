@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AlphaGo Weak Zero Ladder</title>
+<style>
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17202a; background: #f7f8fa; }
+header { padding: 28px 36px; background: #111827; color: white; }
+main { max-width: 1180px; margin: 0 auto; padding: 26px 18px 48px; }
+h1, h2 { margin: 0 0 12px; }
+p { line-height: 1.55; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+.metric { font-size: 28px; font-weight: 700; }
+table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e2e8f0; }
+th, td { padding: 9px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+th { background: #eef2f7; }
+.accepted { color: #12783a; font-weight: 700; }
+.rejected { color: #a33a2f; font-weight: 700; }
+.note { color: #526071; }
+code { background: #eef2f7; padding: 2px 5px; border-radius: 4px; }
+.lang-switch { display: flex; gap: 8px; margin-top: 16px; }
+.lang-switch button { border: 1px solid #475569; border-radius: 6px; background: #1f2937; color: white; padding: 7px 12px; cursor: pointer; }
+.lang-switch button.active { background: #ffffff; color: #111827; border-color: #ffffff; }
+</style>
+<script>
+function setLanguage(lang) {
+  const key = lang === "en" ? "en" : "zh";
+  document.documentElement.lang = key === "en" ? "en" : "zh-CN";
+  document.querySelectorAll("[data-zh][data-en]").forEach((node) => {
+    node.textContent = key === "en" ? node.dataset.en : node.dataset.zh;
+  });
+  document.querySelectorAll(".lang-switch button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.lang === key);
+  });
+  localStorage.setItem("zeroLadderLanguage", key);
+}
+document.addEventListener("DOMContentLoaded", () => {
+  setLanguage(localStorage.getItem("zeroLadderLanguage") || "en");
+});
+</script>
+</head>
+<body>
+<header>
+<h1 data-zh="AlphaGo Weak Zero Ladder 代际训练" data-en="AlphaGo Weak Zero Ladder">AlphaGo Weak Zero Ladder</h1>
+<p data-zh="代际晋级训练报告。生成时间：2026-04-28T22:22:24" data-en="Generation-gated training report. Generated at: 2026-04-28T22:22:24">Generation-gated training report. Generated at: 2026-04-28T22:22:24</p>
+<div class="lang-switch" aria-label="Language">
+<button type="button" data-lang="en" onclick="setLanguage('en')">English</button>
+<button type="button" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+</div>
+</header>
+<main>
+<section class="grid">
+<div class="card"><div class="note"><span data-zh="棋盘" data-en="Board">Board</span></div><div class="metric">7x7</div></div>
+<div class="card"><div class="note"><span data-zh="目标晋级" data-en="Target Advances">Target Advances</span></div><div class="metric">20</div></div>
+<div class="card"><div class="note"><span data-zh="实际晋级" data-en="Accepted Advances">Accepted Advances</span></div><div class="metric">20</div></div>
+<div class="card"><div class="note"><span data-zh="最终 Elo" data-en="Final Elo">Final Elo</span></div><div class="metric">1434.1</div></div>
+<div class="card"><div class="note"><span data-zh="晋级阈值" data-en="Gate Threshold">Gate Threshold</span></div><div class="metric">55%</div></div>
+<div class="card"><div class="note"><span data-zh="设备" data-en="Device">Device</span></div><div class="metric">cuda</div></div>
+</section>
+<section class="card" style="margin-top:16px">
+<h2 data-zh="方法" data-en="Method">Method</h2>
+<p data-zh="候选模型轨道从当前 champion 权重初始化，使用自身 self-play 生成样本并持续训练；被拒后继续训练同一个候选，直到某次配对换先评估达到阈值才晋级为下一代。胜率会换算为 Elo 增量。报告不使用随机 bot 作为主指标。" data-en="The candidate track starts from the current champion weights and keeps training on its own self-play samples. If a candidate is rejected, the same candidate continues training; it advances only when a paired color-swapped gate match reaches the threshold. The win rate is converted into an Elo delta. Random-bot games are not used as the main strength metric.">The candidate track starts from the current champion weights and keeps training on its own self-play samples. If a candidate is rejected, the same candidate continues training; it advances only when a paired color-swapped gate match reaches the threshold. The win rate is converted into an Elo delta. Random-bot games are not used as the main strength metric.</p>
+<p data-zh="相对贴目通过 champion 对自身的同代评估选择，使黑棋胜率尽量接近 50%。这样候选胜率主要反映模型差异，而不是固定贴目带来的颜色偏差。" data-en="Relative komi is selected by same-generation champion mirror matches so that black's win rate is as close to 50% as the sampled grid allows. Candidate win rate therefore reflects model differences more than fixed-komi color bias.">Relative komi is selected by same-generation champion mirror matches so that black's win rate is as close to 50% as the sampled grid allows. Candidate win rate therefore reflects model differences more than fixed-komi color bias.</p>
+</section>
+<section class="card" style="margin-top:16px">
+<h2 data-zh="进步分析" data-en="Progress Analysis">Progress Analysis</h2>
+<p><span data-zh="本次运行完成 20/20 代晋级，共 51 次 attempt，其中 20 次通过、31 次拒绝。" data-en="This run advanced 20/20 generations in 51 attempts: 20 accepted and 31 rejected.">This run advanced 20/20 generations in 51 attempts: 20 accepted and 31 rejected.</span></p><p><span data-zh="训练指标从 loss 3.1776 / policy accuracy 2.7% 改善到 loss 1.8837 / policy accuracy 41.6%。" data-en="Training moved from loss 3.1776 / policy accuracy 2.7% to loss 1.8837 / policy accuracy 41.6%.">Training moved from loss 3.1776 / policy accuracy 2.7% to loss 1.8837 / policy accuracy 41.6%.</span></p><p><span data-zh="评估每次 gate 使用 20 局，因此 Elo 数值偏噪；更可靠的强度估计需要增加 --eval-games 和 --eval-simulations。" data-en="Each gate used 20 evaluation games, so the Elo values are noisy; use higher --eval-games and --eval-simulations for stronger estimates.">Each gate used 20 evaluation games, so the Elo values are noisy; use higher --eval-games and --eval-simulations for stronger estimates.</span></p>
+</section>
+<section class="card" style="margin-top:16px">
+<h2 data-zh="Elo 曲线" data-en="Elo Curve">Elo Curve</h2>
+<svg viewBox="0 0 720 220" style="width:100%;max-width:720px">
+<rect x="0" y="0" width="720" height="220" fill="#ffffff"/>
+<line x1="34" y1="186" x2="686" y2="186" stroke="#9aa4b2"/>
+<line x1="34" y1="34" x2="34" y2="186" stroke="#9aa4b2"/>
+<polyline points="34.0,186.0 66.6,182.3 99.2,178.6 131.8,167.2 164.4,163.5 197.0,159.8 229.6,152.4 262.2,148.7 294.8,137.3 327.4,117.0 360.0,109.6 392.6,98.2 425.2,90.7 457.8,83.2 490.4,71.8 523.0,56.2 555.6,52.5 588.2,45.1 620.8,41.4 653.4,37.7 686.0,34.0" fill="none" stroke="#1d7f5f" stroke-width="3"/>
+<text x="34.0" y="212" font-size="11" text-anchor="middle">0</text><text x="66.6" y="212" font-size="11" text-anchor="middle">1</text><text x="99.2" y="212" font-size="11" text-anchor="middle">2</text><text x="131.8" y="212" font-size="11" text-anchor="middle">3</text><text x="164.4" y="212" font-size="11" text-anchor="middle">4</text><text x="197.0" y="212" font-size="11" text-anchor="middle">5</text><text x="229.6" y="212" font-size="11" text-anchor="middle">6</text><text x="262.2" y="212" font-size="11" text-anchor="middle">7</text><text x="294.8" y="212" font-size="11" text-anchor="middle">8</text><text x="327.4" y="212" font-size="11" text-anchor="middle">9</text><text x="360.0" y="212" font-size="11" text-anchor="middle">10</text><text x="392.6" y="212" font-size="11" text-anchor="middle">11</text><text x="425.2" y="212" font-size="11" text-anchor="middle">12</text><text x="457.8" y="212" font-size="11" text-anchor="middle">13</text><text x="490.4" y="212" font-size="11" text-anchor="middle">14</text><text x="523.0" y="212" font-size="11" text-anchor="middle">15</text><text x="555.6" y="212" font-size="11" text-anchor="middle">16</text><text x="588.2" y="212" font-size="11" text-anchor="middle">17</text><text x="620.8" y="212" font-size="11" text-anchor="middle">18</text><text x="653.4" y="212" font-size="11" text-anchor="middle">19</text><text x="686.0" y="212" font-size="11" text-anchor="middle">20</text>
+<text x="34" y="20" font-size="13" fill="#1d7f5f" data-zh="已晋级代 Elo" data-en="accepted generation Elo">已晋级代 Elo</text>
+</svg>
+</section>
+<section class="card" style="margin-top:16px">
+<h2 data-zh="代际尝试" data-en="Generation Attempts">Generation Attempts</h2>
+<table><thead><tr><th><span data-zh="Attempt" data-en="Attempt">Attempt</span></th><th><span data-zh="结果" data-en="Result">Result</span></th><th><span data-zh="晋级" data-en="Advance">Advance</span></th><th><span data-zh="Komi" data-en="Komi">Komi</span></th><th><span data-zh="候选胜率" data-en="Candidate Win Rate">Candidate Win Rate</span></th><th><span data-zh="候选黑/白" data-en="Candidate B/W">Candidate B/W</span></th><th><span data-zh="同代黑胜率" data-en="Same-Gen Black Win">Same-Gen Black Win</span></th><th><span data-zh="Elo Δ" data-en="Elo Δ">Elo Δ</span></th><th><span data-zh="累计 Elo" data-en="Cumulative Elo">Cumulative Elo</span></th><th><span data-zh="Loss / Acc" data-en="Loss / Acc">Loss / Acc</span></th></tr></thead><tbody><tr><td>1</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>35%</td><td>30% / 40%</td><td>50%</td><td>-107.5</td><td>0.0</td><td>3.1303 / 6.0%</td></tr>
+<tr><td>2</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>0.50</td><td>25%</td><td>20% / 30%</td><td>40%</td><td>-190.8</td><td>0.0</td><td>3.1220 / 6.5%</td></tr>
+<tr><td>3</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>1</td><td>2.50</td><td>55%</td><td>40% / 70%</td><td>40%</td><td>+34.9</td><td>34.9</td><td>3.0929 / 6.6%</td></tr>
+<tr><td>4</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>40%</td><td>30% / 50%</td><td>60%</td><td>-70.4</td><td>34.9</td><td>3.0446 / 7.5%</td></tr>
+<tr><td>5</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>2.50</td><td>50%</td><td>50% / 50%</td><td>50%</td><td>+0.0</td><td>34.9</td><td>3.0517 / 7.1%</td></tr>
+<tr><td>6</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>40%</td><td>40% / 40%</td><td>50%</td><td>-70.4</td><td>34.9</td><td>2.9956 / 7.1%</td></tr>
+<tr><td>7</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>40%</td><td>30% / 50%</td><td>50%</td><td>-70.4</td><td>34.9</td><td>2.8669 / 10.8%</td></tr>
+<tr><td>8</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>1.50</td><td>45%</td><td>20% / 70%</td><td>50%</td><td>-34.9</td><td>34.9</td><td>2.8327 / 11.7%</td></tr>
+<tr><td>9</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>2</td><td>1.50</td><td>55%</td><td>50% / 60%</td><td>40%</td><td>+34.9</td><td>69.7</td><td>2.7139 / 13.9%</td></tr>
+<tr><td>10</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>2.50</td><td>40%</td><td>30% / 50%</td><td>50%</td><td>-70.4</td><td>69.7</td><td>2.6513 / 13.7%</td></tr>
+<tr><td>11</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>3</td><td>1.50</td><td>65%</td><td>60% / 70%</td><td>50%</td><td>+107.5</td><td>177.3</td><td>2.6895 / 11.7%</td></tr>
+<tr><td>12</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>4</td><td>2.50</td><td>55%</td><td>30% / 80%</td><td>50%</td><td>+34.9</td><td>212.1</td><td>2.5989 / 15.2%</td></tr>
+<tr><td>13</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>5</td><td>0.50</td><td>55%</td><td>80% / 30%</td><td>50%</td><td>+34.9</td><td>247.0</td><td>2.5682 / 15.5%</td></tr>
+<tr><td>14</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>6</td><td>4.50</td><td>60%</td><td>60% / 60%</td><td>50%</td><td>+70.4</td><td>317.4</td><td>2.5359 / 16.9%</td></tr>
+<tr><td>15</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>7</td><td>3.50</td><td>55%</td><td>50% / 60%</td><td>40%</td><td>+34.9</td><td>352.3</td><td>2.5477 / 15.2%</td></tr>
+<tr><td>16</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>8</td><td>3.50</td><td>65%</td><td>60% / 70%</td><td>50%</td><td>+107.5</td><td>459.8</td><td>2.4396 / 17.4%</td></tr>
+<tr><td>17</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>45%</td><td>60% / 30%</td><td>40%</td><td>-34.9</td><td>459.8</td><td>2.4840 / 16.0%</td></tr>
+<tr><td>18</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>0.50</td><td>45%</td><td>50% / 40%</td><td>50%</td><td>-34.9</td><td>459.8</td><td>2.4276 / 17.8%</td></tr>
+<tr><td>19</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>9</td><td>2.50</td><td>75%</td><td>60% / 90%</td><td>50%</td><td>+190.8</td><td>650.7</td><td>2.3577 / 21.8%</td></tr>
+<tr><td>20</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>1.50</td><td>40%</td><td>30% / 50%</td><td>40%</td><td>-70.4</td><td>650.7</td><td>2.4168 / 19.0%</td></tr>
+<tr><td>21</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>2.50</td><td>50%</td><td>50% / 50%</td><td>50%</td><td>+0.0</td><td>650.7</td><td>2.4161 / 17.8%</td></tr>
+<tr><td>22</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>10</td><td>4.50</td><td>60%</td><td>70% / 50%</td><td>50%</td><td>+70.4</td><td>721.1</td><td>2.3955 / 19.9%</td></tr>
+<tr><td>23</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>11</td><td>3.50</td><td>65%</td><td>70% / 60%</td><td>50%</td><td>+107.5</td><td>828.6</td><td>2.3534 / 19.6%</td></tr>
+<tr><td>24</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>50%</td><td>50% / 50%</td><td>50%</td><td>+0.0</td><td>828.6</td><td>2.2040 / 29.0%</td></tr>
+<tr><td>25</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>12</td><td>2.50</td><td>60%</td><td>50% / 70%</td><td>60%</td><td>+70.4</td><td>899.1</td><td>2.2104 / 30.2%</td></tr>
+<tr><td>26</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>1.50</td><td>45%</td><td>50% / 40%</td><td>50%</td><td>-34.9</td><td>899.1</td><td>2.1696 / 27.6%</td></tr>
+<tr><td>27</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>13</td><td>3.50</td><td>60%</td><td>60% / 60%</td><td>50%</td><td>+70.4</td><td>969.5</td><td>2.0652 / 31.7%</td></tr>
+<tr><td>28</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>14</td><td>0.50</td><td>65%</td><td>70% / 60%</td><td>50%</td><td>+107.5</td><td>1077.0</td><td>2.1091 / 32.8%</td></tr>
+<tr><td>29</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>0.50</td><td>45%</td><td>50% / 40%</td><td>50%</td><td>-34.9</td><td>1077.0</td><td>2.1640 / 26.7%</td></tr>
+<tr><td>30</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>1.50</td><td>40%</td><td>40% / 40%</td><td>50%</td><td>-70.4</td><td>1077.0</td><td>2.1486 / 30.8%</td></tr>
+<tr><td>31</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>3.50</td><td>50%</td><td>40% / 60%</td><td>50%</td><td>+0.0</td><td>1077.0</td><td>2.0795 / 31.9%</td></tr>
+<tr><td>32</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>35%</td><td>30% / 40%</td><td>60%</td><td>-107.5</td><td>1077.0</td><td>2.0927 / 31.0%</td></tr>
+<tr><td>33</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>0.50</td><td>45%</td><td>50% / 40%</td><td>50%</td><td>-34.9</td><td>1077.0</td><td>2.0734 / 31.0%</td></tr>
+<tr><td>34</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>2.50</td><td>40%</td><td>40% / 40%</td><td>60%</td><td>-70.4</td><td>1077.0</td><td>2.1071 / 30.6%</td></tr>
+<tr><td>35</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>2.50</td><td>45%</td><td>40% / 50%</td><td>40%</td><td>-34.9</td><td>1077.0</td><td>2.0919 / 30.9%</td></tr>
+<tr><td>36</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>15</td><td>2.50</td><td>70%</td><td>80% / 60%</td><td>50%</td><td>+147.2</td><td>1224.2</td><td>2.0142 / 34.1%</td></tr>
+<tr><td>37</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>0.50</td><td>45%</td><td>40% / 50%</td><td>50%</td><td>-34.9</td><td>1224.2</td><td>2.0410 / 32.3%</td></tr>
+<tr><td>38</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>0.50</td><td>50%</td><td>50% / 50%</td><td>50%</td><td>+0.0</td><td>1224.2</td><td>2.0226 / 35.4%</td></tr>
+<tr><td>39</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>16</td><td>1.50</td><td>55%</td><td>40% / 70%</td><td>50%</td><td>+34.9</td><td>1259.1</td><td>2.0109 / 35.4%</td></tr>
+<tr><td>40</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>2.50</td><td>45%</td><td>60% / 30%</td><td>50%</td><td>-34.9</td><td>1259.1</td><td>1.9795 / 34.5%</td></tr>
+<tr><td>41</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>17</td><td>1.50</td><td>60%</td><td>80% / 40%</td><td>50%</td><td>+70.4</td><td>1329.5</td><td>2.0122 / 35.2%</td></tr>
+<tr><td>42</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>3.50</td><td>35%</td><td>30% / 40%</td><td>50%</td><td>-107.5</td><td>1329.5</td><td>1.9827 / 35.8%</td></tr>
+<tr><td>43</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>3.50</td><td>30%</td><td>40% / 20%</td><td>50%</td><td>-147.2</td><td>1329.5</td><td>1.9507 / 37.9%</td></tr>
+<tr><td>44</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>0.50</td><td>15%</td><td>20% / 10%</td><td>50%</td><td>-301.3</td><td>1329.5</td><td>1.8652 / 38.4%</td></tr>
+<tr><td>45</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>40%</td><td>30% / 50%</td><td>40%</td><td>-70.4</td><td>1329.5</td><td>1.9729 / 38.4%</td></tr>
+<tr><td>46</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>4.50</td><td>50%</td><td>40% / 60%</td><td>60%</td><td>+0.0</td><td>1329.5</td><td>1.9084 / 38.3%</td></tr>
+<tr><td>47</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>2.50</td><td>50%</td><td>50% / 50%</td><td>50%</td><td>+0.0</td><td>1329.5</td><td>1.8652 / 40.7%</td></tr>
+<tr><td>48</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>18</td><td>3.50</td><td>55%</td><td>50% / 60%</td><td>50%</td><td>+34.9</td><td>1364.4</td><td>1.8236 / 41.5%</td></tr>
+<tr><td>49</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>19</td><td>2.50</td><td>55%</td><td>40% / 70%</td><td>50%</td><td>+34.9</td><td>1399.3</td><td>1.8074 / 43.9%</td></tr>
+<tr><td>50</td><td class="rejected"><span data-zh="拒绝" data-en="Rejected">Rejected</span></td><td>-</td><td>2.50</td><td>50%</td><td>50% / 50%</td><td>50%</td><td>+0.0</td><td>1399.3</td><td>1.7943 / 43.3%</td></tr>
+<tr><td>51</td><td class="accepted"><span data-zh="通过" data-en="Accepted">Accepted</span></td><td>20</td><td>0.50</td><td>55%</td><td>50% / 60%</td><td>50%</td><td>+34.9</td><td>1434.1</td><td>1.8837 / 41.6%</td></tr></tbody></table>
+</section>
+</main>
+</body>
+</html>
