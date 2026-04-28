@@ -37,6 +37,7 @@ alphago --root .data-report-final zero-report `
   --train-batch-size 32 --train-steps 96 `
   --replay-buffer-size 8192 --learning-rate 0.001 `
   --optimizer adam --augment --workers 4 `
+  --inference-batch-size 16 --shared-inference `
   --num-filters 16 --checkpoints 0,10,20,30,40 `
   --seed 7 --force
 ```
@@ -62,7 +63,7 @@ alphago self-play --board-size 9 --steps 4 --epochs 10 --simulations 32
 alphago zero-report --force
 ```
 
-`self-play` 会自动从同一 `--root` 下的历史权重继续训练，并在每个 epoch 后保存模型。`zero-report` 专门用于从零开始生成可浏览报告；它会使用 root 下的 `zero-report-{board_size}x{board_size}` 工作目录。
+`self-play` 会自动从同一 `--root` 下的历史权重继续训练，并在每个 epoch 后保存模型。`--inference-batch-size` 会把 MCTS leaf 局面合并后批量送入模型，在 CUDA 版 PyTorch 下能减少单样本 GPU 调用开销。`zero-report` 在多 worker + CUDA 时默认启用共享推理服务；可用 `--no-shared-inference` 退回每个 worker 独立推理。`zero-report` 专门用于从零开始生成可浏览报告；它会使用 root 下的 `zero-report-{board_size}x{board_size}` 工作目录。
 
 ## 项目结构
 
@@ -76,7 +77,7 @@ alphago zero-report --force
 
 ## 当前限制
 
-- MCTS 仍是 Python 单样本推理，GPU 利用率低。
+- MCTS 搜索和规则引擎仍主要是 Python 代码，GPU 只负责批量网络推理和训练。
 - 没有完整 AlphaGo Zero 的新旧模型胜率 gating。
 - replay buffer 只在单次命令运行内存在，暂未持久化。
 - 当前 7x7 报告只证明小规模相对提升，不代表模型已经具备可靠围棋棋力。

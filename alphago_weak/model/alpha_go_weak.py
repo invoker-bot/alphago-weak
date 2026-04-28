@@ -361,18 +361,24 @@ class AlphaGoWeakV0(ModelBase):
             f.write(str(self.model))
 
     def predict(self, board: GoBoardBase, player: GoPlayer):
-        input_ = self.encode_input(player, board)
-        input_ = torch.as_tensor(input_[None, ...], dtype=torch.float32, device=self.device)
+        return self.predict_batch([(board, player)])[0]
+
+    def predict_batch(self, states: Sequence[Tuple[GoBoardBase, GoPlayer]]) -> List[Tuple[np.ndarray, float]]:
+        if len(states) == 0:
+            return []
+        inputs = np.stack([self.encode_input(player, board) for board, player in states]).astype(np.float32, copy=False)
+        input_ = torch.as_tensor(inputs, dtype=torch.float32, device=self.device)
         self.model.eval()
         with torch.no_grad():
             policy_, value_ = self.model(input_)
-        return policy_[0].cpu().numpy(), float(value_[0].cpu().item())
+        policies = policy_.cpu().numpy()
+        values = value_.cpu().numpy()
+        return [(policies[idx], float(values[idx])) for idx in range(len(states))]
 
-    def state_calculator(self, board: GoBoardBase, player: GoPlayer):
-        policy_, value = self.predict(board, player)
+    def _state_from_prediction(self, board: GoBoardBase, player: GoPlayer, policy_: np.ndarray, value: float):
         actions: List[Optional[GoPoint]] = [pos for pos in board.valid_points(
             player) if board.eye_type(player, pos) < GoEyeType.unknown]
-        weights: List[float] = [policy_.item(action.x * self.size + action.y) for action in actions]
+        weights: List[float] = [float(policy_[action.x * self.size + action.y]) for action in actions]
         actions.append(None)
         if len(weights) == 0:
             weights.append(1.0)
@@ -380,6 +386,17 @@ class AlphaGoWeakV0(ModelBase):
             weights.append(float(policy_[-1]) * self.PASS_PRIOR_SCALE)
         policy = actions, weights
         return policy, value
+
+    def state_calculator_batch(self, states: Sequence[Tuple[GoBoardBase, GoPlayer]]):
+        predictions = self.predict_batch(states)
+        return [
+            self._state_from_prediction(board, player, policy, value)
+            for (board, player), (policy, value) in zip(states, predictions)
+        ]
+
+    def state_calculator(self, board: GoBoardBase, player: GoPlayer):
+        policy_, value = self.predict(board, player)
+        return self._state_from_prediction(board, player, policy_, value)
 
     @staticmethod
     def policy_evaluator(state, komi=6.5):

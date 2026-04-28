@@ -33,5 +33,19 @@ def test_encode_v0():
     assert np.all(input_b == expected_b)
 
 
+def test_predict_batch_matches_single_prediction(tmp_path):
+    model = AlphaGoWeakV0(size=3, root=str(tmp_path), num_filters=4, device="cpu")
+    board = GoBoard(3)
+    board.play(b, P(0, 0))
+
+    single_policy, single_value = model.predict(board, w)
+    batch = model.predict_batch([(board, w), (board, b)])
+
+    assert len(batch) == 2
+    assert np.allclose(batch[0][0], single_policy)
+    assert batch[0][1] == single_value
+    assert batch[1][0].shape == (10,)
+
+
 if __name__ == "__main__":
     pytest.main()

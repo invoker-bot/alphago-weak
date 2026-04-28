@@ -9,7 +9,13 @@ from typer.testing import CliRunner
 
 from alphago_weak.cli import app
 from alphago_weak.model.alpha_go_weak import AlphaGoWeakV0
-from alphago_weak.zero_report import ZeroReportConfig, augment_samples, evaluate_against_model, snapshot_state
+from alphago_weak.zero_report import (
+    ZeroReportConfig,
+    augment_samples,
+    evaluate_against_model,
+    should_use_shared_inference,
+    snapshot_state,
+)
 
 
 def test_zero_report_cli_writes_html_and_metrics():
@@ -28,6 +34,9 @@ def test_zero_report_cli_writes_html_and_metrics():
                 "--eval-games", "0",
                 "--num-filters", "4",
                 "--workers", "1",
+                "--inference-batch-size", "2",
+                "--self-play-device", "cpu",
+                "--no-shared-inference",
                 "--checkpoints", "0",
                 "--force",
             ],
@@ -39,6 +48,10 @@ def test_zero_report_cli_writes_html_and_metrics():
         assert "AlphaGo Weak 7x7 Zero" in html
         assert "固定局面策略分析" in html
         assert metrics["config"]["board_size"] == 5
+        assert metrics["config"]["inference_batch_size"] == 2
+        assert metrics["config"]["device"] == "cpu"
+        assert metrics["config"]["shared_inference"] is False
+        assert metrics["config"]["shared_inference_active"] is False
         assert "black_win_rate" in metrics["stages"][0]["eval"]
         assert "white_win_rate" in metrics["stages"][0]["vs_initial"]
 
@@ -69,10 +82,11 @@ def test_paired_model_evaluation_cancels_same_model_color_bias(tmp_path):
         komi=2.5,
         eval_games=4,
         eval_simulations=1,
-        eval_opening_moves=2,
+        eval_opening_moves=1,
         max_moves=8,
         num_filters=4,
         workers=1,
+        self_play_device="cpu",
     )
 
     result = evaluate_against_model(state, state, config, tmp_path, seed=123)
@@ -80,3 +94,22 @@ def test_paired_model_evaluation_cancels_same_model_color_bias(tmp_path):
     assert result["win_rate"] == 0.5
     assert result["black_win_rate"] + result["white_win_rate"] == 1.0
     assert result["avg_margin"] == 0.0
+
+
+def test_shared_inference_only_activates_for_cuda_multi_worker(tmp_path, monkeypatch):
+    monkeypatch.setattr("alphago_weak.zero_report.torch.cuda.is_available", lambda: True)
+    config = ZeroReportConfig(
+        root=tmp_path,
+        output=tmp_path / "report.html",
+        self_play_device="auto",
+        workers=2,
+        games_per_epoch=2,
+    )
+
+    assert should_use_shared_inference(config, worker_count=2)
+    assert not should_use_shared_inference(config, worker_count=1)
+    config.self_play_device = "cpu"
+    assert not should_use_shared_inference(config, worker_count=2)
+    config.self_play_device = "cuda"
+    config.shared_inference = False
+    assert not should_use_shared_inference(config, worker_count=2)

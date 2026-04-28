@@ -3,6 +3,7 @@
 
 import numpy as np
 import copy as stdcopy
+import pytest
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -129,6 +130,56 @@ def test_mcts_evaluate_uses_board_copy_instead_of_generic_deepcopy(monkeypatch):
     tree.evaluate(b, num=1)
 
     assert copy_calls == [1]
+
+
+def test_mcts_batches_leaf_state_calculation():
+    board = GoBoard(3)
+    batch_sizes = []
+    progress = []
+
+    def state(_board, _player):
+        raise AssertionError("single state calculator should not be used")
+
+    def batch_state(requests):
+        batch_sizes.append(len(requests))
+        return [(copied_board, player) for copied_board, player in requests]
+
+    def policy(_state, komi=6.5):
+        return [P(0, 0), P(0, 1), P(1, 0), None], [0.3, 0.3, 0.3, 0.1]
+
+    tree = GoMCTSTree(
+        board,
+        state,
+        policy,
+        lambda _state, komi=6.5: 0.5,
+        batch_state_calculator=batch_state,
+    )
+
+    tree.evaluate(b, num=5, inference_batch_size=3, progress_callback=lambda advance: progress.append(advance))
+
+    assert sum(batch_sizes) == 5
+    assert max(batch_sizes) > 1
+    assert progress == [1, 1, 1, 1, 1]
+
+
+def test_mcts_batch_rolls_back_virtual_visits_on_state_error():
+    board = GoBoard(3)
+
+    def state(_board, _player):
+        raise AssertionError("single state calculator should not be used")
+
+    tree = GoMCTSTree(
+        board,
+        state,
+        lambda _state, komi=6.5: ([None], [1.0]),
+        lambda _state, komi=6.5: 0.5,
+        batch_state_calculator=lambda _requests: [],
+    )
+
+    with pytest.raises(ValueError, match="unexpected number"):
+        tree.evaluate(b, num=1, inference_batch_size=2)
+
+    assert tree.node.n == 1
 
 
 def test_mcts_choose_uses_legal_play_and_does_not_overwrite_illegal_child():
@@ -425,12 +476,14 @@ def test_alphago_zero_self_play_passes_temperature_and_dirichlet_options():
         temperature_after_drop=0.0,
         dirichlet_alpha=0.3,
         dirichlet_epsilon=0.25,
+        inference_batch_size=4,
     )
 
     calls = holder["mcts"].calls
     assert [call["temperature"] for call in calls] == [1.0, 0.0, 0.0]
     assert all(call["dirichlet_alpha"] == 0.3 for call in calls)
     assert all(call["exploration_fraction"] == 0.25 for call in calls)
+    assert all(call["inference_batch_size"] == 4 for call in calls)
     assert np.isclose(policies[0].sum(), 1.0)
     assert np.allclose(policies[1], np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=np.float32))
 

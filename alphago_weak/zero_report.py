@@ -4,11 +4,15 @@ import copy
 import html
 import json
 import math
+import queue
 import random
 import shutil
+import threading
+import time
 from concurrent.futures import ProcessPoolExecutor
 from collections import deque
 from dataclasses import dataclass
+from multiprocessing import Manager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -44,6 +48,9 @@ class ZeroReportConfig:
     augment_training: bool = True
     num_filters: int = 16
     workers: int = 4
+    inference_batch_size: int = 16
+    self_play_device: str = "auto"
+    shared_inference: bool = True
     seed: int = 7
     checkpoint_epochs: Tuple[int, ...] = (0, 5, 10, 20)
     force: bool = False
@@ -69,7 +76,8 @@ def run_zero_report(config: ZeroReportConfig) -> Dict[str, Any]:
         config.komi,
         root=str(work_root),
         num_filters=config.num_filters,
-        device="cuda" if torch.cuda.is_available() else "cpu",
+        device=resolve_torch_device(config.self_play_device),
+        inference_batch_size=config.inference_batch_size,
     )
     optimizer = bot.model.make_optimizer(config.learning_rate, optimizer=config.optimizer_name)
     replay_buffer = deque(maxlen=config.replay_buffer_size)
@@ -97,6 +105,7 @@ def run_zero_report(config: ZeroReportConfig) -> Dict[str, Any]:
                     temperature_after_drop=config.temperature_after_drop,
                     dirichlet_alpha=config.dirichlet_alpha,
                     dirichlet_epsilon=config.dirichlet_epsilon,
+                    inference_batch_size=config.inference_batch_size,
                     game_recorder=lambda _idx, game: games.append(game),
                 )
             else:
@@ -148,6 +157,7 @@ def run_zero_report(config: ZeroReportConfig) -> Dict[str, Any]:
             config.max_moves,
             config.komi,
             config.eval_opening_moves,
+            config.inference_batch_size,
             config.seed + epoch,
         )
         vs_initial_result = evaluate_against_model(
@@ -187,21 +197,198 @@ def set_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
 
 
+def resolve_torch_device(device: str) -> str:
+    if device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA self-play was requested, but torch.cuda.is_available() is false")
+    if device not in {"cpu", "cuda"}:
+        raise ValueError("device must be one of: auto, cpu, cuda")
+    return device
+
+
+def should_use_shared_inference(config: ZeroReportConfig, worker_count: int) -> bool:
+    return config.shared_inference and worker_count > 1 and resolve_torch_device(config.self_play_device) == "cuda"
+
+
+class SharedInferenceServer:
+    def __init__(self, config: ZeroReportConfig, work_root: Path, model_state: Dict[str, torch.Tensor],
+                 request_queue: Any, response_queues: Sequence[Any]):
+        self.config = config
+        self.request_queue = request_queue
+        self.response_queues = response_queues
+        self.stop_event = threading.Event()
+        self.error: Optional[BaseException] = None
+        self.model = AlphaGoWeakV0(
+            name="zero_report_shared_inference",
+            root=str(work_root),
+            size=config.board_size,
+            num_filters=config.num_filters,
+            device=resolve_torch_device(config.self_play_device),
+        )
+        load_snapshot(self.model, model_state)
+        self.thread = threading.Thread(target=self._run, name="zero-report-shared-inference", daemon=True)
+
+    def start(self):
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+        self.thread.join(timeout=30)
+        if self.thread.is_alive():
+            raise RuntimeError("shared inference server did not stop within 30 seconds")
+        if self.error is not None:
+            raise RuntimeError("shared inference server failed") from self.error
+
+    def _run(self):
+        try:
+            self.model.model.eval()
+            while not self.stop_event.is_set():
+                try:
+                    first = self.request_queue.get(timeout=0.05)
+                except queue.Empty:
+                    continue
+                requests = [first]
+                total = int(first[2].shape[0])
+                max_items = max(self.config.inference_batch_size * max(len(self.response_queues), 1), 1)
+                deadline = time.perf_counter() + 0.003
+                while total < max_items and time.perf_counter() < deadline:
+                    try:
+                        request = self.request_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    requests.append(request)
+                    total += int(request[2].shape[0])
+                self._serve_batch(requests)
+        except BaseException as exc:
+            self.error = exc
+            message = f"{type(exc).__name__}: {exc}"
+            for response_queue in self.response_queues:
+                try:
+                    response_queue.put((-1, None, None, message))
+                except Exception:
+                    pass
+
+    def _serve_batch(self, requests: Sequence[Tuple[int, int, np.ndarray]]):
+        inputs = np.concatenate([request[2] for request in requests], axis=0).astype(np.float32, copy=False)
+        tensor = torch.as_tensor(inputs, dtype=torch.float32, device=self.model.device)
+        with torch.no_grad():
+            policy, value = self.model.model(tensor)
+        policies = policy.cpu().numpy()
+        values = value.cpu().numpy()
+        offset = 0
+        for worker_id, request_id, request_inputs in requests:
+            count = int(request_inputs.shape[0])
+            self.response_queues[worker_id].put((request_id, policies[offset:offset + count], values[offset:offset + count]))
+            offset += count
+
+
+class RemoteInferenceModel:
+    def __init__(self, local_model: AlphaGoWeakV0, request_queue: Any, response_queue: Any, worker_id: int):
+        self.local_model = local_model
+        self.request_queue = request_queue
+        self.response_queue = response_queue
+        self.worker_id = worker_id
+        self.request_id = 0
+        self.size = local_model.size
+        self.root = local_model.root
+
+    def encode_input(self, player: GoPlayer, board: GoBoardBase):
+        return self.local_model.encode_input(player, board)
+
+    def predict(self, board: GoBoardBase, player: GoPlayer):
+        return self.predict_batch([(board, player)])[0]
+
+    def predict_batch(self, states: Sequence[Tuple[GoBoardBase, GoPlayer]]) -> List[Tuple[np.ndarray, float]]:
+        if len(states) == 0:
+            return []
+        inputs = np.stack([self.encode_input(player, board) for board, player in states]).astype(np.float32, copy=False)
+        request_id = self.request_id
+        self.request_id += 1
+        self.request_queue.put((self.worker_id, request_id, inputs))
+        response = self.response_queue.get()
+        if len(response) == 4 and response[0] == -1:
+            raise RuntimeError(f"shared inference server failed: {response[3]}")
+        response_id, policies, values = response
+        if response_id != request_id:
+            raise RuntimeError(f"shared inference response mismatch: expected {request_id}, got {response_id}")
+        return [(policies[idx], float(values[idx])) for idx in range(len(states))]
+
+    def state_calculator_batch(self, states: Sequence[Tuple[GoBoardBase, GoPlayer]]):
+        predictions = self.predict_batch(states)
+        return [
+            self.local_model._state_from_prediction(board, player, policy, value)
+            for (board, player), (policy, value) in zip(states, predictions)
+        ]
+
+    def state_calculator(self, board: GoBoardBase, player: GoPlayer):
+        policy, value = self.predict(board, player)
+        return self.local_model._state_from_prediction(board, player, policy, value)
+
+    @staticmethod
+    def policy_evaluator(state, komi=6.5):
+        return AlphaGoWeakV0.policy_evaluator(state, komi)
+
+    @staticmethod
+    def value_evaluator(state: np.ndarray, komi=6.5):
+        return AlphaGoWeakV0.value_evaluator(state, komi)
+
+
 def run_parallel_self_play(config: ZeroReportConfig, work_root: Path, model_state: Dict[str, torch.Tensor],
                            epoch: int, executor: ProcessPoolExecutor, worker_count: int):
     counts = split_counts(config.games_per_epoch, worker_count)
-    futures = [
-        executor.submit(_self_play_worker, self_play_worker_config(config, work_root), model_state, count, config.seed + epoch * 1000 + idx)
-        for idx, count in enumerate(counts)
-        if count > 0
-    ]
+    base_worker_config = self_play_worker_config(config, work_root)
+    manager = None
+    server = None
+    if should_use_shared_inference(config, worker_count):
+        manager = Manager()
+        request_queue = manager.Queue()
+        response_queues = [manager.Queue() for _ in counts]
+        server = SharedInferenceServer(config, work_root, model_state, request_queue, response_queues)
+        server.start()
+        futures = [
+            executor.submit(
+                _self_play_worker,
+                {
+                    **base_worker_config,
+                    "device": "cpu",
+                    "remote_inference": True,
+                    "request_queue": request_queue,
+                    "response_queue": response_queues[idx],
+                    "worker_id": idx,
+                },
+                None,
+                count,
+                config.seed + epoch * 1000 + idx,
+            )
+            for idx, count in enumerate(counts)
+            if count > 0
+        ]
+    else:
+        futures = [
+            executor.submit(_self_play_worker, base_worker_config, model_state, count, config.seed + epoch * 1000 + idx)
+            for idx, count in enumerate(counts)
+            if count > 0
+        ]
     inputs, policies, values, games = [], [], [], []
-    for future in futures:
-        chunk_inputs, chunk_policies, chunk_values, chunk_games = future.result()
-        inputs.extend(chunk_inputs)
-        policies.extend(chunk_policies)
-        values.extend(chunk_values)
-        games.extend(chunk_games)
+    try:
+        for future in futures:
+            chunk_inputs, chunk_policies, chunk_values, chunk_games = future.result()
+            inputs.extend(chunk_inputs)
+            policies.extend(chunk_policies)
+            values.extend(chunk_values)
+            games.extend(chunk_games)
+    finally:
+        stop_error: Optional[BaseException] = None
+        if server is not None:
+            try:
+                server.stop()
+            except BaseException as exc:
+                stop_error = exc
+        if manager is not None:
+            manager.shutdown()
+        if stop_error is not None:
+            raise stop_error
     return inputs, policies, values, games
 
 
@@ -223,19 +410,31 @@ def self_play_worker_config(config: ZeroReportConfig, work_root: Path) -> Dict[s
         "temperature_after_drop": config.temperature_after_drop,
         "dirichlet_alpha": config.dirichlet_alpha,
         "dirichlet_epsilon": config.dirichlet_epsilon,
+        "inference_batch_size": config.inference_batch_size,
+        "device": resolve_torch_device(config.self_play_device),
     }
 
 
-def _self_play_worker(worker_config: Dict[str, Any], model_state: Dict[str, torch.Tensor], count: int, seed: int):
+def _self_play_worker(worker_config: Dict[str, Any], model_state: Optional[Dict[str, torch.Tensor]], count: int, seed: int):
     set_seed(seed)
     bot = GTPAlphaGoWeakV0(
         worker_config["board_size"],
         worker_config["komi"],
         root=worker_config["work_root"],
         num_filters=worker_config["num_filters"],
-        device="cpu",
+        device=worker_config["device"],
+        inference_batch_size=worker_config["inference_batch_size"],
     )
-    load_snapshot(bot.model, model_state)
+    if worker_config.get("remote_inference"):
+        bot.model = RemoteInferenceModel(
+            bot.model,
+            worker_config["request_queue"],
+            worker_config["response_queue"],
+            worker_config["worker_id"],
+        )
+        bot.clear_board()
+    else:
+        load_snapshot(bot.model, model_state)
     games: List[GameData] = []
     inputs, policies, values = bot.self_play(
         count=count,
@@ -246,6 +445,7 @@ def _self_play_worker(worker_config: Dict[str, Any], model_state: Dict[str, torc
         temperature_after_drop=worker_config["temperature_after_drop"],
         dirichlet_alpha=worker_config["dirichlet_alpha"],
         dirichlet_epsilon=worker_config["dirichlet_epsilon"],
+        inference_batch_size=worker_config["inference_batch_size"],
         game_recorder=lambda _idx, game: games.append(game),
     )
     return inputs, policies, values, games
@@ -285,7 +485,8 @@ def config_to_dict(config: ZeroReportConfig, work_root: Path) -> Dict[str, Any]:
     data["root"] = str(config.root)
     data["work_root"] = str(work_root)
     data["output"] = str(config.output)
-    data["device"] = "cuda" if torch.cuda.is_available() else "cpu"
+    data["device"] = resolve_torch_device(config.self_play_device)
+    data["shared_inference_active"] = should_use_shared_inference(config, min(max(config.workers, 1), max(config.games_per_epoch, 1)))
     data["checkpoint_epochs"] = list(config.checkpoint_epochs)
     return data
 
@@ -308,7 +509,8 @@ def json_default(value: Any):
 
 
 def evaluate_against_random(model: AlphaGoWeakV0, games: int, simulations: int, max_moves: int,
-                            komi: float, eval_opening_moves: int, seed: int) -> Dict[str, Any]:
+                            komi: float, eval_opening_moves: int, inference_batch_size: int,
+                            seed: int) -> Dict[str, Any]:
     if games <= 0:
         return empty_eval_result()
     rng = random.Random(seed)
@@ -322,11 +524,19 @@ def evaluate_against_random(model: AlphaGoWeakV0, games: int, simulations: int, 
     for game_idx in range(games):
         board = GoBoard(model.size)
         player, consecutive_passes, moves = play_random_opening(board, eval_opening_moves, GoPlayer.black, rng)
-        tree = GoMCTSTree(board, model.state_calculator, model.policy_evaluator, model.value_evaluator, komi=komi)
+        tree = GoMCTSTree(
+            board,
+            model.state_calculator,
+            model.policy_evaluator,
+            model.value_evaluator,
+            player=player,
+            komi=komi,
+            batch_state_calculator=model.state_calculator_batch,
+        )
         model_player = GoPlayer.black if game_idx % 2 == 0 else GoPlayer.white
         while consecutive_passes < 2 and moves < max_moves:
             if player == model_player:
-                pos = tree.evaluate(player, num=simulations, temperature=0.0, dirichlet_alpha=0.0)
+                pos = tree.evaluate(player, num=simulations, temperature=0.0, dirichlet_alpha=0.0, inference_batch_size=inference_batch_size)
             else:
                 pos = random_non_eye_move(board, player, rng)
             board.play(player, pos)
@@ -406,19 +616,20 @@ def evaluate_against_model(candidate_state: Dict[str, torch.Tensor], baseline_st
                            config: ZeroReportConfig, work_root: Path, seed: int) -> Dict[str, Any]:
     if config.eval_games <= 0:
         return empty_eval_result()
+    device = resolve_torch_device(config.self_play_device)
     candidate = AlphaGoWeakV0(
         name="zero_report_candidate",
         root=str(work_root),
         size=config.board_size,
         num_filters=config.num_filters,
-        device="cpu",
+        device=device,
     )
     baseline = AlphaGoWeakV0(
         name="zero_report_baseline",
         root=str(work_root),
         size=config.board_size,
         num_filters=config.num_filters,
-        device="cpu",
+        device=device,
     )
     load_snapshot(candidate, candidate_state)
     load_snapshot(baseline, baseline_state)
@@ -447,13 +658,29 @@ def evaluate_against_model(candidate_state: Dict[str, torch.Tensor], baseline_st
             player = next_player
             consecutive_passes = opening_passes
             moves = opening_length
-            candidate_tree = GoMCTSTree(board, candidate.state_calculator, candidate.policy_evaluator, candidate.value_evaluator, komi=config.komi)
-            baseline_tree = GoMCTSTree(board, baseline.state_calculator, baseline.policy_evaluator, baseline.value_evaluator, komi=config.komi)
+            candidate_tree = GoMCTSTree(
+                board,
+                candidate.state_calculator,
+                candidate.policy_evaluator,
+                candidate.value_evaluator,
+                player=player,
+                komi=config.komi,
+                batch_state_calculator=candidate.state_calculator_batch,
+            )
+            baseline_tree = GoMCTSTree(
+                board,
+                baseline.state_calculator,
+                baseline.policy_evaluator,
+                baseline.value_evaluator,
+                player=player,
+                komi=config.komi,
+                batch_state_calculator=baseline.state_calculator_batch,
+            )
             while consecutive_passes < 2 and moves < config.max_moves:
                 if player == candidate_player:
-                    pos = candidate_tree.evaluate(player, num=config.eval_simulations, temperature=0.0, dirichlet_alpha=0.0)
+                    pos = candidate_tree.evaluate(player, num=config.eval_simulations, temperature=0.0, dirichlet_alpha=0.0, inference_batch_size=config.inference_batch_size)
                 else:
-                    pos = baseline_tree.evaluate(player, num=config.eval_simulations, temperature=0.0, dirichlet_alpha=0.0)
+                    pos = baseline_tree.evaluate(player, num=config.eval_simulations, temperature=0.0, dirichlet_alpha=0.0, inference_batch_size=config.inference_batch_size)
                 board.play(player, pos)
                 candidate_tree.play(player, pos)
                 baseline_tree.play(player, pos)
@@ -652,10 +879,11 @@ code {{ background: #eef2f7; padding: 2px 5px; border-radius: 4px; }}
 <div class="card"><div class="note">训练 epoch</div><div class="metric">{config['epochs']}</div></div>
 <div class="card"><div class="note">每手 MCTS simulations</div><div class="metric">{config['simulations']}</div></div>
 <div class="card"><div class="note">设备</div><div class="metric">{html.escape(config['device'])}</div></div>
+<div class="card"><div class="note">共享推理</div><div class="metric">{'on' if config['shared_inference_active'] else 'off'}</div></div>
 </section>
 <section class="card" style="margin-top:16px">
 <h2>实验说明</h2>
-<p>这是本仓库当前实现的一次真实本地运行，不是论文规模复现。它用于观察 7x7 小棋盘上，模型从随机策略经过少量 self-play 后，策略分布、value 估计和对随机对手胜率的变化。训练使用 replay buffer、根节点 Dirichlet 噪声、visit-count 温度退火、棋盘对称增强和 4 worker 自博弈采样。</p>
+<p>这是本仓库当前实现的一次真实本地运行，不是论文规模复现。它用于观察 7x7 小棋盘上，模型从随机策略经过少量 self-play 后，策略分布、value 估计和对随机对手胜率的变化。训练使用 replay buffer、根节点 Dirichlet 噪声、visit-count 温度退火、棋盘对称增强、批量 leaf 推理和多 worker 自博弈采样。</p>
 <p>复现命令见 README。完整参数保存在 <code>metrics.json</code>。</p>
 </section>
 <section class="card" style="margin-top:16px">

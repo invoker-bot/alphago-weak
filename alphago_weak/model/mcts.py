@@ -15,6 +15,7 @@ from typing import *
 from alphago_weak.board import *
 
 StateCalculator = Callable[[GoBoardBase, GoPlayer], Any]
+BatchStateCalculator = Callable[[Sequence[Tuple[GoBoardBase, GoPlayer]]], Sequence[Any]]
 GoAction = Optional[GoPoint]
 PolicyEvaluator = Callable[[Any, float], Tuple[List[GoAction], List[float]]]
 ValueEvaluator = Callable[[Any, float], float]
@@ -56,10 +57,28 @@ class GoMCTSNode:
                  num=1600, progress_callback: ProgressCallback = None,
                  temperature: Optional[float] = None,
                  dirichlet_alpha: Optional[float] = None,
-                 exploration_fraction: float = 0.25) -> Optional[GoPoint]:
+                 exploration_fraction: float = 0.25,
+                 inference_batch_size: int = 1,
+                 batch_state_calculator: Optional[BatchStateCalculator] = None) -> Optional[GoPoint]:
         noise_applied = False
         if self.children is not None:
             noise_applied = self.add_dirichlet_noise(dirichlet_alpha, exploration_fraction)
+        if inference_batch_size > 1 and batch_state_calculator is not None:
+            self.evaluate_batch(
+                board,
+                player,
+                policy_evaluator,
+                value_evaluator,
+                komi,
+                num,
+                progress_callback,
+                dirichlet_alpha,
+                exploration_fraction,
+                batch_state_calculator,
+                inference_batch_size,
+                noise_applied,
+            )
+            return self.choose_point(temperature)
         for _ in range(num):
             b_ = board.copy()
             cur_player, node = self.choose(b_, player)
@@ -70,6 +89,55 @@ class GoMCTSNode:
             if progress_callback is not None:
                 progress_callback(1)
         return self.choose_point(temperature)
+
+    def evaluate_batch(self, board: GoBoardBase, player: GoPlayer,
+                       policy_evaluator: PolicyEvaluator, value_evaluator: ValueEvaluator, komi: float,
+                       num: int, progress_callback: ProgressCallback,
+                       dirichlet_alpha: Optional[float], exploration_fraction: float,
+                       batch_state_calculator: BatchStateCalculator, inference_batch_size: int,
+                       noise_applied: bool):
+        remaining = num
+        while remaining > 0:
+            pending_ids: Set[int] = set()
+            pending: List[Tuple[GoBoardBase, GoPlayer, "GoMCTSNode"]] = []
+            for _ in range(min(inference_batch_size, remaining)):
+                b_ = board.copy()
+                cur_player, node = self.choose(b_, player)
+                if node.children is not None:
+                    node.update(node.rollout(b_, cur_player, None, value_evaluator, komi))
+                    remaining -= 1
+                    if progress_callback is not None:
+                        progress_callback(1)
+                    if remaining <= 0:
+                        break
+                    continue
+                if id(node) in pending_ids:
+                    break
+                pending_ids.add(id(node))
+                node.add_virtual_visit()
+                pending.append((b_, cur_player, node))
+
+            if not pending:
+                continue
+
+            try:
+                states = batch_state_calculator([(b_, cur_player) for b_, cur_player, _node in pending])
+                if len(states) != len(pending):
+                    raise ValueError("batch state calculator returned an unexpected number of states")
+            except Exception:
+                for _b_, _cur_player, node in pending:
+                    node.remove_virtual_visit()
+                raise
+
+            for (b_, cur_player, node), state in zip(pending, states):
+                node.remove_virtual_visit()
+                node.expand_from_state(b_, cur_player, state, policy_evaluator, komi)
+                if node is self and not noise_applied:
+                    noise_applied = self.add_dirichlet_noise(dirichlet_alpha, exploration_fraction)
+                node.update(node.rollout(b_, cur_player, state, value_evaluator, komi))
+                remaining -= 1
+                if progress_callback is not None:
+                    progress_callback(1)
 
     def choose(self, board: GoBoardBase, player: GoPlayer) -> Tuple[GoPlayer, "GoMCTSNode"]:
         if self.children is None or len(self.children) == 0:
@@ -87,6 +155,12 @@ class GoMCTSNode:
     def expand(self, board: GoBoardBase, player: GoPlayer, state_calculator: StateCalculator, policy_evaluator: PolicyEvaluator, komi=6.5):
         if self.children is None:
             state = state_calculator(board, player)
+            self.expand_from_state(board, player, state, policy_evaluator, komi)
+            return state
+        return None
+
+    def expand_from_state(self, board: GoBoardBase, player: GoPlayer, state: Any, policy_evaluator: PolicyEvaluator, komi=6.5):
+        if self.children is None:
             actions, weights = policy_evaluator(state, komi)
             self.children = [
                 self.__class__(self, action, weight)
@@ -94,13 +168,24 @@ class GoMCTSNode:
                 if action is None or board.is_valid_point(player, action)
             ]
             self.normalize_child_priors()
-            return state
-        return None
+        return state
 
     def rollout(self, board: GoBoardBase, player: GoPlayer, state: Any, value_evaluator: ValueEvaluator, komi=6.5):
         if len(self.children) == 0:  # at the end of the game
             return float(board.score(player.other, komi) > 0)
         return 1.0 - value_evaluator(state, komi)
+
+    def add_virtual_visit(self):
+        self.n += 1
+        parent = self.parent()
+        if parent is not self:
+            parent.add_virtual_visit()
+
+    def remove_virtual_visit(self):
+        self.n -= 1
+        parent = self.parent()
+        if parent is not self:
+            parent.remove_virtual_visit()
 
     def update(self, w: float = 0):
         """backward propagation"""
@@ -172,12 +257,15 @@ class GoMCTSNode:
 
 class GoMCTSTree(object):
 
-    def __init__(self, board: GoBoardBase, state_calculator: StateCalculator, policy_evaluator: PolicyEvaluator, value_evaluator: ValueEvaluator, player=GoPlayer.black, komi=6.5):
+    def __init__(self, board: GoBoardBase, state_calculator: StateCalculator, policy_evaluator: PolicyEvaluator,
+                 value_evaluator: ValueEvaluator, player=GoPlayer.black, komi=6.5,
+                 batch_state_calculator: Optional[BatchStateCalculator] = None):
         self.board = board
         self.player = player
         self.komi = komi
         self.node = GoMCTSNode()
         self._state_calculator = state_calculator
+        self._batch_state_calculator = batch_state_calculator
         self._policy_evaluator = policy_evaluator
         self._value_evaluator = value_evaluator
 
@@ -195,7 +283,8 @@ class GoMCTSTree(object):
     def evaluate(self, player, num=1600, progress_callback: ProgressCallback = None,
                  temperature: Optional[float] = None,
                  dirichlet_alpha: Optional[float] = None,
-                 exploration_fraction: float = 0.25) -> Optional[GoPoint]:
+                 exploration_fraction: float = 0.25,
+                 inference_batch_size: int = 1) -> Optional[GoPoint]:
         assert player == self.player
         return self.node.evaluate(
             self.board,
@@ -209,4 +298,6 @@ class GoMCTSTree(object):
             temperature,
             dirichlet_alpha,
             exploration_fraction,
+            inference_batch_size,
+            self._batch_state_calculator,
         )

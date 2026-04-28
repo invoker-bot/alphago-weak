@@ -123,6 +123,7 @@ def self_play(
     train_batch_size: int = typer.Option(64, "--train-batch-size", "--train_batch_size", help="Self-play training batch size."),
     train_steps: Optional[int] = typer.Option(None, "--train-steps", "--train_steps", help="Maximum training batches per epoch."),
     learning_rate: float = typer.Option(0.01, "--learning-rate", "--learning_rate", help="Self-play optimizer learning rate."),
+    inference_batch_size: int = typer.Option(16, "--inference-batch-size", "--inference_batch_size", help="MCTS leaf evaluations to batch per model call."),
     board_size: int = typer.Option(19, "--board-size", "--board_size", help="Go board size."),
     komi: float = typer.Option(6.5, "--komi", help="Extra score given to white."),
 ):
@@ -141,7 +142,9 @@ def self_play(
         raise click.BadParameter("dirichlet-alpha must be greater than or equal to zero")
     if not 0 <= dirichlet_epsilon <= 1:
         raise click.BadParameter("dirichlet-epsilon must be between 0 and 1")
-    bot = GTPAlphaGoWeakV0(board_size, komi, root=str(_root(ctx)))
+    if inference_batch_size <= 0:
+        raise click.BadParameter("inference-batch-size must be greater than zero")
+    bot = GTPAlphaGoWeakV0(board_size, komi, root=str(_root(ctx)), inference_batch_size=inference_batch_size)
     optimizer = bot.model.make_optimizer(learning_rate)
     replay_buffer = deque(maxlen=replay_buffer_size)
     output_dir = record_dir if record_dir is not None else _root(ctx) / "self-play"
@@ -203,6 +206,7 @@ def self_play(
                 temperature_after_drop=temperature_after_drop,
                 dirichlet_alpha=dirichlet_alpha,
                 dirichlet_epsilon=dirichlet_epsilon,
+                inference_batch_size=inference_batch_size,
                 game_recorder=record_game,
                 move_callback=on_move,
                 simulation_callback=on_simulation,
@@ -260,6 +264,9 @@ def zero_report(
     augment_training: bool = typer.Option(True, "--augment/--no-augment", help="Use 8-way board symmetry augmentation for replay training."),
     num_filters: int = typer.Option(16, "--num-filters", "--num_filters", help="Network filter count for the small 7x7 experiment."),
     workers: int = typer.Option(4, "--workers", help="Worker processes for self-play game generation."),
+    inference_batch_size: int = typer.Option(16, "--inference-batch-size", "--inference_batch_size", help="MCTS leaf evaluations to batch per model call."),
+    self_play_device: str = typer.Option("auto", "--self-play-device", "--self_play_device", help="Self-play inference device. Choices: auto, cpu, cuda."),
+    shared_inference: bool = typer.Option(True, "--shared-inference/--no-shared-inference", help="Share one CUDA inference server across self-play worker processes."),
     checkpoints: str = typer.Option("0,5,10,20", "--checkpoints", help="Comma-separated checkpoint epochs to analyze."),
     seed: int = typer.Option(7, "--seed", help="Random seed."),
     force: bool = typer.Option(False, "--force", help="Delete the report experiment work directory before running."),
@@ -273,6 +280,10 @@ def zero_report(
         raise click.BadParameter("training sizes must be positive")
     if workers <= 0:
         raise click.BadParameter("workers must be positive")
+    if inference_batch_size <= 0:
+        raise click.BadParameter("inference-batch-size must be greater than zero")
+    if self_play_device not in {"auto", "cpu", "cuda"}:
+        raise click.BadParameter("self-play-device must be one of: auto, cpu, cuda")
     if eval_opening_moves < 0:
         raise click.BadParameter("eval-opening-moves must be non-negative")
     if optimizer_name not in {"sgd", "adam"}:
@@ -300,6 +311,9 @@ def zero_report(
                 augment_training=augment_training,
                 num_filters=num_filters,
                 workers=workers,
+                inference_batch_size=inference_batch_size,
+                self_play_device=self_play_device,
+                shared_inference=shared_inference,
                 checkpoint_epochs=checkpoint_epochs,
                 seed=seed,
                 force=force,

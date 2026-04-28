@@ -27,6 +27,7 @@ class GTPAlphaGoWeakV0(GTPClientBase):
         self._model_name = kwargs.get("name", self.name)
         self._model_num_filters = kwargs.get("num_filters", 128)
         self._model_device = kwargs.get("device", None)
+        self._inference_batch_size = kwargs.get("inference_batch_size", 1)
         self.board = GoBoard(size)
         self.model = AlphaGoWeakV0(
             name=self._model_name,
@@ -35,10 +36,17 @@ class GTPAlphaGoWeakV0(GTPClientBase):
             num_filters=self._model_num_filters,
             device=self._model_device,
         )
-        self.mcts = GoMCTSTree(self.board, self.model.state_calculator, self.model.policy_evaluator, self.model.value_evaluator, komi=komi)
+        self.mcts = GoMCTSTree(
+            self.board,
+            self.model.state_calculator,
+            self.model.policy_evaluator,
+            self.model.value_evaluator,
+            komi=komi,
+            batch_state_calculator=self.model.state_calculator_batch,
+        )
 
     def genmove(self, player):
-        pos = self.mcts.evaluate(player, 1600)
+        pos = self.mcts.evaluate(player, 1600, inference_batch_size=self._inference_batch_size)
         if pos is not None:
             return pos
         return "pass"
@@ -72,10 +80,12 @@ class GTPAlphaGoWeakV0(GTPClientBase):
                   temperature_after_drop: float = 0.0,
                   dirichlet_alpha: Optional[float] = 0.03,
                   dirichlet_epsilon: float = 0.25,
+                  inference_batch_size: Optional[int] = None,
                   game_recorder: Optional[Callable[[int, GameData], None]] = None,
                   move_callback: Optional[Callable[[int, int, GoPlayer, str, Optional[GoPoint]], None]] = None,
                   simulation_callback: Optional[Callable[[int], None]] = None):
         I, P, V = [], [], []
+        batch_size = getattr(self, "_inference_batch_size", 1) if inference_batch_size is None else inference_batch_size
         for game_idx in range(count):
             self.clear_board()
             player = GoPlayer.black
@@ -95,6 +105,7 @@ class GTPAlphaGoWeakV0(GTPClientBase):
                     temperature=move_temperature,
                     dirichlet_alpha=dirichlet_alpha,
                     exploration_fraction=dirichlet_epsilon,
+                    inference_batch_size=batch_size,
                 )
                 game_inputs.append(self.model.encode_input(player, self.board))
                 game_policies.append(self.encode_policy_output(move_temperature))
@@ -133,4 +144,11 @@ class GTPAlphaGoWeakV0(GTPClientBase):
                 num_filters=self._model_num_filters,
                 device=self._model_device,
             )
-        self.mcts = GoMCTSTree(self.board, self.model.state_calculator, self.model.policy_evaluator, self.model.value_evaluator, komi=self.komi)
+        self.mcts = GoMCTSTree(
+            self.board,
+            self.model.state_calculator,
+            self.model.policy_evaluator,
+            self.model.value_evaluator,
+            komi=self.komi,
+            batch_state_calculator=self.model.state_calculator_batch,
+        )
