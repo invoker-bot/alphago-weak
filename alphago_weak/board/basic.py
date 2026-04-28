@@ -60,6 +60,24 @@ class GoPoint(object):
     __slots__ = ("x", "y")
 
     def __init__(self, x: int, y: int):
+        if type(x) is int and type(y) is int:
+            self.x = x
+            self.y = y
+            return
+        if isinstance(x, GoPoint):
+            x = x.x
+        if isinstance(y, GoPoint):
+            y = y.y
+        if type(x) is not int:
+            if isinstance(x, np.integer):
+                x = int(x)
+            else:
+                raise TypeError(f"point coordinates must be integers, actual: {type(x)!r}, {type(y)!r}")
+        if type(y) is not int:
+            if isinstance(y, np.integer):
+                y = int(y)
+            else:
+                raise TypeError(f"point coordinates must be integers, actual: {type(x)!r}, {type(y)!r}")
         self.x = x
         self.y = y
 
@@ -67,8 +85,9 @@ class GoPoint(object):
     def to_point(cls, point: Optional[Tuple[int, int]]) -> Optional["GoPoint"]:
         if point is None:
             return None
-        else:
-            return cls(*point)
+        if isinstance(point, GoPoint):
+            return point
+        return cls(*point)
 
     def __iter__(self):
         yield self.x
@@ -99,7 +118,9 @@ class GoPoint(object):
         return math.sqrt(self.x * self.x + self.y * self.y)
 
     def __eq__(self, other: "GoPoint"):
-        return hash(self) == hash(other)
+        if not isinstance(other, GoPoint):
+            return False
+        return self.x == other.x and self.y == other.y
 
     def __hash__(self):
         return self.x | (self.y << 8)
@@ -108,7 +129,7 @@ class GoPoint(object):
 class GoString(NamedTuple):
     player: GoPlayer
     stones: Set[GoPoint]
-    liberties: Set[GoPoint] = set()
+    liberties: Set[GoPoint]
 
     def is_dead(self) -> bool:
         return len(self.liberties) == 0

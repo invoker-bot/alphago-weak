@@ -37,6 +37,16 @@ def play_stones(board: GoBoardBase, player: GoPlayer, stones: List[Tuple[int, in
     return stones
 
 
+def test_go_point_is_type_safe_value_object():
+    point = P(1, 2)
+
+    assert GoPoint.to_point(point) is point
+    assert P(point, 3) == P(1, 3)
+    assert point != (1, 2)
+    with pytest.raises(TypeError):
+        P("1", 2)
+
+
 @pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
 def test_board_rejects_out_of_bounds_points(Board: Type[GoBoardBase]):
     b_ = Board(5)

@@ -99,149 +99,153 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
     attempt = 0
     cumulative_elo = 0.0
     replay_buffer = deque(maxlen=config.replay_buffer_size)
+    candidate_state = champion_state
+    candidate_buffer = deque(maxlen=config.replay_buffer_size)
     records: List[Dict[str, Any]] = []
     generation_paths = [{"generation": 0, "elo": 0.0, "path": str(model_dir / "generation-000.pt")}]
     max_attempts = config.max_attempts if config.max_attempts is not None else max(config.generations * 3, config.generations)
     worker_count = min(max(config.workers, 1), max(config.games_per_epoch, 1))
-    executor = ProcessPoolExecutor(max_workers=worker_count) if worker_count > 1 and config.generations > 0 else None
 
-    try:
-        while accepted < config.generations and attempt < max_attempts:
-            attempt += 1
-            report_progress(progress_callback, {"event": "attempt_start", "attempt": attempt, "accepted": accepted, "target": config.generations})
-            calibration = calibrate_relative_komi(champion_state, config, work_root, config.seed + attempt * 100000)
-            report_progress(progress_callback, {"event": "komi", "attempt": attempt, "komi": calibration["komi"]})
-            generation_config = to_zero_report_config(config, calibration["komi"])
-            candidate = GTPAlphaGoWeakV0(
-                config.board_size,
-                calibration["komi"],
-                root=str(work_root),
-                num_filters=config.num_filters,
-                device=device,
-                inference_batch_size=config.inference_batch_size,
-            )
-            load_snapshot(candidate.model, champion_state)
-            optimizer = candidate.model.make_optimizer(config.learning_rate, optimizer=config.optimizer_name)
-            attempt_buffer = deque(replay_buffer, maxlen=config.replay_buffer_size)
-            training_metrics: List[Dict[str, Any]] = []
+    while accepted < config.generations and attempt < max_attempts:
+        attempt += 1
+        source_generation = accepted
+        report_progress(progress_callback, {"event": "attempt_start", "attempt": attempt, "accepted": accepted, "target": config.generations})
+        calibration = calibrate_relative_komi(champion_state, config, work_root, config.seed + attempt * 100000)
+        report_progress(progress_callback, {"event": "komi", "attempt": attempt, "komi": calibration["komi"]})
+        generation_config = to_zero_report_config(config, calibration["komi"])
+        candidate = GTPAlphaGoWeakV0(
+            config.board_size,
+            calibration["komi"],
+            root=str(work_root),
+            num_filters=config.num_filters,
+            device=device,
+            inference_batch_size=config.inference_batch_size,
+        )
+        load_snapshot(candidate.model, candidate_state)
+        optimizer = candidate.model.make_optimizer(config.learning_rate, optimizer=config.optimizer_name)
+        attempt_buffer = deque(candidate_buffer, maxlen=config.replay_buffer_size)
+        training_metrics: List[Dict[str, Any]] = []
 
-            for epoch in range(1, config.candidate_epochs + 1):
-                games: List[GameData] = []
-                epoch_seed = config.seed + attempt * 1000 + epoch
-                if executor is None:
-                    inputs, policies, values = candidate.self_play(
-                        count=config.games_per_epoch,
-                        simulations=config.simulations,
-                        max_moves=config.max_moves,
-                        inference_batch_size=config.inference_batch_size,
-                        game_recorder=lambda _idx, game: games.append(game),
-                    )
-                else:
-                    inputs, policies, values, games = run_parallel_self_play(
-                        generation_config,
-                        work_root,
-                        snapshot_state(candidate.model),
-                        epoch_seed,
-                        executor,
-                        worker_count,
-                    )
-                attempt_buffer.extend(zip(inputs, policies, values))
-                train_inputs, train_policies, train_values = samples_to_arrays(attempt_buffer)
-                if config.augment_training:
-                    train_inputs, train_policies, train_values = augment_samples(train_inputs, train_policies, train_values, config.board_size)
-                dataset = candidate.model.dataset_from_arrays(train_inputs, train_policies, train_values)
-                loss, accuracy = candidate.model.fit_step_from_dataset(
-                    dataset,
-                    batch_size=config.train_batch_size,
-                    max_batches=config.train_steps,
-                    optimizer=optimizer,
-                    learning_rate=config.learning_rate,
-                )
-                if games:
-                    games[0].to_sgf(str(sgf_dir / f"attempt-{attempt:03d}-epoch-{epoch:03d}.sgf"))
-                training_metrics.append(
-                    {
-                        "epoch": epoch,
-                        "loss": loss,
-                        "accuracy": accuracy,
-                        "samples": len(inputs),
-                        "replay_size": len(attempt_buffer),
-                        "train_size": len(train_inputs),
-                        "avg_moves": float(np.mean([len(game.sequence) for game in games])) if games else 0.0,
-                    }
-                )
-                report_progress(
-                    progress_callback,
-                    {
-                        "event": "epoch",
-                        "attempt": attempt,
-                        "epoch": epoch,
-                        "loss": loss,
-                        "accuracy": accuracy,
-                        "samples": len(inputs),
-                    },
-                )
-
-            candidate_state = snapshot_state(candidate.model)
-            match = evaluate_generation_match(
-                candidate_state,
-                champion_state,
+        for epoch in range(1, config.candidate_epochs + 1):
+            epoch_seed = config.seed + attempt * 1000 + epoch
+            inputs, policies, values, games = run_ladder_self_play_epoch(
+                candidate,
                 generation_config,
                 work_root,
-                config.seed + attempt * 100000 + 50000,
+                epoch_seed,
+                worker_count,
+                progress_callback,
+                attempt,
+                epoch,
             )
-            elo_delta = elo_delta_from_win_rate(match["candidate_win_rate"])
-            accepted_candidate = match["candidate_win_rate"] >= config.gate_win_rate
-            candidate_path = model_dir / f"candidate-attempt-{attempt:03d}.pt"
-            save_snapshot_file(candidate_path, candidate_state, config, generation=accepted + 1, elo=cumulative_elo + elo_delta)
-
-            if accepted_candidate:
-                accepted += 1
-                cumulative_elo += elo_delta
-                champion_state = candidate_state
-                replay_buffer = attempt_buffer
-                champion_path = model_dir / f"generation-{accepted:03d}.pt"
-                save_snapshot_file(champion_path, champion_state, config, generation=accepted, elo=cumulative_elo)
-                generation_paths.append({"generation": accepted, "elo": cumulative_elo, "path": str(champion_path)})
-            else:
-                champion_path = None
-
-            records.append(
+            attempt_buffer.extend(zip(inputs, policies, values))
+            train_inputs, train_policies, train_values = samples_to_arrays(attempt_buffer)
+            if config.augment_training:
+                train_inputs, train_policies, train_values = augment_samples(train_inputs, train_policies, train_values, config.board_size)
+            dataset = candidate.model.dataset_from_arrays(train_inputs, train_policies, train_values)
+            loss, accuracy = candidate.model.fit_step_from_dataset(
+                dataset,
+                batch_size=config.train_batch_size,
+                max_batches=config.train_steps,
+                optimizer=optimizer,
+                learning_rate=config.learning_rate,
+            )
+            if games:
+                games[0].to_sgf(str(sgf_dir / f"attempt-{attempt:03d}-epoch-{epoch:03d}.sgf"))
+            training_metrics.append(
                 {
-                    "attempt": attempt,
-                    "from_generation": accepted - 1 if accepted_candidate else accepted,
-                    "to_generation": accepted if accepted_candidate else None,
-                    "accepted": accepted_candidate,
-                    "komi": calibration["komi"],
-                    "calibration": calibration,
-                    "training": training_metrics,
-                    "match": match,
-                    "elo_delta": elo_delta,
-                    "cumulative_elo": cumulative_elo,
-                    "candidate_path": str(candidate_path),
-                    "champion_path": str(champion_path) if champion_path is not None else None,
+                    "epoch": epoch,
+                    "loss": loss,
+                    "accuracy": accuracy,
+                    "samples": len(inputs),
+                    "replay_size": len(attempt_buffer),
+                    "train_size": len(train_inputs),
+                    "avg_moves": float(np.mean([len(game.sequence) for game in games])) if games else 0.0,
                 }
             )
             report_progress(
                 progress_callback,
                 {
-                    "event": "attempt_result",
+                    "event": "epoch",
                     "attempt": attempt,
-                    "accepted": accepted_candidate,
-                    "accepted_generations": accepted,
-                    "candidate_win_rate": match["candidate_win_rate"],
-                    "elo_delta": elo_delta,
-                    "cumulative_elo": cumulative_elo,
+                    "epoch": epoch,
+                    "loss": loss,
+                    "accuracy": accuracy,
+                    "samples": len(inputs),
                 },
             )
-    finally:
-        if executor is not None:
-            executor.shutdown()
 
+        candidate_state = snapshot_state(candidate.model)
+        match = evaluate_generation_match(
+            candidate_state,
+            champion_state,
+            generation_config,
+            work_root,
+            config.seed + attempt * 100000 + 50000,
+            progress_callback=lambda played, total, attempt=attempt: report_progress(
+                progress_callback,
+                {"event": "gate_progress", "attempt": attempt, "played": played, "total": total},
+            ),
+        )
+        elo_delta = elo_delta_from_win_rate(match["candidate_win_rate"])
+        accepted_candidate = match["candidate_win_rate"] >= config.gate_win_rate
+        candidate_path = model_dir / f"candidate-attempt-{attempt:03d}.pt"
+        save_snapshot_file(candidate_path, candidate_state, config, generation=accepted + 1, elo=cumulative_elo + elo_delta)
+
+        if accepted_candidate:
+            accepted += 1
+            cumulative_elo += elo_delta
+            champion_state = candidate_state
+            replay_buffer = attempt_buffer
+            candidate_state = champion_state
+            candidate_buffer = deque(replay_buffer, maxlen=config.replay_buffer_size)
+            champion_path = model_dir / f"generation-{accepted:03d}.pt"
+            save_snapshot_file(champion_path, champion_state, config, generation=accepted, elo=cumulative_elo)
+            generation_paths.append({"generation": accepted, "elo": cumulative_elo, "path": str(champion_path)})
+        else:
+            candidate_buffer = attempt_buffer
+            champion_path = None
+
+        records.append(
+            {
+                "attempt": attempt,
+                "from_generation": source_generation,
+                "to_generation": accepted if accepted_candidate else None,
+                "accepted": accepted_candidate,
+                "komi": calibration["komi"],
+                "calibration": calibration,
+                "training": training_metrics,
+                "match": match,
+                "elo_delta": elo_delta,
+                "cumulative_elo": cumulative_elo,
+                "candidate_path": str(candidate_path),
+                "champion_path": str(champion_path) if champion_path is not None else None,
+            }
+        )
+        report_progress(
+            progress_callback,
+            {
+                "event": "attempt_result",
+                "attempt": attempt,
+                "accepted": accepted_candidate,
+                "accepted_generations": accepted,
+                "candidate_win_rate": match["candidate_win_rate"],
+                "elo_delta": elo_delta,
+                "cumulative_elo": cumulative_elo,
+            },
+        )
+        write_ladder_report(config, work_root, generation_paths, records, accepted, attempt, cumulative_elo)
+
+    return write_ladder_report(config, work_root, generation_paths, records, accepted, attempt, cumulative_elo)
+
+
+def write_ladder_report(config: ZeroLadderConfig, work_root: Path, generation_paths: Sequence[Dict[str, Any]],
+                        records: Sequence[Dict[str, Any]], accepted: int, attempt: int,
+                        cumulative_elo: float) -> Dict[str, Any]:
     report = {
         "config": config_to_dict(config, work_root),
-        "generations": generation_paths,
-        "attempts": records,
+        "generations": list(generation_paths),
+        "attempts": list(records),
         "summary": {
             "accepted_generations": accepted,
             "attempts": attempt,
@@ -254,6 +258,47 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
     (config.output.parent / "metrics.json").write_text(json.dumps(report, default=json_default, indent=2), encoding="utf-8")
     config.output.write_text(render_ladder_report(report), encoding="utf-8")
     return report
+
+
+def run_ladder_self_play_epoch(candidate: GTPAlphaGoWeakV0, generation_config: ZeroReportConfig, work_root: Path,
+                               epoch_seed: int, worker_count: int,
+                               progress_callback: Optional[Callable[[Dict[str, Any]], None]],
+                               attempt: int, epoch: int):
+    if worker_count <= 1:
+        return run_ladder_self_play_sequential(candidate, generation_config)
+    try:
+        with ProcessPoolExecutor(max_workers=worker_count) as executor:
+            return run_parallel_self_play(
+                generation_config,
+                work_root,
+                snapshot_state(candidate.model),
+                epoch_seed,
+                executor,
+                worker_count,
+            )
+    except Exception as exc:
+        report_progress(
+            progress_callback,
+            {
+                "event": "parallel_fallback",
+                "attempt": attempt,
+                "epoch": epoch,
+                "error": f"{type(exc).__name__}: {exc}",
+            },
+        )
+        return run_ladder_self_play_sequential(candidate, generation_config)
+
+
+def run_ladder_self_play_sequential(candidate: GTPAlphaGoWeakV0, generation_config: ZeroReportConfig):
+    games: List[GameData] = []
+    inputs, policies, values = candidate.self_play(
+        count=generation_config.games_per_epoch,
+        simulations=generation_config.simulations,
+        max_moves=generation_config.max_moves,
+        inference_batch_size=generation_config.inference_batch_size,
+        game_recorder=lambda _idx, game: games.append(game),
+    )
+    return inputs, policies, values, games
 
 
 def samples_to_arrays(samples: Sequence[Tuple[np.ndarray, np.ndarray, np.ndarray]]):
@@ -343,7 +388,8 @@ def calibrate_relative_komi(state: Dict[str, torch.Tensor], config: ZeroLadderCo
 
 
 def evaluate_generation_match(candidate_state: Dict[str, torch.Tensor], baseline_state: Dict[str, torch.Tensor],
-                              config: ZeroReportConfig, work_root: Path, seed: int) -> Dict[str, Any]:
+                              config: ZeroReportConfig, work_root: Path, seed: int,
+                              progress_callback: Optional[Callable[[int, int], None]] = None) -> Dict[str, Any]:
     if config.eval_games <= 0:
         return empty_match_result()
     device = resolve_torch_device(config.self_play_device)
@@ -449,6 +495,8 @@ def evaluate_generation_match(candidate_state: Dict[str, torch.Tensor], baseline
             black_margins.append(black_margin)
             lengths.append(moves)
             played_games += 1
+            if progress_callback is not None:
+                progress_callback(played_games, config.eval_games)
 
     return {
         "games": config.eval_games,
@@ -496,6 +544,7 @@ def render_ladder_report(report: Dict[str, Any]) -> str:
     summary = report["summary"]
     rows = "\n".join(render_attempt_row(attempt) for attempt in report["attempts"])
     chart = render_elo_chart(report["generations"])
+    analysis = render_progress_analysis(report)
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -518,34 +567,61 @@ th {{ background: #eef2f7; }}
 .rejected {{ color: #a33a2f; font-weight: 700; }}
 .note {{ color: #526071; }}
 code {{ background: #eef2f7; padding: 2px 5px; border-radius: 4px; }}
+.lang-switch {{ display: flex; gap: 8px; margin-top: 16px; }}
+.lang-switch button {{ border: 1px solid #475569; border-radius: 6px; background: #1f2937; color: white; padding: 7px 12px; cursor: pointer; }}
+.lang-switch button.active {{ background: #ffffff; color: #111827; border-color: #ffffff; }}
 </style>
+<script>
+function setLanguage(lang) {{
+  const key = lang === "en" ? "en" : "zh";
+  document.documentElement.lang = key === "en" ? "en" : "zh-CN";
+  document.querySelectorAll("[data-zh][data-en]").forEach((node) => {{
+    node.textContent = key === "en" ? node.dataset.en : node.dataset.zh;
+  }});
+  document.querySelectorAll(".lang-switch button").forEach((button) => {{
+    button.classList.toggle("active", button.dataset.lang === key);
+  }});
+  localStorage.setItem("zeroLadderLanguage", key);
+}}
+document.addEventListener("DOMContentLoaded", () => {{
+  setLanguage(localStorage.getItem("zeroLadderLanguage") || "zh");
+}});
+</script>
 </head>
 <body>
 <header>
-<h1>AlphaGo Weak Zero Ladder</h1>
-<p>代际晋级训练报告。生成时间：{html.escape(report['generated_at'])}</p>
+<h1 data-zh="AlphaGo Weak Zero Ladder 代际训练" data-en="AlphaGo Weak Zero Ladder">AlphaGo Weak Zero Ladder 代际训练</h1>
+<p data-zh="代际晋级训练报告。生成时间：{html.escape(report['generated_at'])}" data-en="Generation-gated training report. Generated at: {html.escape(report['generated_at'])}">代际晋级训练报告。生成时间：{html.escape(report['generated_at'])}</p>
+<div class="lang-switch" aria-label="Language">
+<button type="button" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+<button type="button" data-lang="en" onclick="setLanguage('en')">English</button>
+</div>
 </header>
 <main>
 <section class="grid">
-<div class="card"><div class="note">棋盘</div><div class="metric">{config['board_size']}x{config['board_size']}</div></div>
-<div class="card"><div class="note">目标晋级</div><div class="metric">{summary['target_generations']}</div></div>
-<div class="card"><div class="note">实际晋级</div><div class="metric">{summary['accepted_generations']}</div></div>
-<div class="card"><div class="note">最终 Elo</div><div class="metric">{summary['final_elo']:.1f}</div></div>
-<div class="card"><div class="note">晋级阈值</div><div class="metric">{summary['gate_win_rate']:.0%}</div></div>
-<div class="card"><div class="note">设备</div><div class="metric">{html.escape(config['device'])}</div></div>
+{metric_card("棋盘", "Board", f"{config['board_size']}x{config['board_size']}")}
+{metric_card("目标晋级", "Target Advances", str(summary['target_generations']))}
+{metric_card("实际晋级", "Accepted Advances", str(summary['accepted_generations']))}
+{metric_card("最终 Elo", "Final Elo", f"{summary['final_elo']:.1f}")}
+{metric_card("晋级阈值", "Gate Threshold", f"{summary['gate_win_rate']:.0%}")}
+{metric_card("设备", "Device", html.escape(config['device']))}
 </section>
 <section class="card" style="margin-top:16px">
-<h2>方法</h2>
-<p>每个候选模型从当前 champion 权重初始化，使用自身 self-play 生成样本并训练；随后和上一代 champion 做配对换先评估。候选胜率达到阈值才晋级为下一代，并按胜率换算 Elo 增量。报告不使用随机 bot 作为主指标。</p>
-<p>相对贴目通过 champion 对自身的同代评估选择，使黑棋胜率尽量接近 50%。这样候选胜率主要反映模型差异，而不是固定贴目带来的颜色偏差。</p>
+<h2 data-zh="方法" data-en="Method">方法</h2>
+<p data-zh="候选模型轨道从当前 champion 权重初始化，使用自身 self-play 生成样本并持续训练；被拒后继续训练同一个候选，直到某次配对换先评估达到阈值才晋级为下一代。胜率会换算为 Elo 增量。报告不使用随机 bot 作为主指标。" data-en="The candidate track starts from the current champion weights and keeps training on its own self-play samples. If a candidate is rejected, the same candidate continues training; it advances only when a paired color-swapped gate match reaches the threshold. The win rate is converted into an Elo delta. Random-bot games are not used as the main strength metric.">候选模型轨道从当前 champion 权重初始化，使用自身 self-play 生成样本并持续训练；被拒后继续训练同一个候选，直到某次配对换先评估达到阈值才晋级为下一代。胜率会换算为 Elo 增量。报告不使用随机 bot 作为主指标。</p>
+<p data-zh="相对贴目通过 champion 对自身的同代评估选择，使黑棋胜率尽量接近 50%。这样候选胜率主要反映模型差异，而不是固定贴目带来的颜色偏差。" data-en="Relative komi is selected by same-generation champion mirror matches so that black's win rate is as close to 50% as the sampled grid allows. Candidate win rate therefore reflects model differences more than fixed-komi color bias.">相对贴目通过 champion 对自身的同代评估选择，使黑棋胜率尽量接近 50%。这样候选胜率主要反映模型差异，而不是固定贴目带来的颜色偏差。</p>
 </section>
 <section class="card" style="margin-top:16px">
-<h2>Elo 曲线</h2>
+<h2 data-zh="进步分析" data-en="Progress Analysis">进步分析</h2>
+{analysis}
+</section>
+<section class="card" style="margin-top:16px">
+<h2 data-zh="Elo 曲线" data-en="Elo Curve">Elo 曲线</h2>
 {chart}
 </section>
 <section class="card" style="margin-top:16px">
-<h2>代际尝试</h2>
-<table><thead><tr><th>Attempt</th><th>结果</th><th>晋级</th><th>Komi</th><th>候选胜率</th><th>候选黑/白</th><th>同代黑胜率</th><th>Elo Δ</th><th>累计 Elo</th><th>Loss / Acc</th></tr></thead><tbody>{rows}</tbody></table>
+<h2 data-zh="代际尝试" data-en="Generation Attempts">代际尝试</h2>
+<table><thead><tr>{table_header()}</tr></thead><tbody>{rows}</tbody></table>
 </section>
 </main>
 </body>
@@ -553,10 +629,81 @@ code {{ background: #eef2f7; padding: 2px 5px; border-radius: 4px; }}
 """
 
 
+def i18n_text(zh: str, en: str) -> str:
+    zh_attr = html.escape(zh, quote=True)
+    en_attr = html.escape(en, quote=True)
+    return f'<span data-zh="{zh_attr}" data-en="{en_attr}">{html.escape(zh)}</span>'
+
+
+def metric_card(zh: str, en: str, value: str) -> str:
+    return f'<div class="card"><div class="note">{i18n_text(zh, en)}</div><div class="metric">{value}</div></div>'
+
+
+def table_header() -> str:
+    headers = [
+        ("Attempt", "Attempt"),
+        ("结果", "Result"),
+        ("晋级", "Advance"),
+        ("Komi", "Komi"),
+        ("候选胜率", "Candidate Win Rate"),
+        ("候选黑/白", "Candidate B/W"),
+        ("同代黑胜率", "Same-Gen Black Win"),
+        ("Elo Δ", "Elo Δ"),
+        ("累计 Elo", "Cumulative Elo"),
+        ("Loss / Acc", "Loss / Acc"),
+    ]
+    return "".join(f"<th>{i18n_text(zh, en)}</th>" for zh, en in headers)
+
+
+def render_progress_analysis(report: Dict[str, Any]) -> str:
+    attempts = report["attempts"]
+    if not attempts:
+        return f"<p>{i18n_text('还没有完成 candidate attempt。', 'No candidate attempt has completed yet.')}</p>"
+    first_train = next((metric for attempt in attempts for metric in attempt["training"]), None)
+    last_train = next((metric for attempt in reversed(attempts) for metric in reversed(attempt["training"])), None)
+    accepted = sum(1 for attempt in attempts if attempt["accepted"])
+    rejected = len(attempts) - accepted
+    summary = report["summary"]
+    config = report["config"]
+    if first_train is not None and last_train is not None:
+        learning_zh = (
+            f"训练指标从 loss {first_train['loss']:.4f} / policy accuracy {first_train['accuracy']:.1%} "
+            f"改善到 loss {last_train['loss']:.4f} / policy accuracy {last_train['accuracy']:.1%}。"
+        )
+        learning_en = (
+            f"Training moved from loss {first_train['loss']:.4f} / policy accuracy {first_train['accuracy']:.1%} "
+            f"to loss {last_train['loss']:.4f} / policy accuracy {last_train['accuracy']:.1%}."
+        )
+    else:
+        learning_zh = "没有可用的训练指标。"
+        learning_en = "No training metrics are available."
+    gate_zh = (
+        f"本次运行完成 {summary['accepted_generations']}/{summary['target_generations']} 代晋级，"
+        f"共 {len(attempts)} 次 attempt，其中 {accepted} 次通过、{rejected} 次拒绝。"
+    )
+    gate_en = (
+        f"This run advanced {summary['accepted_generations']}/{summary['target_generations']} generations "
+        f"in {len(attempts)} attempts: {accepted} accepted and {rejected} rejected."
+    )
+    noise_zh = (
+        f"评估每次 gate 使用 {config['eval_games']} 局，因此 Elo 数值偏噪；更可靠的强度估计需要增加 "
+        f"--eval-games 和 --eval-simulations。"
+    )
+    noise_en = (
+        f"Each gate used {config['eval_games']} evaluation games, so the Elo values are noisy; "
+        f"use higher --eval-games and --eval-simulations for stronger estimates."
+    )
+    return (
+        f"<p>{i18n_text(gate_zh, gate_en)}</p>"
+        f"<p>{i18n_text(learning_zh, learning_en)}</p>"
+        f"<p>{i18n_text(noise_zh, noise_en)}</p>"
+    )
+
+
 def render_attempt_row(attempt: Dict[str, Any]) -> str:
     match = attempt["match"]
     last_train = attempt["training"][-1] if attempt["training"] else {"loss": 0.0, "accuracy": 0.0}
-    status = "通过" if attempt["accepted"] else "拒绝"
+    status = i18n_text("通过", "Accepted") if attempt["accepted"] else i18n_text("拒绝", "Rejected")
     status_class = "accepted" if attempt["accepted"] else "rejected"
     to_generation = attempt["to_generation"] if attempt["to_generation"] is not None else "-"
     same_gen_black = attempt["calibration"]["candidates"]
@@ -572,7 +719,7 @@ def render_attempt_row(attempt: Dict[str, Any]) -> str:
 
 def render_elo_chart(generations: Sequence[Dict[str, Any]]) -> str:
     if not generations:
-        return "<p>暂无晋级数据。</p>"
+        return f"<p>{i18n_text('暂无晋级数据。', 'No accepted-generation data yet.')}</p>"
     width, height, pad = 720, 220, 34
     elos = [row["elo"] for row in generations]
     min_elo = min(min(elos), 0.0)
@@ -595,5 +742,5 @@ def render_elo_chart(generations: Sequence[Dict[str, Any]]) -> str:
 <line x1="{pad}" y1="{pad}" x2="{pad}" y2="{height-pad}" stroke="#9aa4b2"/>
 <polyline points="{points}" fill="none" stroke="#1d7f5f" stroke-width="3"/>
 {labels}
-<text x="{pad}" y="20" font-size="13" fill="#1d7f5f">accepted generation Elo</text>
+<text x="{pad}" y="20" font-size="13" fill="#1d7f5f" data-zh="已晋级代 Elo" data-en="accepted generation Elo">已晋级代 Elo</text>
 </svg>"""

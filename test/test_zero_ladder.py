@@ -47,6 +47,10 @@ def test_zero_ladder_cli_writes_report_and_initial_model():
         metrics = json.loads(Path("reports/ladder/metrics.json").read_text(encoding="utf-8"))
         model_path = Path("reports/ladder/models/generation-000.pt")
         assert "Zero Ladder" in html
+        assert "English" in html
+        assert "data-en=\"Generation-gated training report" in html
+        assert "Candidate Win Rate" in html
+        assert "Progress Analysis" in html
         assert metrics["summary"]["accepted_generations"] == 0
         assert metrics["config"]["board_size"] == 3
         assert model_path.exists()

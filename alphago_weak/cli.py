@@ -404,6 +404,10 @@ def zero_ladder(
                 f"attempt {event['attempt']}: {status}, win={event['candidate_win_rate']:.1%}, "
                 f"elo_delta={event['elo_delta']:+.1f}, elo={event['cumulative_elo']:.1f}"
             )
+        elif event["event"] == "gate_progress":
+            typer.echo(f"attempt {event['attempt']}: gate {event['played']}/{event['total']}")
+        elif event["event"] == "parallel_fallback":
+            typer.echo(f"attempt {event['attempt']} epoch {event['epoch']}: parallel fallback ({event['error']})")
 
     try:
         report = run_zero_ladder(
