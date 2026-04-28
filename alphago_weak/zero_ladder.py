@@ -52,6 +52,7 @@ class ZeroLadderConfig:
     eval_games: int = 20
     eval_simulations: int = 8
     eval_opening_moves: int = 4
+    gate_recheck_games: int = 20
     gate_win_rate: float = 0.55
     calibrate_komi: bool = True
     komi_window: int = 2
@@ -231,12 +232,46 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
                 {"event": "gate_progress", "attempt": attempt, "played": played, "total": total},
             ),
         )
-        elo_delta = elo_delta_from_win_rate(match["candidate_win_rate"])
         match["gate_assessment"] = assess_gate_result(
             match["candidate_wins"],
             match["games"],
             config.gate_win_rate,
         )
+        if match["gate_assessment"]["label"] == "borderline" and config.gate_recheck_games > 0:
+            report_progress(
+                progress_callback,
+                {
+                    "event": "gate_recheck_start",
+                    "attempt": attempt,
+                    "games": config.gate_recheck_games,
+                    "ci_low": match["gate_assessment"]["ci_low"],
+                    "ci_high": match["gate_assessment"]["ci_high"],
+                },
+            )
+            recheck_config = copy.copy(generation_config)
+            recheck_config.eval_games = config.gate_recheck_games
+            recheck = evaluate_generation_match(
+                candidate_state,
+                champion_state,
+                recheck_config,
+                work_root,
+                config.seed + attempt * 100000 + 70000,
+                progress_callback=lambda played, total, attempt=attempt: report_progress(
+                    progress_callback,
+                    {"event": "gate_recheck_progress", "attempt": attempt, "played": played, "total": total},
+                ),
+            )
+            match = combine_match_results(match, recheck)
+            match["gate_assessment"] = assess_gate_result(
+                match["candidate_wins"],
+                match["games"],
+                config.gate_win_rate,
+            )
+            match["recheck"] = {
+                "games": config.gate_recheck_games,
+                "trigger": "borderline_initial_gate",
+            }
+        elo_delta = elo_delta_from_win_rate(match["candidate_win_rate"])
         accepted_candidate = match["candidate_win_rate"] >= config.gate_win_rate
         candidate_path = model_dir / f"candidate-attempt-{attempt:03d}.pt"
         save_snapshot_file(candidate_path, candidate_state, config, generation=accepted + 1, elo=cumulative_elo + elo_delta)
@@ -496,6 +531,41 @@ def assess_gate_result(wins: int, games: int, threshold: float) -> Dict[str, Any
         "ci_high": high,
         "label": label,
     }
+
+
+def combine_match_results(first: Dict[str, Any], second: Dict[str, Any]) -> Dict[str, Any]:
+    games = int(first["games"]) + int(second["games"])
+    if games <= 0:
+        return empty_match_result()
+    candidate_black_games = int(first["candidate_black_games"]) + int(second["candidate_black_games"])
+    candidate_white_games = int(first["candidate_white_games"]) + int(second["candidate_white_games"])
+    candidate_wins = int(first["candidate_wins"]) + int(second["candidate_wins"])
+    candidate_black_wins = int(first["candidate_black_wins"]) + int(second["candidate_black_wins"])
+    candidate_white_wins = int(first["candidate_white_wins"]) + int(second["candidate_white_wins"])
+    black_wins = int(first["black_wins"]) + int(second["black_wins"])
+    return {
+        "games": games,
+        "candidate_wins": candidate_wins,
+        "candidate_win_rate": candidate_wins / games,
+        "candidate_avg_margin": weighted_average(first, second, "candidate_avg_margin"),
+        "candidate_black_games": candidate_black_games,
+        "candidate_black_wins": candidate_black_wins,
+        "candidate_black_win_rate": candidate_black_wins / candidate_black_games if candidate_black_games else 0.0,
+        "candidate_white_games": candidate_white_games,
+        "candidate_white_wins": candidate_white_wins,
+        "candidate_white_win_rate": candidate_white_wins / candidate_white_games if candidate_white_games else 0.0,
+        "black_wins": black_wins,
+        "black_win_rate": black_wins / games,
+        "avg_black_margin": weighted_average(first, second, "avg_black_margin"),
+        "avg_moves": weighted_average(first, second, "avg_moves"),
+    }
+
+
+def weighted_average(first: Dict[str, Any], second: Dict[str, Any], key: str) -> float:
+    total_games = int(first["games"]) + int(second["games"])
+    if total_games <= 0:
+        return 0.0
+    return (float(first[key]) * int(first["games"]) + float(second[key]) * int(second["games"])) / total_games
 
 
 def calibrate_relative_komi(state: Dict[str, torch.Tensor], config: ZeroLadderConfig, work_root: Path, seed: int) -> Dict[str, Any]:

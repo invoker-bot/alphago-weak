@@ -342,6 +342,7 @@ def zero_ladder(
     eval_games: int = typer.Option(20, "--eval-games", "--eval_games", help="Paired games for candidate vs champion gating."),
     eval_simulations: int = typer.Option(8, "--eval-simulations", "--eval_simulations", help="MCTS simulations per model move during gating."),
     eval_opening_moves: int = typer.Option(4, "--eval-opening-moves", "--eval_opening_moves", help="Random opening plies before paired evaluation."),
+    gate_recheck_games: int = typer.Option(20, "--gate-recheck-games", "--gate_recheck_games", help="Additional paired games when the initial gate confidence interval crosses the win-rate threshold; set 0 to disable."),
     gate_win_rate: float = typer.Option(0.55, "--gate-win-rate", "--gate_win_rate", help="Candidate win rate required to advance."),
     calibrate_komi: bool = typer.Option(True, "--calibrate-komi/--fixed-komi", help="Choose relative komi from same-generation color balance."),
     komi_window: int = typer.Option(2, "--komi-window", "--komi_window", help="Number of komi steps to test on each side of base komi."),
@@ -375,10 +376,16 @@ def zero_ladder(
         raise click.BadParameter("evaluation settings are invalid")
     if generations > 0 and eval_games <= 0:
         raise click.BadParameter("eval-games must be positive when generations is greater than zero")
+    if generations > 0 and eval_games % 2 != 0:
+        raise click.BadParameter("eval-games must be even so candidate and champion split colors evenly")
+    if gate_recheck_games < 0 or gate_recheck_games % 2 != 0:
+        raise click.BadParameter("gate-recheck-games must be zero or an even positive number")
     if not 0 < gate_win_rate < 1:
         raise click.BadParameter("gate-win-rate must be between zero and one")
     if komi_window < 0 or komi_step <= 0 or komi_eval_games < 0:
         raise click.BadParameter("komi calibration settings are invalid")
+    if calibrate_komi and komi_eval_games > 0 and komi_eval_games % 2 != 0:
+        raise click.BadParameter("komi-eval-games must be even so mirror matches split colors evenly")
     if train_batch_size <= 0 or train_steps <= 0 or replay_buffer_size <= 0:
         raise click.BadParameter("training sizes must be positive")
     if workers <= 0:
@@ -413,6 +420,13 @@ def zero_ladder(
             )
         elif event["event"] == "gate_progress":
             typer.echo(f"attempt {event['attempt']}: gate {event['played']}/{event['total']}")
+        elif event["event"] == "gate_recheck_start":
+            typer.echo(
+                f"attempt {event['attempt']}: borderline gate, adding {event['games']} games "
+                f"(95% CI {event['ci_low']:.1%}-{event['ci_high']:.1%})"
+            )
+        elif event["event"] == "gate_recheck_progress":
+            typer.echo(f"attempt {event['attempt']}: gate recheck {event['played']}/{event['total']}")
         elif event["event"] == "parallel_fallback":
             typer.echo(f"attempt {event['attempt']} epoch {event['epoch']}: parallel fallback ({event['error']})")
         elif event["event"] == "resume_replay_missing":
@@ -435,6 +449,7 @@ def zero_ladder(
                 eval_games=eval_games,
                 eval_simulations=eval_simulations,
                 eval_opening_moves=eval_opening_moves,
+                gate_recheck_games=gate_recheck_games,
                 gate_win_rate=gate_win_rate,
                 calibrate_komi=calibrate_komi,
                 komi_window=komi_window,

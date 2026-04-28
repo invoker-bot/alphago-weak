@@ -82,7 +82,7 @@ pytest -q
 
 ## Reproduce The 10-Generation Ladder
 
-This command trains longer before each formal gate: `3 x 4 = 12` self-play epochs per candidate evaluation. It uses 20 games for both gate evaluation and relative-komi calibration.
+This command trains longer before each formal gate: `3 x 4 = 12` self-play epochs per candidate evaluation. It uses 20 games for both gate evaluation and relative-komi calibration. The exact summary above was generated before automatic borderline rechecks, so the command pins `--gate-recheck-games 0`; omit that flag for stricter new runs.
 
 ```powershell
 alphago --root .data-ladder-10-strong-gate zero-ladder `
@@ -92,6 +92,7 @@ alphago --root .data-ladder-10-strong-gate zero-ladder `
   --candidate-epochs 3 --gate-training-rounds 4 `
   --steps 4 --simulations 6 --max-moves 98 `
   --eval-games 20 --eval-simulations 3 --eval-opening-moves 4 `
+  --gate-recheck-games 0 `
   --gate-win-rate 0.55 --komi-eval-games 20 --komi-window 2 `
   --train-batch-size 32 --train-steps 64 `
   --replay-buffer-size 8192 --learning-rate 0.001 `
@@ -102,6 +103,7 @@ alphago --root .data-ladder-10-strong-gate zero-ladder `
 
 If a long CUDA run stops midway, rerun the same command with `--resume` instead of `--force`. The report is refreshed after every complete attempt.
 `zero-ladder` also persists replay buffers after each complete attempt, so a resumed run keeps the candidate training window instead of falling back to checkpoints only.
+New runs recheck borderline gates by default with extra paired games; use `--gate-recheck-games 0` only when you need the older fixed-20-game behavior.
 
 ## Other Useful Commands
 
