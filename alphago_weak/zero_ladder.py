@@ -34,6 +34,7 @@ from alphago_weak.zero_report import (
 )
 
 REPLAY_BUFFER_FILENAME = "replay_buffers.npz"
+IN_PROGRESS_CANDIDATE_FILENAME = "candidate-in-progress.pt"
 
 
 @dataclass
@@ -95,6 +96,7 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
     model_dir.mkdir(parents=True, exist_ok=True)
     sgf_dir.mkdir(parents=True, exist_ok=True)
     replay_path = config.output.parent / REPLAY_BUFFER_FILENAME
+    in_progress_candidate_path = model_dir / IN_PROGRESS_CANDIDATE_FILENAME
 
     device = resolve_torch_device(config.self_play_device)
     if config.resume:
@@ -119,6 +121,9 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
         else:
             candidate_state = champion_state
             candidate_buffer = deque(replay_buffer, maxlen=config.replay_buffer_size)
+        if in_progress_candidate_path.exists():
+            candidate_state = load_snapshot_file(in_progress_candidate_path)
+            report_progress(progress_callback, {"event": "resume_in_progress_candidate", "path": str(in_progress_candidate_path)})
     else:
         bot = GTPAlphaGoWeakV0(
             config.board_size,
@@ -219,6 +224,15 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
                     "samples": len(inputs),
                 },
             )
+            epoch_candidate_state = snapshot_state(candidate.model)
+            save_snapshot_file(
+                in_progress_candidate_path,
+                epoch_candidate_state,
+                config,
+                generation=accepted + 1,
+                elo=cumulative_elo,
+            )
+            save_replay_buffers(replay_path, replay_buffer, attempt_buffer, accepted, attempt)
 
         candidate_state = snapshot_state(candidate.model)
         match = evaluate_generation_match(
@@ -473,6 +487,7 @@ def config_to_dict(config: ZeroLadderConfig, work_root: Path) -> Dict[str, Any]:
     data["work_root"] = str(work_root)
     data["output"] = str(config.output)
     data["replay_buffer_path"] = str(config.output.parent / REPLAY_BUFFER_FILENAME)
+    data["in_progress_candidate_path"] = str(config.output.parent / "models" / IN_PROGRESS_CANDIDATE_FILENAME)
     data["device"] = resolve_torch_device(config.self_play_device)
     return data
 

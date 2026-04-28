@@ -431,6 +431,8 @@ def zero_ladder(
             typer.echo(f"attempt {event['attempt']} epoch {event['epoch']}: parallel fallback ({event['error']})")
         elif event["event"] == "resume_replay_missing":
             typer.echo(f"resume warning: replay buffer file is missing ({event['path']}); continuing from model checkpoints only")
+        elif event["event"] == "resume_in_progress_candidate":
+            typer.echo(f"resuming in-progress candidate checkpoint: {event['path']}")
 
     try:
         report = run_zero_ladder(
