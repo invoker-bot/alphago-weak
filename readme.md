@@ -1,10 +1,65 @@
-# AlphaGo Weak
+<h1 align="center">AlphaGo Weak</h1>
 
-AlphaGo Weak 是一个用于学习和实验的围棋程序。当前代码已迁移到 PyTorch，包含棋盘规则、SGF 数据处理、GTP bot、MCTS、监督学习入口，以及实验性的 AlphaGo Zero-style 自我对弈训练流程。
+<p align="center">
+  <strong>A compact AlphaGo Zero-style Go lab in PyTorch.</strong><br/>
+  Small-board self-play, MCTS, GTP bots, SGF data tools, and bilingual HTML reports.
+</p>
 
-这不是论文级复现。仓库更适合作为可运行的研究脚手架：先在 7x7/9x9 小棋盘上验证规则、搜索、训练和报告流程，再逐步扩大训练规模。
+AlphaGo Weak 是一个用于学习和实验的围棋程序。它不是论文级复现，而是一个能在本地跑通的研究脚手架：先在 7x7/9x9 小棋盘验证规则、搜索、训练和测评，再逐步放大实验规模。
 
-## 安装
+## What It Does
+
+| Area | Status |
+| --- | --- |
+| Rules engine | Go legality, captures, passes, flood-fill area scoring |
+| Models | PyTorch policy/value network with CPU/CUDA support |
+| Search | MCTS self-play and batched neural-network inference |
+| Training | Supervised learning plus experimental AlphaGo Zero-style replay training |
+| Evaluation | Champion/candidate gate, paired color-swap games, Elo-style ladder |
+| Reports | Local bilingual HTML reports with metrics, charts, and sample SGF records |
+
+## Latest 7x7 Result
+
+Latest local ladder run: `reports/7x7-ladder-10/index.html` generated on a CUDA RTX 4090 environment. Reports are ignored by Git, so the README keeps the headline result directly.
+
+| Metric | Value |
+| --- | ---: |
+| Board | 7x7 |
+| Target advances | 10 |
+| Accepted generations | 10/10 |
+| Candidate attempts | 12 |
+| Rejections | 2 |
+| Rejection rate | 16.7% |
+| Gate games | 20 per attempt |
+| Color split | 10 candidate-black / 10 candidate-white |
+| Gate threshold | 55% candidate win rate |
+| Final Elo estimate | +1104.0 |
+| Policy accuracy | 4.0% -> 70.6% |
+| Loss | 3.1689 -> 0.8541 |
+
+The ladder uses paired evaluation: for each sampled opening, the candidate and champion play both colors. This keeps the main win-rate signal from being dominated by first-player or komi bias.
+
+<details>
+<summary>Attempt timeline</summary>
+
+| Attempt | Result | Advance | Win Rate | Komi | Elo Δ | Cumulative Elo |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | Rejected | - | 40% | 4.5 | -70.4 | 0.0 |
+| 2 | Accepted | 1 | 60% | 0.5 | +70.4 | 70.4 |
+| 3 | Accepted | 2 | 70% | 0.5 | +147.2 | 217.6 |
+| 4 | Accepted | 3 | 85% | 4.5 | +301.3 | 519.0 |
+| 5 | Accepted | 4 | 70% | 0.5 | +147.2 | 666.1 |
+| 6 | Accepted | 5 | 55% | 0.5 | +34.9 | 701.0 |
+| 7 | Rejected | - | 50% | 1.5 | +0.0 | 701.0 |
+| 8 | Accepted | 6 | 55% | 0.5 | +34.9 | 735.9 |
+| 9 | Accepted | 7 | 55% | 4.5 | +34.9 | 770.7 |
+| 10 | Accepted | 8 | 65% | 0.5 | +107.5 | 878.3 |
+| 11 | Accepted | 9 | 55% | 1.5 | +34.9 | 913.1 |
+| 12 | Accepted | 10 | 75% | 4.5 | +190.8 | 1104.0 |
+
+</details>
+
+## Quick Start
 
 ```powershell
 python -m venv .venv
@@ -13,58 +68,27 @@ pip install -e .
 alphago --help
 ```
 
-PyTorch 会在安装了兼容 CUDA build 时自动使用 GPU；否则使用 CPU。可用下面的命令确认：
+Confirm CUDA support:
 
 ```powershell
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-## 常用命令
+Run tests:
 
 ```powershell
 pytest -q
-alphago download --type u-go
-alphago train --init 4096 --epochs 1
-alphago self-play --board-size 9 --steps 4 --epochs 10 --simulations 32
-alphago zero-report --force
-alphago zero-ladder --generations 20 --force
 ```
 
-`self-play` 会自动从同一 `--root` 下的历史权重继续训练，并在每个 epoch 后保存模型。`--inference-batch-size` 会把 MCTS leaf 局面合并后批量送入模型，在 CUDA 版 PyTorch 下能减少单样本 GPU 调用开销。
+## Reproduce The 10-Generation Ladder
 
-## 7x7 Zero Report
-
-`zero-report` 从随机初始化开始做小规模 self-play 训练，并生成可浏览 HTML。报告输出到本地 `reports/`，该目录默认被 Git 忽略。
+This command trains longer before each formal gate: `3 x 4 = 12` self-play epochs per candidate evaluation. It uses 20 games for both gate evaluation and relative-komi calibration.
 
 ```powershell
-alphago --root .data-report-final zero-report `
-  --output reports/7x7-zero/index.html `
+alphago --root .data-ladder-10-strong-gate zero-ladder `
+  --output reports/7x7-ladder-10/index.html `
   --board-size 7 --komi 2.5 `
-  --epochs 40 --steps 4 --simulations 12 --max-moves 98 `
-  --eval-games 20 --eval-simulations 8 --eval-opening-moves 4 `
-  --train-batch-size 32 --train-steps 96 `
-  --replay-buffer-size 8192 --learning-rate 0.001 `
-  --optimizer adam --augment --workers 4 `
-  --inference-batch-size 16 --shared-inference `
-  --num-filters 16 --checkpoints 0,10,20,30,40 `
-  --seed 7 --force
-```
-
-运行后打开 `reports/7x7-zero/index.html` 查看训练曲线、评估表、策略热力图和样例终局。
-
-## 7x7 Generation Ladder
-
-`zero-ladder` 会保存每一代 champion，并使用候选模型对上一代 champion 的配对换先胜率作为晋级标准。候选胜率达到 `--gate-win-rate`（默认 55%）才前进一代，并把胜率换算成 Elo 增量。报告默认显示英文，支持中文/English 切换。
-
-为了降低过早评估导致的拒绝率，默认每次正式 gate 前会训练 `--candidate-epochs 2` x `--gate-training-rounds 4`，也就是 8 个 self-play epoch。拒绝仍然可能发生；如果拒绝过多，优先增大 `--gate-training-rounds` 或 `--candidate-epochs`，而不是降低 gate 阈值。
-
-推荐的 20 代 7x7 本地实验：
-
-```powershell
-alphago --root .data-ladder-20-strong-gate zero-ladder `
-  --output reports/7x7-ladder-20/index.html `
-  --board-size 7 --komi 2.5 `
-  --generations 20 --max-attempts 60 `
+  --generations 10 --max-attempts 30 `
   --candidate-epochs 3 --gate-training-rounds 4 `
   --steps 4 --simulations 6 --max-moves 98 `
   --eval-games 20 --eval-simulations 3 --eval-opening-moves 4 `
@@ -76,29 +100,40 @@ alphago --root .data-ladder-20-strong-gate zero-ladder `
   --num-filters 16 --seed 7 --force
 ```
 
-长时间 CUDA 运行如果中断，可以去掉 `--force` 并加上 `--resume`，命令会从已写入的 `metrics.json` 和最新 champion checkpoint 继续；报告会在每个完整 attempt 后刷新。
+If a long CUDA run stops midway, rerun the same command with `--resume` instead of `--force`. The report is refreshed after every complete attempt.
 
-## 项目结构
+## Other Useful Commands
 
-- `alphago_weak/board/`: 围棋规则、合法性、提子、计分和编码。
-- `alphago_weak/model/`: PyTorch 网络、训练循环和 MCTS。
-- `alphago_weak/gtp/`: GTP 客户端和 bot。
-- `alphago_weak/dataset/`: SGF 下载、解压和解析。
-- `alphago_weak/zero_report.py`: 7x7 AlphaGo Zero-style 实验和 HTML 报告生成。
-- `alphago_weak/zero_ladder.py`: 代际 champion/candidate gating、Elo ladder 和中英 HTML 报告。
-- `test/`: pytest 回归测试。
-- `reports/`: 本地生成报告，默认不纳入 Git。
-- `.data*/`: 本地数据、缓存和实验工作目录，默认不纳入 Git。
+```powershell
+alphago download --type u-go
+alphago train --init 4096 --epochs 1
+alphago self-play --board-size 9 --steps 4 --epochs 10 --simulations 32
+alphago zero-report --force
+alphago zero-ladder --generations 10 --force
+```
 
-## 当前限制
+`self-play` continues from the same `--root` weights and saves after every epoch. `--inference-batch-size` batches MCTS leaf positions before neural-network inference, which is important for CUDA utilization.
 
-- MCTS 搜索和规则引擎仍主要是 Python 代码，GPU 只负责批量网络推理和训练。
-- 已有 AlphaGo Zero-style 新旧模型胜率 gating；更高精度 Elo 仍需要更多评估局和更高 MCTS simulation。
-- replay buffer 只在单次命令运行内存在，暂未持久化为可恢复训练队列。
-- 当前 7x7 报告只证明小规模相对提升，不代表模型已经具备可靠围棋棋力。
-- 需要继续改进批量推理稳定性、value 校准、持久化 replay 和更长训练。
+## Project Layout
 
-## 参考
+- `alphago_weak/board/`: Go rules, captures, legality, scoring, and encodings.
+- `alphago_weak/model/`: PyTorch networks, training helpers, and MCTS.
+- `alphago_weak/gtp/`: GTP clients and playable bots.
+- `alphago_weak/dataset/`: SGF download, extraction, parsing, and preprocessing.
+- `alphago_weak/zero_report.py`: From-scratch 7x7 training report.
+- `alphago_weak/zero_ladder.py`: Champion/candidate gating, Elo ladder, and bilingual report generation.
+- `test/`: pytest regression coverage.
+- `reports/`: local generated reports, ignored by Git.
+- `.data*/`: local datasets, caches, replay workdirs, and checkpoints, ignored by Git.
+
+## Current Limits
+
+- The Go engine and MCTS are still mostly Python, so GPU is used mainly for batched network inference and training.
+- Elo values are useful for relative progress, but they remain noisy with 20-game gates.
+- Replay buffers are not yet persisted across interrupted runs; `--resume` restores the latest champion and report state.
+- The 7x7 result demonstrates measurable local improvement, not strong general Go skill.
+
+## References
 
 - Leela Zero: <http://zero.sjeng.org/>
 - KataGo: <https://github.com/lightvector/KataGo>
