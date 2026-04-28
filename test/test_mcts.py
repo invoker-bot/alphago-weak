@@ -56,7 +56,7 @@ def test_gtp_play_pass_advances_mcts_tree_player():
     assert bot.mcts.player == w
 
 
-def test_model_state_calculator_keeps_pass_as_policy_action(tmp_path):
+def test_model_state_calculator_downweights_pass_when_moves_exist(tmp_path):
     model = AlphaGoWeakV0(size=3, root=str(tmp_path), num_filters=4, device="cpu")
     board = GoBoard(3)
     policy = np.zeros(10, dtype=np.float32)
@@ -68,8 +68,23 @@ def test_model_state_calculator_keeps_pass_as_policy_action(tmp_path):
     actions, weights = model.state_calculator(board, b)[0]
     weighted_actions = dict(zip(map(lambda action: None if action is None else tuple(action), actions), weights))
 
-    assert weighted_actions[None] == 0.75
+    assert weighted_actions[None] == 0.75 * model.PASS_PRIOR_SCALE
     assert weighted_actions[(0, 0)] == 0.25
+
+
+def test_model_state_calculator_keeps_pass_when_no_moves_exist(tmp_path):
+    model = AlphaGoWeakV0(size=3, root=str(tmp_path), num_filters=4, device="cpu")
+    board = GoBoard(3)
+    board.setup_stones(set(board), set(), set())
+    policy = np.zeros(10, dtype=np.float32)
+    policy[-1] = 0.75
+
+    model.predict = lambda _board, _player: (policy, 0.5)
+
+    actions, weights = model.state_calculator(board, b)[0]
+
+    assert actions == [None]
+    assert weights == [1.0]
 
 
 def test_mcts_expansion_filters_illegal_policy_actions_and_keeps_pass():

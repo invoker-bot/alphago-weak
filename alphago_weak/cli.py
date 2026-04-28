@@ -244,18 +244,22 @@ def zero_report(
     ctx: typer.Context,
     output: Path = typer.Option(Path("reports/7x7-zero/index.html"), "--output", "-o", help="HTML report output path."),
     board_size: int = typer.Option(7, "--board-size", "--board_size", help="Go board size for the report experiment."),
-    komi: float = typer.Option(0.5, "--komi", help="Extra score given to white."),
+    komi: float = typer.Option(2.5, "--komi", help="Extra score given to white."),
     epochs: int = typer.Option(20, "--epochs", help="Self-play training epochs to run."),
     steps: int = typer.Option(4, "--steps", help="Self-play games per epoch."),
     simulations: int = typer.Option(8, "--simulations", help="MCTS simulations per self-play move."),
     max_moves: int = typer.Option(60, "--max-moves", "--max_moves", help="Maximum moves per self-play or evaluation game."),
     eval_games: int = typer.Option(6, "--eval-games", "--eval_games", help="Evaluation games per checkpoint against random play."),
     eval_simulations: int = typer.Option(4, "--eval-simulations", "--eval_simulations", help="MCTS simulations per model move during evaluation."),
+    eval_opening_moves: int = typer.Option(2, "--eval-opening-moves", "--eval_opening_moves", help="Random opening plies before checkpoint evaluation."),
     train_batch_size: int = typer.Option(32, "--train-batch-size", "--train_batch_size", help="Replay training batch size."),
-    train_steps: int = typer.Option(8, "--train-steps", "--train_steps", help="Maximum replay training batches per epoch."),
+    train_steps: int = typer.Option(64, "--train-steps", "--train_steps", help="Maximum replay training batches per epoch."),
     replay_buffer_size: int = typer.Option(4096, "--replay-buffer-size", "--replay_buffer_size", help="Maximum replay positions retained."),
     learning_rate: float = typer.Option(0.001, "--learning-rate", "--learning_rate", help="Self-play optimizer learning rate."),
+    optimizer_name: str = typer.Option("adam", "--optimizer", help="Replay optimizer. Choices: sgd, adam."),
+    augment_training: bool = typer.Option(True, "--augment/--no-augment", help="Use 8-way board symmetry augmentation for replay training."),
     num_filters: int = typer.Option(16, "--num-filters", "--num_filters", help="Network filter count for the small 7x7 experiment."),
+    workers: int = typer.Option(4, "--workers", help="Worker processes for self-play game generation."),
     checkpoints: str = typer.Option("0,5,10,20", "--checkpoints", help="Comma-separated checkpoint epochs to analyze."),
     seed: int = typer.Option(7, "--seed", help="Random seed."),
     force: bool = typer.Option(False, "--force", help="Delete the report experiment work directory before running."),
@@ -267,6 +271,12 @@ def zero_report(
         raise click.BadParameter("epochs must be non-negative and steps/simulations/max-moves must be positive")
     if train_batch_size <= 0 or train_steps <= 0 or replay_buffer_size <= 0:
         raise click.BadParameter("training sizes must be positive")
+    if workers <= 0:
+        raise click.BadParameter("workers must be positive")
+    if eval_opening_moves < 0:
+        raise click.BadParameter("eval-opening-moves must be non-negative")
+    if optimizer_name not in {"sgd", "adam"}:
+        raise click.BadParameter("optimizer must be one of: sgd, adam")
     checkpoint_epochs = tuple(sorted({int(item.strip()) for item in checkpoints.split(",") if item.strip()}))
     try:
         report = run_zero_report(
@@ -281,11 +291,15 @@ def zero_report(
                 max_moves=max_moves,
                 eval_games=eval_games,
                 eval_simulations=eval_simulations,
+                eval_opening_moves=eval_opening_moves,
                 train_batch_size=train_batch_size,
                 train_steps=train_steps,
                 replay_buffer_size=replay_buffer_size,
                 learning_rate=learning_rate,
+                optimizer_name=optimizer_name,
+                augment_training=augment_training,
                 num_filters=num_filters,
+                workers=workers,
                 checkpoint_epochs=checkpoint_epochs,
                 seed=seed,
                 force=force,

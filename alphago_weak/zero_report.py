@@ -6,6 +6,7 @@ import json
 import math
 import random
 import shutil
+from concurrent.futures import ProcessPoolExecutor
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -27,18 +28,22 @@ class ZeroReportConfig:
     root: Path
     output: Path
     board_size: int = 7
-    komi: float = 0.5
+    komi: float = 2.5
     epochs: int = 20
     games_per_epoch: int = 4
     simulations: int = 8
     max_moves: int = 60
     eval_games: int = 6
     eval_simulations: int = 4
+    eval_opening_moves: int = 2
     train_batch_size: int = 32
-    train_steps: int = 8
+    train_steps: int = 64
     replay_buffer_size: int = 4096
     learning_rate: float = 0.001
+    optimizer_name: str = "adam"
+    augment_training: bool = True
     num_filters: int = 16
+    workers: int = 4
     seed: int = 7
     checkpoint_epochs: Tuple[int, ...] = (0, 5, 10, 20)
     force: bool = False
@@ -66,7 +71,7 @@ def run_zero_report(config: ZeroReportConfig) -> Dict[str, Any]:
         num_filters=config.num_filters,
         device="cuda" if torch.cuda.is_available() else "cpu",
     )
-    optimizer = bot.model.make_optimizer(config.learning_rate)
+    optimizer = bot.model.make_optimizer(config.learning_rate, optimizer=config.optimizer_name)
     replay_buffer = deque(maxlen=config.replay_buffer_size)
     checkpoints = {0: snapshot_state(bot.model)}
     checkpoint_epochs = set(config.checkpoint_epochs)
@@ -76,52 +81,64 @@ def run_zero_report(config: ZeroReportConfig) -> Dict[str, Any]:
     sample_games: Dict[int, GameData] = {}
     sgf_dir = config.output.parent / "sgf"
     sgf_dir.mkdir(parents=True, exist_ok=True)
+    worker_count = min(max(config.workers, 1), max(config.games_per_epoch, 1))
+    executor = ProcessPoolExecutor(max_workers=worker_count) if worker_count > 1 else None
 
-    for epoch in range(1, config.epochs + 1):
-        games: List[GameData] = []
-        inputs, policies, values = bot.self_play(
-            count=config.games_per_epoch,
-            simulations=config.simulations,
-            max_moves=config.max_moves,
-            temperature=config.temperature,
-            temperature_drop=config.temperature_drop,
-            temperature_after_drop=config.temperature_after_drop,
-            dirichlet_alpha=config.dirichlet_alpha,
-            dirichlet_epsilon=config.dirichlet_epsilon,
-            game_recorder=lambda _idx, game: games.append(game),
-        )
-        replay_buffer.extend(zip(inputs, policies, values))
-        replay_samples = list(replay_buffer)
-        dataset = bot.model.dataset_from_arrays(
-            [sample[0] for sample in replay_samples],
-            [sample[1] for sample in replay_samples],
-            [sample[2] for sample in replay_samples],
-        )
-        loss, accuracy = bot.model.fit_step_from_dataset(
-            dataset,
-            batch_size=config.train_batch_size,
-            max_batches=config.train_steps,
-            optimizer=optimizer,
-            learning_rate=config.learning_rate,
-        )
-        if games:
-            sample_games[epoch] = games[0]
-            games[0].to_sgf(str(sgf_dir / f"epoch-{epoch:03d}.sgf"))
-        training_metrics.append(
-            {
-                "epoch": epoch,
-                "loss": loss,
-                "accuracy": accuracy,
-                "samples": len(inputs),
-                "replay_size": len(replay_buffer),
-                "avg_moves": float(np.mean([len(game.sequence) for game in games])) if games else 0.0,
-                "black_win_rate": float(np.mean([game.winner == GoPlayer.black for game in games])) if games else 0.0,
-            }
-        )
-        if epoch in checkpoint_epochs:
-            checkpoints[epoch] = snapshot_state(bot.model)
+    try:
+        for epoch in range(1, config.epochs + 1):
+            if executor is None:
+                games: List[GameData] = []
+                inputs, policies, values = bot.self_play(
+                    count=config.games_per_epoch,
+                    simulations=config.simulations,
+                    max_moves=config.max_moves,
+                    temperature=config.temperature,
+                    temperature_drop=config.temperature_drop,
+                    temperature_after_drop=config.temperature_after_drop,
+                    dirichlet_alpha=config.dirichlet_alpha,
+                    dirichlet_epsilon=config.dirichlet_epsilon,
+                    game_recorder=lambda _idx, game: games.append(game),
+                )
+            else:
+                inputs, policies, values, games = run_parallel_self_play(config, work_root, snapshot_state(bot.model), epoch, executor, worker_count)
+            replay_buffer.extend(zip(inputs, policies, values))
+            replay_samples = list(replay_buffer)
+            train_inputs = [sample[0] for sample in replay_samples]
+            train_policies = [sample[1] for sample in replay_samples]
+            train_values = [sample[2] for sample in replay_samples]
+            if config.augment_training:
+                train_inputs, train_policies, train_values = augment_samples(train_inputs, train_policies, train_values, config.board_size)
+            dataset = bot.model.dataset_from_arrays(train_inputs, train_policies, train_values)
+            loss, accuracy = bot.model.fit_step_from_dataset(
+                dataset,
+                batch_size=config.train_batch_size,
+                max_batches=config.train_steps,
+                optimizer=optimizer,
+                learning_rate=config.learning_rate,
+            )
+            if games:
+                sample_games[epoch] = games[0]
+                games[0].to_sgf(str(sgf_dir / f"epoch-{epoch:03d}.sgf"))
+            training_metrics.append(
+                {
+                    "epoch": epoch,
+                    "loss": loss,
+                    "accuracy": accuracy,
+                    "samples": len(inputs),
+                    "replay_size": len(replay_buffer),
+                    "train_size": len(train_inputs),
+                    "avg_moves": float(np.mean([len(game.sequence) for game in games])) if games else 0.0,
+                    "black_win_rate": float(np.mean([game.winner == GoPlayer.black for game in games])) if games else 0.0,
+                }
+            )
+            if epoch in checkpoint_epochs:
+                checkpoints[epoch] = snapshot_state(bot.model)
+    finally:
+        if executor is not None:
+            executor.shutdown()
 
     stages = []
+    baseline_state = checkpoints[0]
     for epoch in sorted(checkpoints):
         load_snapshot(bot.model, checkpoints[epoch])
         eval_result = evaluate_against_random(
@@ -130,13 +147,22 @@ def run_zero_report(config: ZeroReportConfig) -> Dict[str, Any]:
             config.eval_simulations,
             config.max_moves,
             config.komi,
+            config.eval_opening_moves,
             config.seed + epoch,
+        )
+        vs_initial_result = evaluate_against_model(
+            checkpoints[epoch],
+            baseline_state,
+            config,
+            work_root,
+            config.seed + epoch + 10000,
         )
         probes = analyze_probes(bot.model, config.board_size)
         stages.append(
             {
                 "epoch": epoch,
                 "eval": eval_result,
+                "vs_initial": vs_initial_result,
                 "probes": probes,
                 "sample_game": sample_games.get(epoch),
             }
@@ -159,6 +185,90 @@ def set_seed(seed: int):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def run_parallel_self_play(config: ZeroReportConfig, work_root: Path, model_state: Dict[str, torch.Tensor],
+                           epoch: int, executor: ProcessPoolExecutor, worker_count: int):
+    counts = split_counts(config.games_per_epoch, worker_count)
+    futures = [
+        executor.submit(_self_play_worker, self_play_worker_config(config, work_root), model_state, count, config.seed + epoch * 1000 + idx)
+        for idx, count in enumerate(counts)
+        if count > 0
+    ]
+    inputs, policies, values, games = [], [], [], []
+    for future in futures:
+        chunk_inputs, chunk_policies, chunk_values, chunk_games = future.result()
+        inputs.extend(chunk_inputs)
+        policies.extend(chunk_policies)
+        values.extend(chunk_values)
+        games.extend(chunk_games)
+    return inputs, policies, values, games
+
+
+def split_counts(total: int, workers: int) -> List[int]:
+    base, remainder = divmod(total, workers)
+    return [base + (1 if idx < remainder else 0) for idx in range(workers)]
+
+
+def self_play_worker_config(config: ZeroReportConfig, work_root: Path) -> Dict[str, Any]:
+    return {
+        "work_root": str(work_root),
+        "board_size": config.board_size,
+        "komi": config.komi,
+        "num_filters": config.num_filters,
+        "simulations": config.simulations,
+        "max_moves": config.max_moves,
+        "temperature": config.temperature,
+        "temperature_drop": config.temperature_drop,
+        "temperature_after_drop": config.temperature_after_drop,
+        "dirichlet_alpha": config.dirichlet_alpha,
+        "dirichlet_epsilon": config.dirichlet_epsilon,
+    }
+
+
+def _self_play_worker(worker_config: Dict[str, Any], model_state: Dict[str, torch.Tensor], count: int, seed: int):
+    set_seed(seed)
+    bot = GTPAlphaGoWeakV0(
+        worker_config["board_size"],
+        worker_config["komi"],
+        root=worker_config["work_root"],
+        num_filters=worker_config["num_filters"],
+        device="cpu",
+    )
+    load_snapshot(bot.model, model_state)
+    games: List[GameData] = []
+    inputs, policies, values = bot.self_play(
+        count=count,
+        simulations=worker_config["simulations"],
+        max_moves=worker_config["max_moves"],
+        temperature=worker_config["temperature"],
+        temperature_drop=worker_config["temperature_drop"],
+        temperature_after_drop=worker_config["temperature_after_drop"],
+        dirichlet_alpha=worker_config["dirichlet_alpha"],
+        dirichlet_epsilon=worker_config["dirichlet_epsilon"],
+        game_recorder=lambda _idx, game: games.append(game),
+    )
+    return inputs, policies, values, games
+
+
+def augment_samples(inputs: Sequence[np.ndarray], policies: Sequence[np.ndarray],
+                    values: Sequence[np.ndarray], size: int) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+    augmented_inputs: List[np.ndarray] = []
+    augmented_policies: List[np.ndarray] = []
+    augmented_values: List[np.ndarray] = []
+    for input_, policy, value in zip(inputs, policies, values):
+        policy_board = policy[:-1].reshape(size, size)
+        pass_policy = policy[-1:]
+        for flip in (False, True):
+            transformed_input = np.flip(input_, axis=2) if flip else input_
+            transformed_policy = np.flip(policy_board, axis=1) if flip else policy_board
+            for rotations in range(4):
+                input_view = np.rot90(transformed_input, rotations, axes=(1, 2))
+                policy_view = np.rot90(transformed_policy, rotations, axes=(0, 1))
+                augmented_inputs.append(np.ascontiguousarray(input_view, dtype=np.float32))
+                augmented_policies.append(np.concatenate([np.ascontiguousarray(policy_view.reshape(-1), dtype=np.float32), pass_policy.astype(np.float32)]))
+                augmented_values.append(np.array(value, dtype=np.float32))
+    return augmented_inputs, augmented_policies, augmented_values
 
 
 def snapshot_state(model: AlphaGoWeakV0) -> Dict[str, torch.Tensor]:
@@ -198,26 +308,27 @@ def json_default(value: Any):
 
 
 def evaluate_against_random(model: AlphaGoWeakV0, games: int, simulations: int, max_moves: int,
-                            komi: float, seed: int) -> Dict[str, Any]:
+                            komi: float, eval_opening_moves: int, seed: int) -> Dict[str, Any]:
     if games <= 0:
-        return {"games": 0, "wins": 0, "win_rate": 0.0, "avg_margin": 0.0, "avg_moves": 0.0}
+        return empty_eval_result()
     rng = random.Random(seed)
     wins = 0
+    black_games = 0
+    black_wins = 0
+    white_games = 0
+    white_wins = 0
     margins: List[float] = []
     lengths: List[int] = []
     for game_idx in range(games):
         board = GoBoard(model.size)
+        player, consecutive_passes, moves = play_random_opening(board, eval_opening_moves, GoPlayer.black, rng)
         tree = GoMCTSTree(board, model.state_calculator, model.policy_evaluator, model.value_evaluator, komi=komi)
         model_player = GoPlayer.black if game_idx % 2 == 0 else GoPlayer.white
-        player = GoPlayer.black
-        consecutive_passes = 0
-        moves = 0
         while consecutive_passes < 2 and moves < max_moves:
             if player == model_player:
                 pos = tree.evaluate(player, num=simulations, temperature=0.0, dirichlet_alpha=0.0)
             else:
-                actions = [pos for pos in board.valid_points(player) if board.eye_type(player, pos) < GoEyeType.unknown]
-                pos = rng.choice(actions) if actions else None
+                pos = random_non_eye_move(board, player, rng)
             board.play(player, pos)
             tree.play(player, pos)
             consecutive_passes = consecutive_passes + 1 if pos is None else 0
@@ -225,16 +336,144 @@ def evaluate_against_random(model: AlphaGoWeakV0, games: int, simulations: int, 
             moves += 1
         black_margin = board.score(GoPlayer.black, komi)
         winner = GoPlayer.black if black_margin > 0 else GoPlayer.white
-        wins += int(winner == model_player)
+        won = winner == model_player
+        wins += int(won)
+        if model_player == GoPlayer.black:
+            black_games += 1
+            black_wins += int(won)
+        else:
+            white_games += 1
+            white_wins += int(won)
         margins.append(black_margin if model_player == GoPlayer.black else -black_margin)
         lengths.append(moves)
+    return eval_result(games, wins, margins, lengths, black_games, black_wins, white_games, white_wins)
+
+
+def random_non_eye_move(board: GoBoardBase, player: GoPlayer, rng: random.Random) -> Optional[GoPoint]:
+    actions = [pos for pos in board.valid_points(player) if board.eye_type(player, pos) < GoEyeType.unknown]
+    return rng.choice(actions) if actions else None
+
+
+def play_random_opening(board: GoBoardBase, opening_moves: int, player: GoPlayer,
+                        rng: random.Random) -> Tuple[GoPlayer, int, int]:
+    consecutive_passes = 0
+    moves = 0
+    for _ in range(max(opening_moves, 0)):
+        pos = random_non_eye_move(board, player, rng)
+        board.play(player, pos)
+        consecutive_passes = consecutive_passes + 1 if pos is None else 0
+        moves += 1
+        player = player.other
+        if consecutive_passes >= 2:
+            break
+    return player, consecutive_passes, moves
+
+
+def empty_eval_result() -> Dict[str, Any]:
+    return {
+        "games": 0,
+        "wins": 0,
+        "win_rate": 0.0,
+        "avg_margin": 0.0,
+        "avg_moves": 0.0,
+        "black_games": 0,
+        "black_wins": 0,
+        "black_win_rate": 0.0,
+        "white_games": 0,
+        "white_wins": 0,
+        "white_win_rate": 0.0,
+    }
+
+
+def eval_result(games: int, wins: int, margins: Sequence[float], lengths: Sequence[int],
+                black_games: int, black_wins: int, white_games: int, white_wins: int) -> Dict[str, Any]:
     return {
         "games": games,
         "wins": wins,
         "win_rate": wins / games,
         "avg_margin": float(np.mean(margins)),
         "avg_moves": float(np.mean(lengths)),
+        "black_games": black_games,
+        "black_wins": black_wins,
+        "black_win_rate": black_wins / black_games if black_games else 0.0,
+        "white_games": white_games,
+        "white_wins": white_wins,
+        "white_win_rate": white_wins / white_games if white_games else 0.0,
     }
+
+
+def evaluate_against_model(candidate_state: Dict[str, torch.Tensor], baseline_state: Dict[str, torch.Tensor],
+                           config: ZeroReportConfig, work_root: Path, seed: int) -> Dict[str, Any]:
+    if config.eval_games <= 0:
+        return empty_eval_result()
+    candidate = AlphaGoWeakV0(
+        name="zero_report_candidate",
+        root=str(work_root),
+        size=config.board_size,
+        num_filters=config.num_filters,
+        device="cpu",
+    )
+    baseline = AlphaGoWeakV0(
+        name="zero_report_baseline",
+        root=str(work_root),
+        size=config.board_size,
+        num_filters=config.num_filters,
+        device="cpu",
+    )
+    load_snapshot(candidate, candidate_state)
+    load_snapshot(baseline, baseline_state)
+    wins = 0
+    black_games = 0
+    black_wins = 0
+    white_games = 0
+    white_wins = 0
+    margins: List[float] = []
+    lengths: List[int] = []
+    set_seed(seed)
+    rng = random.Random(seed)
+    played_games = 0
+    while played_games < config.eval_games:
+        opening_board = GoBoard(config.board_size)
+        next_player, opening_passes, opening_length = play_random_opening(
+            opening_board,
+            config.eval_opening_moves,
+            GoPlayer.black,
+            rng,
+        )
+        for candidate_player in (GoPlayer.black, GoPlayer.white):
+            if played_games >= config.eval_games:
+                break
+            board = opening_board.copy()
+            player = next_player
+            consecutive_passes = opening_passes
+            moves = opening_length
+            candidate_tree = GoMCTSTree(board, candidate.state_calculator, candidate.policy_evaluator, candidate.value_evaluator, komi=config.komi)
+            baseline_tree = GoMCTSTree(board, baseline.state_calculator, baseline.policy_evaluator, baseline.value_evaluator, komi=config.komi)
+            while consecutive_passes < 2 and moves < config.max_moves:
+                if player == candidate_player:
+                    pos = candidate_tree.evaluate(player, num=config.eval_simulations, temperature=0.0, dirichlet_alpha=0.0)
+                else:
+                    pos = baseline_tree.evaluate(player, num=config.eval_simulations, temperature=0.0, dirichlet_alpha=0.0)
+                board.play(player, pos)
+                candidate_tree.play(player, pos)
+                baseline_tree.play(player, pos)
+                consecutive_passes = consecutive_passes + 1 if pos is None else 0
+                player = player.other
+                moves += 1
+            black_margin = board.score(GoPlayer.black, config.komi)
+            winner = GoPlayer.black if black_margin > 0 else GoPlayer.white
+            won = winner == candidate_player
+            wins += int(won)
+            if candidate_player == GoPlayer.black:
+                black_games += 1
+                black_wins += int(won)
+            else:
+                white_games += 1
+                white_wins += int(won)
+            margins.append(black_margin if candidate_player == GoPlayer.black else -black_margin)
+            lengths.append(moves)
+            played_games += 1
+    return eval_result(config.eval_games, wins, margins, lengths, black_games, black_wins, white_games, white_wins)
 
 
 def analyze_probes(model: AlphaGoWeakV0, size: int) -> List[Dict[str, Any]]:
@@ -363,7 +602,9 @@ def render_report(report: Dict[str, Any]) -> str:
     stages = report["stages"]
     stage_rows = "\n".join(
         f"<tr><td>{stage['epoch']}</td><td>{stage['eval']['games']}</td><td>{stage['eval']['win_rate']:.0%}</td>"
-        f"<td>{stage['eval']['avg_margin']:.2f}</td><td>{stage['eval']['avg_moves']:.1f}</td></tr>"
+        f"<td>{stage['eval']['avg_margin']:.2f}</td><td>{stage['vs_initial']['win_rate']:.0%}</td>"
+        f"<td>{stage['vs_initial']['black_win_rate']:.0%} / {stage['vs_initial']['white_win_rate']:.0%}</td>"
+        f"<td>{stage['vs_initial']['avg_margin']:.2f}</td><td>{stage['eval']['avg_moves']:.1f}</td></tr>"
         for stage in stages
     )
     training_rows = "\n".join(
@@ -414,7 +655,7 @@ code {{ background: #eef2f7; padding: 2px 5px; border-radius: 4px; }}
 </section>
 <section class="card" style="margin-top:16px">
 <h2>实验说明</h2>
-<p>这是本仓库当前实现的一次真实本地运行，不是论文规模复现。它用于观察 7x7 小棋盘上，模型从随机策略经过少量 self-play 后，策略分布、value 估计和对随机对手胜率的变化。训练使用 replay buffer、根节点 Dirichlet 噪声和 visit-count 温度退火。</p>
+<p>这是本仓库当前实现的一次真实本地运行，不是论文规模复现。它用于观察 7x7 小棋盘上，模型从随机策略经过少量 self-play 后，策略分布、value 估计和对随机对手胜率的变化。训练使用 replay buffer、根节点 Dirichlet 噪声、visit-count 温度退火、棋盘对称增强和 4 worker 自博弈采样。</p>
 <p>复现命令见 README。完整参数保存在 <code>metrics.json</code>。</p>
 </section>
 <section class="card" style="margin-top:16px">
@@ -423,8 +664,8 @@ code {{ background: #eef2f7; padding: 2px 5px; border-radius: 4px; }}
 <table><thead><tr><th>Epoch</th><th>Loss</th><th>Policy Acc.</th><th>Replay</th><th>Avg Moves</th><th>Black Win</th></tr></thead><tbody>{training_rows}</tbody></table>
 </section>
 <section class="card" style="margin-top:16px">
-<h2>阶段评估：模型 MCTS vs 随机落子</h2>
-<table><thead><tr><th>Checkpoint Epoch</th><th>Games</th><th>Win Rate</th><th>Avg Margin</th><th>Avg Moves</th></tr></thead><tbody>{stage_rows}</tbody></table>
+<h2>阶段评估：随机对手与初始模型</h2>
+<table><thead><tr><th>Checkpoint Epoch</th><th>Random Games</th><th>Random Win</th><th>Random Margin</th><th>Vs Initial Win</th><th>Vs Initial B/W</th><th>Vs Initial Margin</th><th>Avg Moves</th></tr></thead><tbody>{stage_rows}</tbody></table>
 </section>
 {stage_sections}
 </main>
@@ -464,7 +705,7 @@ def render_stage(stage: Dict[str, Any]) -> str:
     sample_board = render_final_board(stage.get("sample_game"))
     return f"""<section class="stage card">
 <h2>Checkpoint epoch {stage['epoch']}</h2>
-<p class="note">随机对手评估：胜率 {stage['eval']['win_rate']:.0%}，平均目差 {stage['eval']['avg_margin']:.2f}，平均手数 {stage['eval']['avg_moves']:.1f}。</p>
+<p class="note">随机对手评估：胜率 {stage['eval']['win_rate']:.0%}，平均目差 {stage['eval']['avg_margin']:.2f}；对初始模型：胜率 {stage['vs_initial']['win_rate']:.0%}，执黑/执白 {stage['vs_initial']['black_win_rate']:.0%}/{stage['vs_initial']['white_win_rate']:.0%}，平均目差 {stage['vs_initial']['avg_margin']:.2f}。</p>
 <h3>样例对局终局</h3>
 {sample_board}
 <h3>固定局面策略分析</h3>

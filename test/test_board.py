@@ -176,16 +176,18 @@ def test_board_basic(Board: Type[GoBoardBase]):
 @pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
 def test_board_random_play(Board: Type[GoBoardBase], benchmark):
 
-    @benchmark
-    def _():
+    def run_random_game():
+        rng = random.Random(0)
         _b = Board()
         current_player = b
         for i in range(_b.size * _b.size):
             valid_points = [pos for pos in _b.valid_points(current_player) if _b.eye_type(current_player, pos) < GoEyeType.unknown]
             if len(valid_points) > 0:
-                pos = random.choice(valid_points)
+                pos = rng.choice(valid_points)
                 _b.play(current_player, pos)
             current_player = current_player.other
+
+    benchmark.pedantic(run_random_game, rounds=1, iterations=1)
 
 
 @pytest.mark.parametrize("Board", [GoBoardAlpha, GoBoardBeta])
@@ -197,8 +199,7 @@ def test_board_sgf_play(Board: Type[GoBoardBase], benchmark):
         json_data = json.load(open(json_data_path)) if path.isfile(json_data_path) else None
         dataset.append((data, json_data))
 
-    @benchmark
-    def _():
+    def replay_sgf_games():
         for data, json_data in dataset:
             _b = Board(data.size)
             _b.setup_stones(*data.setup_stones)
@@ -206,6 +207,8 @@ def test_board_sgf_play(Board: Type[GoBoardBase], benchmark):
                 _b.play(player, pos)
             if json_data is not None:
                 assert_board_status(_b, json_data)
+
+    benchmark.pedantic(replay_sgf_games, rounds=1, iterations=1)
 
 
 if __name__ == "__main__":

@@ -96,6 +96,7 @@ class _ArrayGameDataset(Dataset):
 
 
 class AlphaGoWeakV0(ModelBase):
+    PASS_PRIOR_SCALE = 0.01
     FEATURES = {
         "player_stone": 0,
         "opponent_stone": 1,
@@ -327,12 +328,17 @@ class AlphaGoWeakV0(ModelBase):
                 if stale_epochs >= patience:
                     break
 
-    def make_optimizer(self, learning_rate: float = 0.01, momentum: float = 0.9) -> torch.optim.Optimizer:
+    def make_optimizer(self, learning_rate: float = 0.01, momentum: float = 0.9, optimizer: str = "sgd") -> torch.optim.Optimizer:
+        if optimizer == "adam":
+            return torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+        if optimizer != "sgd":
+            raise ValueError("optimizer must be 'sgd' or 'adam'")
         return torch.optim.SGD(self.model.parameters(), lr=learning_rate, momentum=momentum)
 
     def fit_step_from_dataset(self, dataset, batch_size: int = 64, max_batches: Optional[int] = None,
                               optimizer: Optional[torch.optim.Optimizer] = None,
                               learning_rate: float = 0.01,
+                              optimizer_name: str = "sgd",
                               progress_callback: Optional[Callable[[int], None]] = None) -> Tuple[float, float]:
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than zero")
@@ -341,7 +347,7 @@ class AlphaGoWeakV0(ModelBase):
         shuffle = not isinstance(dataset, IterableDataset)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
         if optimizer is None:
-            optimizer = self.make_optimizer(learning_rate)
+            optimizer = self.make_optimizer(learning_rate, optimizer=optimizer_name)
         return self._fit_batches(dataloader, optimizer, max_batches=max_batches, policy_weight=0.8, progress_callback=progress_callback)
 
     def summary(self):
@@ -368,7 +374,10 @@ class AlphaGoWeakV0(ModelBase):
             player) if board.eye_type(player, pos) < GoEyeType.unknown]
         weights: List[float] = [policy_.item(action.x * self.size + action.y) for action in actions]
         actions.append(None)
-        weights.append(float(policy_[-1]))
+        if len(weights) == 0:
+            weights.append(1.0)
+        else:
+            weights.append(float(policy_[-1]) * self.PASS_PRIOR_SCALE)
         policy = actions, weights
         return policy, value
 

@@ -12,30 +12,32 @@ AlphaGo Weak 是一个用于学习和实验的围棋程序。当前代码已经�
 - [查看原始指标 JSON](reports/7x7-zero/metrics.json)
 - 样例 SGF: [reports/7x7-zero/sgf](reports/7x7-zero/sgf)
 
-本次报告参数：7x7，komi 0.5，20 epoch，每 epoch 4 局 self-play，每手 8 次 MCTS simulation，16 filters 小网络，CPU 运行。它记录了 checkpoint 0/5/10/20 的随机对手评估、训练曲线、固定局面策略热力图和样例终局。
+本次报告参数：7x7，komi 2.5，40 epoch，每 epoch 4 局 self-play，每手 12 次 MCTS simulation，16 filters 小网络，4 worker 多进程采样，CPU 运行。它记录了 checkpoint 0/10/20/30/40 的随机对手评估、配对换先的初始模型头对头评估、训练曲线、固定局面策略热力图和样例终局。
 
 关键结果：
 
-| Checkpoint | Random Eval Win Rate | Avg Margin | Avg Moves |
-| --- | ---: | ---: | ---: |
-| 0 | 33% | -4.00 | 55.5 |
-| 5 | 33% | -8.50 | 54.7 |
-| 10 | 33% | -3.83 | 57.7 |
-| 20 | 0% | -15.00 | 59.7 |
+| Checkpoint | Random Win | Random Margin | Vs Initial Win | Vs Initial Margin | Avg Moves |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0 | 65% | 5.40 | 50% | 0.00 | 57.4 |
+| 10 | 65% | 0.90 | 45% | -6.00 | 57.1 |
+| 20 | 65% | 11.20 | 55% | 4.80 | 64.5 |
+| 30 | 80% | 8.70 | 60% | 4.50 | 61.2 |
+| 40 | 60% | 5.70 | 80% | 14.10 | 60.7 |
 
-训练指标有轻微变化：loss 从 3.1879 降到 3.1701，policy accuracy 从 2.5% 到 5.5%，replay buffer 达到 4096 样本。但固定局面的策略熵仍接近 1.0，value 也接近 50%。结论是：当前流程能真实训练和生成报告，但这个小规模配置没有产生稳定棋力提升，离论文中的有效强化学习还差 replay/gating、更多 simulation、批量推理和更强评估。
+训练指标从 loss 3.1471 / policy accuracy 6.0% 改善到 loss 2.0525 / policy accuracy 28.0%，replay buffer 达到 8192 样本。旧报告无法体现变强的主要原因是评估没有配对换先，且 7x7 使用 komi 0.5 会让结果被先手优势主导；现在的头对头评估会对同一随机开局分别交换候选模型执黑/执白。结论是：当前小规模流程已经能观察到相对初始模型的提升，但仍不是论文级棋力复现。
 
 复现实验：
 
 ```powershell
 alphago --root .data-report-final zero-report `
   --output reports/7x7-zero/index.html `
-  --board-size 7 --komi 0.5 `
-  --epochs 20 --steps 4 --simulations 8 --max-moves 60 `
-  --eval-games 6 --eval-simulations 4 `
-  --train-batch-size 32 --train-steps 8 `
-  --replay-buffer-size 4096 --learning-rate 0.001 `
-  --num-filters 16 --checkpoints 0,5,10,20 `
+  --board-size 7 --komi 2.5 `
+  --epochs 40 --steps 4 --simulations 12 --max-moves 98 `
+  --eval-games 20 --eval-simulations 8 --eval-opening-moves 4 `
+  --train-batch-size 32 --train-steps 96 `
+  --replay-buffer-size 8192 --learning-rate 0.001 `
+  --optimizer adam --augment --workers 4 `
+  --num-filters 16 --checkpoints 0,10,20,30,40 `
   --seed 7 --force
 ```
 
@@ -77,8 +79,8 @@ alphago zero-report --force
 - MCTS 仍是 Python 单样本推理，GPU 利用率低。
 - 没有完整 AlphaGo Zero 的新旧模型胜率 gating。
 - replay buffer 只在单次命令运行内存在，暂未持久化。
-- 当前 7x7 报告显示训练流程可运行，但棋力没有稳定提升。
-- 需要继续改进批量推理、评估赛制、value 校准和更长训练。
+- 当前 7x7 报告只证明小规模相对提升，不代表模型已经具备可靠围棋棋力。
+- 需要继续改进批量推理、候选模型 gating、value 校准、持久化 replay 和更长训练。
 
 ## 参考
 
