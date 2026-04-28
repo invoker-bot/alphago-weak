@@ -33,6 +33,8 @@ from alphago_weak.zero_report import (
     snapshot_state,
 )
 
+REPLAY_BUFFER_FILENAME = "replay_buffers.npz"
+
 
 @dataclass
 class ZeroLadderConfig:
@@ -91,6 +93,7 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
     sgf_dir = config.output.parent / "sgf"
     model_dir.mkdir(parents=True, exist_ok=True)
     sgf_dir.mkdir(parents=True, exist_ok=True)
+    replay_path = config.output.parent / REPLAY_BUFFER_FILENAME
 
     device = resolve_torch_device(config.self_play_device)
     if config.resume:
@@ -107,6 +110,14 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
         attempt = int(summary.get("attempts", len(records)))
         cumulative_elo = float(summary.get("final_elo", 0.0))
         champion_state = load_snapshot_file(Path(generation_paths[-1]["path"]))
+        replay_buffer, candidate_buffer, replay_restored = load_replay_buffers(replay_path, config.replay_buffer_size)
+        if not replay_restored:
+            report_progress(progress_callback, {"event": "resume_replay_missing", "path": str(replay_path)})
+        if records and not records[-1].get("accepted") and records[-1].get("candidate_path"):
+            candidate_state = load_snapshot_file(Path(records[-1]["candidate_path"]))
+        else:
+            candidate_state = champion_state
+            candidate_buffer = deque(replay_buffer, maxlen=config.replay_buffer_size)
     else:
         bot = GTPAlphaGoWeakV0(
             config.board_size,
@@ -123,9 +134,9 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
         cumulative_elo = 0.0
         records: List[Dict[str, Any]] = []
         generation_paths = [{"generation": 0, "elo": 0.0, "path": str(model_dir / "generation-000.pt")}]
-    replay_buffer = deque(maxlen=config.replay_buffer_size)
-    candidate_state = champion_state
-    candidate_buffer = deque(maxlen=config.replay_buffer_size)
+        replay_buffer = deque(maxlen=config.replay_buffer_size)
+        candidate_state = champion_state
+        candidate_buffer = deque(maxlen=config.replay_buffer_size)
     max_attempts = config.max_attempts if config.max_attempts is not None else max(config.generations * 3, config.generations)
     worker_count = min(max(config.workers, 1), max(config.games_per_epoch, 1))
     epochs_before_gate = config.candidate_epochs * config.gate_training_rounds
@@ -221,6 +232,11 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
             ),
         )
         elo_delta = elo_delta_from_win_rate(match["candidate_win_rate"])
+        match["gate_assessment"] = assess_gate_result(
+            match["candidate_wins"],
+            match["games"],
+            config.gate_win_rate,
+        )
         accepted_candidate = match["candidate_win_rate"] >= config.gate_win_rate
         candidate_path = model_dir / f"candidate-attempt-{attempt:03d}.pt"
         save_snapshot_file(candidate_path, candidate_state, config, generation=accepted + 1, elo=cumulative_elo + elo_delta)
@@ -268,6 +284,7 @@ def run_zero_ladder(config: ZeroLadderConfig, progress_callback: Optional[Callab
                 "cumulative_elo": cumulative_elo,
             },
         )
+        save_replay_buffers(replay_path, replay_buffer, candidate_buffer, accepted, attempt)
         write_ladder_report(config, work_root, generation_paths, records, accepted, attempt, cumulative_elo)
 
     return write_ladder_report(config, work_root, generation_paths, records, accepted, attempt, cumulative_elo)
@@ -339,6 +356,48 @@ def samples_to_arrays(samples: Sequence[Tuple[np.ndarray, np.ndarray, np.ndarray
     return [sample[0] for sample in samples], [sample[1] for sample in samples], [sample[2] for sample in samples]
 
 
+def save_replay_buffers(path: Path, replay_buffer: Sequence[Tuple[np.ndarray, np.ndarray, np.ndarray]],
+                        candidate_buffer: Sequence[Tuple[np.ndarray, np.ndarray, np.ndarray]],
+                        accepted: int, attempt: int):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    arrays: Dict[str, Any] = {
+        "format_version": np.array([1], dtype=np.int64),
+        "accepted": np.array([accepted], dtype=np.int64),
+        "attempt": np.array([attempt], dtype=np.int64),
+    }
+    arrays.update(buffer_to_npz_arrays("replay", replay_buffer))
+    arrays.update(buffer_to_npz_arrays("candidate", candidate_buffer))
+    with temp_path.open("wb") as handle:
+        np.savez_compressed(handle, **arrays)
+    temp_path.replace(path)
+
+
+def load_replay_buffers(path: Path, maxlen: int):
+    if not path.exists():
+        return deque(maxlen=maxlen), deque(maxlen=maxlen), False
+    with np.load(path, allow_pickle=False) as data:
+        replay_buffer = npz_arrays_to_buffer(data["replay_inputs"], data["replay_policies"], data["replay_values"], maxlen)
+        candidate_buffer = npz_arrays_to_buffer(data["candidate_inputs"], data["candidate_policies"], data["candidate_values"], maxlen)
+    return replay_buffer, candidate_buffer, True
+
+
+def buffer_to_npz_arrays(prefix: str, samples: Sequence[Tuple[np.ndarray, np.ndarray, np.ndarray]]) -> Dict[str, np.ndarray]:
+    inputs, policies, values = samples_to_arrays(samples)
+    return {
+        f"{prefix}_inputs": np.asarray(inputs, dtype=np.float32),
+        f"{prefix}_policies": np.asarray(policies, dtype=np.float32),
+        f"{prefix}_values": np.asarray(values, dtype=np.float32),
+    }
+
+
+def npz_arrays_to_buffer(inputs: np.ndarray, policies: np.ndarray, values: np.ndarray, maxlen: int):
+    restored = deque(maxlen=maxlen)
+    for sample in zip(inputs[-maxlen:], policies[-maxlen:], values[-maxlen:]):
+        restored.append(sample)
+    return restored
+
+
 def report_progress(progress_callback: Optional[Callable[[Dict[str, Any]], None]], event: Dict[str, Any]):
     if progress_callback is not None:
         progress_callback(event)
@@ -378,6 +437,7 @@ def config_to_dict(config: ZeroLadderConfig, work_root: Path) -> Dict[str, Any]:
     data["root"] = str(config.root)
     data["work_root"] = str(work_root)
     data["output"] = str(config.output)
+    data["replay_buffer_path"] = str(config.output.parent / REPLAY_BUFFER_FILENAME)
     data["device"] = resolve_torch_device(config.self_play_device)
     return data
 
@@ -408,6 +468,34 @@ def load_snapshot_file(path: Path) -> Dict[str, torch.Tensor]:
 def elo_delta_from_win_rate(win_rate: float) -> float:
     p = min(max(float(win_rate), 1e-6), 1.0 - 1e-6)
     return 400.0 * math.log10(p / (1.0 - p))
+
+
+def wilson_score_interval(wins: int, games: int, z: float = 1.96) -> Tuple[float, float]:
+    if games <= 0:
+        return 0.0, 0.0
+    p = wins / games
+    denominator = 1.0 + z * z / games
+    center = p + z * z / (2.0 * games)
+    margin = z * math.sqrt((p * (1.0 - p) + z * z / (4.0 * games)) / games)
+    return max(0.0, (center - margin) / denominator), min(1.0, (center + margin) / denominator)
+
+
+def assess_gate_result(wins: int, games: int, threshold: float) -> Dict[str, Any]:
+    low, high = wilson_score_interval(wins, games)
+    win_rate = wins / games if games else 0.0
+    if low >= threshold:
+        label = "clear_pass"
+    elif high < threshold:
+        label = "clear_reject"
+    else:
+        label = "borderline"
+    return {
+        "win_rate": win_rate,
+        "threshold": threshold,
+        "ci_low": low,
+        "ci_high": high,
+        "label": label,
+    }
 
 
 def calibrate_relative_komi(state: Dict[str, torch.Tensor], config: ZeroLadderConfig, work_root: Path, seed: int) -> Dict[str, Any]:
@@ -691,6 +779,7 @@ def table_header() -> str:
         ("晋级", "Advance"),
         ("Komi", "Komi"),
         ("候选胜率", "Candidate Win Rate"),
+        ("Gate 可信度", "Gate Confidence"),
         ("候选黑/白", "Candidate B/W"),
         ("同代黑胜率", "Same-Gen Black Win"),
         ("Elo Δ", "Elo Δ"),
@@ -741,11 +830,11 @@ def render_progress_analysis(report: Dict[str, Any]) -> str:
         f"self-play epochs; if rejections are still high, increase --gate-training-rounds or --candidate-epochs."
     )
     noise_zh = (
-        f"评估每次 gate 使用 {config['eval_games']} 局，因此 Elo 数值偏噪；更可靠的强度估计需要增加 "
-        f"--eval-games 和 --eval-simulations。"
+        f"评估每次 gate 使用 {config['eval_games']} 局，报告中的 95% Wilson 区间用于标记 clear/borderline；"
+        f"更可靠的强度估计需要增加 --eval-games 和 --eval-simulations。"
     )
     noise_en = (
-        f"Each gate used {config['eval_games']} evaluation games, so the Elo values are noisy; "
+        f"Each gate used {config['eval_games']} evaluation games. The 95% Wilson interval marks clear vs borderline gates; "
         f"use higher --eval-games and --eval-simulations for stronger estimates."
     )
     return (
@@ -764,13 +853,29 @@ def render_attempt_row(attempt: Dict[str, Any]) -> str:
     to_generation = attempt["to_generation"] if attempt["to_generation"] is not None else "-"
     same_gen_black = attempt["calibration"]["candidates"]
     same_gen_black_rate = min(same_gen_black, key=lambda item: abs(item["komi"] - attempt["komi"]))["black_win_rate"] if same_gen_black else 0.0
+    gate_assessment = render_gate_assessment(match)
     return (
         f"<tr><td>{attempt['attempt']}</td><td class=\"{status_class}\">{status}</td><td>{to_generation}</td>"
         f"<td>{attempt['komi']:.2f}</td><td>{match['candidate_win_rate']:.0%}</td>"
+        f"<td>{gate_assessment}</td>"
         f"<td>{match['candidate_black_win_rate']:.0%} / {match['candidate_white_win_rate']:.0%}</td>"
         f"<td>{same_gen_black_rate:.0%}</td><td>{attempt['elo_delta']:+.1f}</td>"
         f"<td>{attempt['cumulative_elo']:.1f}</td><td>{last_train['loss']:.4f} / {last_train['accuracy']:.1%}</td></tr>"
     )
+
+
+def render_gate_assessment(match: Dict[str, Any]) -> str:
+    assessment = match.get("gate_assessment")
+    if not assessment:
+        return i18n_text("未记录", "Not recorded")
+    labels = {
+        "clear_pass": ("明确通过", "Clear pass"),
+        "clear_reject": ("明确拒绝", "Clear reject"),
+        "borderline": ("边界结果", "Borderline"),
+    }
+    zh, en = labels.get(assessment["label"], ("未知", "Unknown"))
+    interval = f"{assessment['ci_low']:.0%}-{assessment['ci_high']:.0%}"
+    return f"{i18n_text(zh, en)}<br/><span class=\"note\">95% CI {interval}</span>"
 
 
 def render_elo_chart(generations: Sequence[Dict[str, Any]]) -> str:

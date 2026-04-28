@@ -101,6 +101,7 @@ alphago --root .data-ladder-10-strong-gate zero-ladder `
 ```
 
 If a long CUDA run stops midway, rerun the same command with `--resume` instead of `--force`. The report is refreshed after every complete attempt.
+`zero-ladder` also persists replay buffers after each complete attempt, so a resumed run keeps the candidate training window instead of falling back to checkpoints only.
 
 ## Other Useful Commands
 
@@ -130,7 +131,7 @@ alphago zero-ladder --generations 10 --force
 
 - The Go engine and MCTS are still mostly Python, so GPU is used mainly for batched network inference and training.
 - Elo values are useful for relative progress, but they remain noisy with 20-game gates.
-- Replay buffers are not yet persisted across interrupted runs; `--resume` restores the latest champion and report state.
+- `--resume` restores the latest champion, candidate path, report state, and persisted replay buffers from the last complete attempt.
 - The 7x7 result demonstrates measurable local improvement, not strong general Go skill.
 
 ## References

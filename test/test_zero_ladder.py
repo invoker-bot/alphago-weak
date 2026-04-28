@@ -2,13 +2,21 @@
 # -*- coding: utf-8 -*-
 
 import json
+from collections import deque
 from pathlib import Path
 
 import numpy as np
 from typer.testing import CliRunner
 
 from alphago_weak.cli import app
-from alphago_weak.zero_ladder import elo_delta_from_win_rate, shuffled_players
+from alphago_weak.zero_ladder import (
+    assess_gate_result,
+    elo_delta_from_win_rate,
+    load_replay_buffers,
+    save_replay_buffers,
+    shuffled_players,
+    wilson_score_interval,
+)
 
 
 def test_elo_delta_from_win_rate():
@@ -23,6 +31,38 @@ def test_shuffled_players_returns_both_colors():
     players = shuffled_players(rng)
 
     assert {player.name for player in players} == {"black", "white"}
+
+
+def test_wilson_gate_assessment_marks_borderline_and_clear_results():
+    low, high = wilson_score_interval(11, 20)
+
+    assert low < 0.55 < high
+    assert assess_gate_result(11, 20, 0.55)["label"] == "borderline"
+    assert assess_gate_result(20, 20, 0.55)["label"] == "clear_pass"
+    assert assess_gate_result(1, 20, 0.55)["label"] == "clear_reject"
+
+
+def test_replay_buffers_round_trip(tmp_path):
+    replay = deque(maxlen=3)
+    candidate = deque(maxlen=3)
+    for idx in range(4):
+        sample = (
+            np.full((2, 3, 3), idx, dtype=np.float32),
+            np.eye(10, dtype=np.float32)[idx],
+            np.array([idx % 2], dtype=np.float32),
+        )
+        replay.append(sample)
+        candidate.append(sample)
+
+    replay_path = tmp_path / "replay_buffers.npz"
+    save_replay_buffers(replay_path, replay, candidate, accepted=2, attempt=5)
+    restored_replay, restored_candidate, restored = load_replay_buffers(replay_path, maxlen=2)
+
+    assert restored
+    assert len(restored_replay) == 2
+    assert len(restored_candidate) == 2
+    assert np.allclose(restored_replay[0][0], np.full((2, 3, 3), 2, dtype=np.float32))
+    assert np.allclose(restored_replay[-1][1], np.eye(10, dtype=np.float32)[3])
 
 
 def test_zero_ladder_cli_writes_report_and_initial_model():
@@ -53,6 +93,7 @@ def test_zero_ladder_cli_writes_report_and_initial_model():
         assert '|| "en"' in html
         assert "data-en=\"Generation-gated training report" in html
         assert "Candidate Win Rate" in html
+        assert "Gate Confidence" in html
         assert "Progress Analysis" in html
         assert metrics["summary"]["accepted_generations"] == 0
         assert metrics["config"]["board_size"] == 3
