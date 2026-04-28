@@ -20,7 +20,7 @@ AlphaGo Weak 是一个用于学习和实验的围棋程序。它不是论文级�
 
 ## Latest 7x7 Result
 
-Latest local ladder run: `reports/7x7-ladder-10/index.html` generated on a CUDA RTX 4090 environment. Reports are ignored by Git, so the README keeps the headline result directly.
+Latest completed ladder run, produced on a CUDA RTX 4090 environment, is summarized below. Generated reports are ignored by Git; rerun the command in the reproduction section to recreate `reports/7x7-ladder-10/index.html` locally.
 
 | Metric | Value |
 | --- | ---: |
