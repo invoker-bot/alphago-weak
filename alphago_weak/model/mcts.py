@@ -142,15 +142,19 @@ class GoMCTSNode:
     def choose(self, board: GoBoardBase, player: GoPlayer) -> Tuple[GoPlayer, "GoMCTSNode"]:
         if self.children is None or len(self.children) == 0:
             return player, self
-        self.children = [
-            child for child in self.children
-            if child.pos is None or board.is_valid_point(player, child.pos)
-        ]
-        if len(self.children) == 0:
-            return player, self
-        max_child = max(self.children, key=lambda node: node.upper_confidence_bound)
-        board.play(player, max_child.pos)
-        return max_child.choose(board, player.other)
+        parent_visits_sqrt = math.sqrt(self.n)
+        while self.children:
+            max_child = max(
+                self.children,
+                key=lambda child: child.win_rate + child.c * child.p * parent_visits_sqrt / child.n,
+            )
+            try:
+                board.play(player, max_child.pos)
+            except GoIllegalActionError:
+                self.children.remove(max_child)
+                continue
+            return max_child.choose(board, player.other)
+        return player, self
 
     def expand(self, board: GoBoardBase, player: GoPlayer, state_calculator: StateCalculator, policy_evaluator: PolicyEvaluator, komi=6.5):
         if self.children is None:

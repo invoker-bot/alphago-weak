@@ -170,12 +170,26 @@ class GoBoardBase(metaclass=ABCMeta):
         self._setup_stones(GoPlayer.none, empty_stones)
 
     def neighbors(self, point: GoPoint) -> Iterable[GoPoint]:
-        pts = ((point.x - 1, point.y), (point.x + 1, point.y), (point.x, point.y - 1), (point.x, point.y + 1))
-        return (GoPoint(x, y) for x, y in pts if self.is_on_board(GoPoint(x, y)))
+        x, y, size = point.x, point.y, self.size
+        if x > 0:
+            yield GoPoint(x - 1, y)
+        if x + 1 < size:
+            yield GoPoint(x + 1, y)
+        if y > 0:
+            yield GoPoint(x, y - 1)
+        if y + 1 < size:
+            yield GoPoint(x, y + 1)
 
     def corners(self, point: GoPoint) -> Iterable[GoPoint]:
-        lst = ((point.x - 1, point.y - 1), (point.x - 1, point.y + 1), (point.x + 1, point.y - 1), (point.x + 1, point.y + 1))
-        return (GoPoint(x, y) for x, y in lst if self.is_on_board(GoPoint(x, y)))
+        x, y, size = point.x, point.y, self.size
+        if x > 0 and y > 0:
+            yield GoPoint(x - 1, y - 1)
+        if x > 0 and y + 1 < size:
+            yield GoPoint(x - 1, y + 1)
+        if x + 1 < size and y > 0:
+            yield GoPoint(x + 1, y - 1)
+        if x + 1 < size and y + 1 < size:
+            yield GoPoint(x + 1, y + 1)
 
     def is_eye_point(self, player: GoPlayer, point: GoPoint) -> bool:
         assert player != GoPlayer.none

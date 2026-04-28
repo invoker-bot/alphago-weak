@@ -196,6 +196,23 @@ def test_mcts_choose_uses_legal_play_and_does_not_overwrite_illegal_child():
     assert board[P(0, 0)] == b
 
 
+def test_mcts_choose_prunes_stale_illegal_child_and_tries_next_child():
+    board = GoBoard(3)
+    board.play(b, P(0, 0))
+    root = GoMCTSNode()
+    illegal = GoMCTSNode(root, P(0, 0), 10.0)
+    legal = GoMCTSNode(root, P(1, 1), 1.0)
+    root.children = [illegal, legal]
+
+    player, node = root.choose(board, w)
+
+    assert player == b
+    assert node is legal
+    assert root.children == [legal]
+    assert board[P(0, 0)] == b
+    assert board[P(1, 1)] == w
+
+
 def test_random_mcts_rollout_passes_once_before_terminal_scoring(monkeypatch):
     board = GoBoard(3)
     calls = []
