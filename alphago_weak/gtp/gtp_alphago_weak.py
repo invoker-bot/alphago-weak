@@ -24,8 +24,17 @@ class GTPAlphaGoWeakV0(GTPClientBase):
 
     def __init__(self, size=19, komi=6.5, **kwargs):
         super().__init__(size, komi)
+        self._model_name = kwargs.get("name", self.name)
+        self._model_num_filters = kwargs.get("num_filters", 128)
+        self._model_device = kwargs.get("device", None)
         self.board = GoBoard(size)
-        self.model = AlphaGoWeakV0(size=size, root=kwargs.get("root", "."))
+        self.model = AlphaGoWeakV0(
+            name=self._model_name,
+            size=size,
+            root=kwargs.get("root", "."),
+            num_filters=self._model_num_filters,
+            device=self._model_device,
+        )
         self.mcts = GoMCTSTree(self.board, self.model.state_calculator, self.model.policy_evaluator, self.model.value_evaluator, komi=komi)
 
     def genmove(self, player):
@@ -117,5 +126,11 @@ class GTPAlphaGoWeakV0(GTPClientBase):
     def clear_board(self):
         super().clear_board()
         if self.model.size != self.size:
-            self.model = AlphaGoWeakV0(size=self.size, root=self.model.root)
+            self.model = AlphaGoWeakV0(
+                name=self._model_name,
+                size=self.size,
+                root=self.model.root,
+                num_filters=self._model_num_filters,
+                device=self._model_device,
+            )
         self.mcts = GoMCTSTree(self.board, self.model.state_calculator, self.model.policy_evaluator, self.model.value_evaluator, komi=self.komi)

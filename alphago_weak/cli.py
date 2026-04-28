@@ -14,6 +14,7 @@ from alphago_weak.dataset import GameArchive
 from alphago_weak.gtp import GTPClientBase
 from alphago_weak.gtp.gtp_alphago_weak import GTPAlphaGoWeakV0
 from alphago_weak.model.alpha_go_weak import AlphaGoWeak
+from alphago_weak.zero_report import ZeroReportConfig, run_zero_report
 
 VERSION = "AlphaGo Weak v1.0"
 DEFAULT_ROOT = Path(".data")
@@ -236,6 +237,64 @@ def self_play(
             bot.model.save()
             progress.advance(epoch_task, 1)
             progress.console.print(f"epoch {epoch}: Total Loss: {loss:.04f}, Policy Accuracy: {acc:.3%}")
+
+
+@app.command("zero-report")
+def zero_report(
+    ctx: typer.Context,
+    output: Path = typer.Option(Path("reports/7x7-zero/index.html"), "--output", "-o", help="HTML report output path."),
+    board_size: int = typer.Option(7, "--board-size", "--board_size", help="Go board size for the report experiment."),
+    komi: float = typer.Option(0.5, "--komi", help="Extra score given to white."),
+    epochs: int = typer.Option(20, "--epochs", help="Self-play training epochs to run."),
+    steps: int = typer.Option(4, "--steps", help="Self-play games per epoch."),
+    simulations: int = typer.Option(8, "--simulations", help="MCTS simulations per self-play move."),
+    max_moves: int = typer.Option(60, "--max-moves", "--max_moves", help="Maximum moves per self-play or evaluation game."),
+    eval_games: int = typer.Option(6, "--eval-games", "--eval_games", help="Evaluation games per checkpoint against random play."),
+    eval_simulations: int = typer.Option(4, "--eval-simulations", "--eval_simulations", help="MCTS simulations per model move during evaluation."),
+    train_batch_size: int = typer.Option(32, "--train-batch-size", "--train_batch_size", help="Replay training batch size."),
+    train_steps: int = typer.Option(8, "--train-steps", "--train_steps", help="Maximum replay training batches per epoch."),
+    replay_buffer_size: int = typer.Option(4096, "--replay-buffer-size", "--replay_buffer_size", help="Maximum replay positions retained."),
+    learning_rate: float = typer.Option(0.001, "--learning-rate", "--learning_rate", help="Self-play optimizer learning rate."),
+    num_filters: int = typer.Option(16, "--num-filters", "--num_filters", help="Network filter count for the small 7x7 experiment."),
+    checkpoints: str = typer.Option("0,5,10,20", "--checkpoints", help="Comma-separated checkpoint epochs to analyze."),
+    seed: int = typer.Option(7, "--seed", help="Random seed."),
+    force: bool = typer.Option(False, "--force", help="Delete the report experiment work directory before running."),
+):
+    """Run a small from-scratch 7x7 AlphaGo Zero-style experiment and write an HTML report."""
+    if board_size <= 1:
+        raise click.BadParameter("board-size must be greater than one")
+    if epochs < 0 or steps <= 0 or simulations <= 0 or max_moves <= 0:
+        raise click.BadParameter("epochs must be non-negative and steps/simulations/max-moves must be positive")
+    if train_batch_size <= 0 or train_steps <= 0 or replay_buffer_size <= 0:
+        raise click.BadParameter("training sizes must be positive")
+    checkpoint_epochs = tuple(sorted({int(item.strip()) for item in checkpoints.split(",") if item.strip()}))
+    try:
+        report = run_zero_report(
+            ZeroReportConfig(
+                root=_root(ctx),
+                output=output,
+                board_size=board_size,
+                komi=komi,
+                epochs=epochs,
+                games_per_epoch=steps,
+                simulations=simulations,
+                max_moves=max_moves,
+                eval_games=eval_games,
+                eval_simulations=eval_simulations,
+                train_batch_size=train_batch_size,
+                train_steps=train_steps,
+                replay_buffer_size=replay_buffer_size,
+                learning_rate=learning_rate,
+                num_filters=num_filters,
+                checkpoint_epochs=checkpoint_epochs,
+                seed=seed,
+                force=force,
+            )
+        )
+    except Exception as exc:
+        raise click.ClickException(f"zero report failed: {exc}") from exc
+    typer.echo(f"Wrote {output}")
+    typer.echo(f"Checkpoints: {', '.join(str(stage['epoch']) for stage in report['stages'])}")
 
 
 @app.command()

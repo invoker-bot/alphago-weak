@@ -1,0 +1,1868 @@
+{
+  "config": {
+    "board_size": 7,
+    "komi": 0.5,
+    "epochs": 20,
+    "games_per_epoch": 4,
+    "simulations": 8,
+    "max_moves": 60,
+    "eval_games": 6,
+    "eval_simulations": 4,
+    "train_batch_size": 32,
+    "train_steps": 8,
+    "replay_buffer_size": 4096,
+    "learning_rate": 0.001,
+    "num_filters": 16,
+    "seed": 7,
+    "checkpoint_epochs": [
+      0,
+      5,
+      10,
+      20
+    ],
+    "force": true,
+    "temperature": 1.0,
+    "temperature_drop": 10,
+    "temperature_after_drop": 0.0,
+    "dirichlet_alpha": 0.15,
+    "dirichlet_epsilon": 0.25,
+    "root": ".data-report-final",
+    "work_root": ".data-report-final\\zero-report-7x7",
+    "output": "reports\\7x7-zero\\index.html",
+    "device": "cpu"
+  },
+  "training": [
+    {
+      "epoch": 1,
+      "loss": 3.1879340580531528,
+      "accuracy": 0.024875621890547265,
+      "samples": 201,
+      "replay_size": 201,
+      "avg_moves": 50.25,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 2,
+      "loss": 3.179416060447693,
+      "accuracy": 0.015625,
+      "samples": 213,
+      "replay_size": 414,
+      "avg_moves": 53.25,
+      "black_win_rate": 0.25
+    },
+    {
+      "epoch": 3,
+      "loss": 3.175924450159073,
+      "accuracy": 0.02734375,
+      "samples": 231,
+      "replay_size": 645,
+      "avg_moves": 57.75,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 4,
+      "loss": 3.1807488799095154,
+      "accuracy": 0.0234375,
+      "samples": 225,
+      "replay_size": 870,
+      "avg_moves": 56.25,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 5,
+      "loss": 3.172295033931732,
+      "accuracy": 0.0234375,
+      "samples": 225,
+      "replay_size": 1095,
+      "avg_moves": 56.25,
+      "black_win_rate": 0.25
+    },
+    {
+      "epoch": 6,
+      "loss": 3.1762760281562805,
+      "accuracy": 0.03515625,
+      "samples": 225,
+      "replay_size": 1320,
+      "avg_moves": 56.25,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 7,
+      "loss": 3.184360682964325,
+      "accuracy": 0.01953125,
+      "samples": 204,
+      "replay_size": 1524,
+      "avg_moves": 51.0,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 8,
+      "loss": 3.1747585833072662,
+      "accuracy": 0.03515625,
+      "samples": 222,
+      "replay_size": 1746,
+      "avg_moves": 55.5,
+      "black_win_rate": 0.25
+    },
+    {
+      "epoch": 9,
+      "loss": 3.175499737262726,
+      "accuracy": 0.05859375,
+      "samples": 214,
+      "replay_size": 1960,
+      "avg_moves": 53.5,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 10,
+      "loss": 3.1627888679504395,
+      "accuracy": 0.04296875,
+      "samples": 231,
+      "replay_size": 2191,
+      "avg_moves": 57.75,
+      "black_win_rate": 0.25
+    },
+    {
+      "epoch": 11,
+      "loss": 3.1695438027381897,
+      "accuracy": 0.046875,
+      "samples": 204,
+      "replay_size": 2395,
+      "avg_moves": 51.0,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 12,
+      "loss": 3.1667186319828033,
+      "accuracy": 0.05859375,
+      "samples": 220,
+      "replay_size": 2615,
+      "avg_moves": 55.0,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 13,
+      "loss": 3.1491154432296753,
+      "accuracy": 0.06640625,
+      "samples": 235,
+      "replay_size": 2850,
+      "avg_moves": 58.75,
+      "black_win_rate": 0.25
+    },
+    {
+      "epoch": 14,
+      "loss": 3.174157053232193,
+      "accuracy": 0.07421875,
+      "samples": 228,
+      "replay_size": 3078,
+      "avg_moves": 57.0,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 15,
+      "loss": 3.1652578711509705,
+      "accuracy": 0.05078125,
+      "samples": 216,
+      "replay_size": 3294,
+      "avg_moves": 54.0,
+      "black_win_rate": 0.75
+    },
+    {
+      "epoch": 16,
+      "loss": 3.168641537427902,
+      "accuracy": 0.07421875,
+      "samples": 219,
+      "replay_size": 3513,
+      "avg_moves": 54.75,
+      "black_win_rate": 0.75
+    },
+    {
+      "epoch": 17,
+      "loss": 3.1605507135391235,
+      "accuracy": 0.08203125,
+      "samples": 164,
+      "replay_size": 3677,
+      "avg_moves": 41.0,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 18,
+      "loss": 3.1638296246528625,
+      "accuracy": 0.07421875,
+      "samples": 208,
+      "replay_size": 3885,
+      "avg_moves": 52.0,
+      "black_win_rate": 0.5
+    },
+    {
+      "epoch": 19,
+      "loss": 3.170147567987442,
+      "accuracy": 0.08203125,
+      "samples": 226,
+      "replay_size": 4096,
+      "avg_moves": 56.5,
+      "black_win_rate": 1.0
+    },
+    {
+      "epoch": 20,
+      "loss": 3.170077472925186,
+      "accuracy": 0.0546875,
+      "samples": 206,
+      "replay_size": 4096,
+      "avg_moves": 51.5,
+      "black_win_rate": 0.5
+    }
+  ],
+  "stages": [
+    {
+      "epoch": 0,
+      "eval": {
+        "games": 6,
+        "wins": 2,
+        "win_rate": 0.3333333333333333,
+        "avg_margin": -4.0,
+        "avg_moves": 55.5
+      },
+      "probes": [
+        {
+          "name": "\u7a7a\u68cb\u76d8",
+          "note": "\u89c2\u5bdf\u5f00\u5c40\u504f\u597d\u662f\u5426\u4ece\u8fd1\u4f3c\u5747\u5300\u53d8\u5f97\u66f4\u96c6\u4e2d\u3002",
+          "player": 0,
+          "value": 0.5028870105743408,
+          "pass_prob": 0.01886565238237381,
+          "entropy": 0.9991446069057772,
+          "top_moves": [
+            [
+              "(4,2)",
+              0.023921869744170758
+            ],
+            [
+              "(7,6)",
+              0.023786891083761794
+            ],
+            [
+              "(3,1)",
+              0.023117736828544858
+            ],
+            [
+              "(1,4)",
+              0.02307891900172054
+            ],
+            [
+              "(5,6)",
+              0.02296978218895341
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u7a7a\u68cb\u76d8: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"28\" r=\"17.70\" fill=\"#1266d6\" opacity=\"0.725\"><title>(1,1) 0.023</title></circle><circle cx=\"62\" cy=\"28\" r=\"16.53\" fill=\"#1266d6\" opacity=\"0.632\"><title>(1,2) 0.019</title></circle><circle cx=\"164\" cy=\"28\" r=\"17.00\" fill=\"#1266d6\" opacity=\"0.668\"><title>(1,5) 0.020</title></circle><circle cx=\"96\" cy=\"28\" r=\"16.19\" fill=\"#1266d6\" opacity=\"0.608\"><title>(1,3) 0.018</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.77\" fill=\"#1266d6\" opacity=\"0.731\"><title>(1,4) 0.023</title></circle><text x=\"130\" y=\"32\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"198\" cy=\"28\" r=\"16.47\" fill=\"#1266d6\" opacity=\"0.628\"><title>(1,6) 0.019</title></circle><circle cx=\"232\" cy=\"28\" r=\"16.84\" fill=\"#1266d6\" opacity=\"0.656\"><title>(1,7) 0.020</title></circle><circle cx=\"28\" cy=\"62\" r=\"16.53\" fill=\"#1266d6\" opacity=\"0.633\"><title>(2,1) 0.019</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.72\" fill=\"#1266d6\" opacity=\"0.647\"><title>(2,2) 0.019</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.26\" fill=\"#1266d6\" opacity=\"0.689\"><title>(2,3) 0.021</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.37\" fill=\"#1266d6\" opacity=\"0.621\"><title>(2,4) 0.018</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.78\" fill=\"#1266d6\" opacity=\"0.732\"><title>(3,1) 0.023</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"28\" cy=\"130\" r=\"16.72\" fill=\"#1266d6\" opacity=\"0.647\"><title>(4,1) 0.019</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.30\" fill=\"#1266d6\" opacity=\"0.692\"><title>(5,1) 0.021</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.52\" fill=\"#1266d6\" opacity=\"0.632\"><title>(6,1) 0.019</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.653\"><title>(7,1) 0.020</title></circle><circle cx=\"62\" cy=\"96\" r=\"16.38\" fill=\"#1266d6\" opacity=\"0.622\"><title>(3,2) 0.018</title></circle><circle cx=\"62\" cy=\"130\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(4,2) 0.024</title></circle><text x=\"62\" y=\"134\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"96\" cy=\"96\" r=\"16.75\" fill=\"#1266d6\" opacity=\"0.649\"><title>(3,3) 0.020</title></circle><circle cx=\"62\" cy=\"164\" r=\"17.21\" fill=\"#1266d6\" opacity=\"0.685\"><title>(5,2) 0.021</title></circle><circle cx=\"96\" cy=\"130\" r=\"17.19\" fill=\"#1266d6\" opacity=\"0.683\"><title>(4,3) 0.021</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.53\" fill=\"#1266d6\" opacity=\"0.711\"><title>(6,2) 0.022</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.73\" fill=\"#1266d6\" opacity=\"0.647\"><title>(3,4) 0.019</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.40\" fill=\"#1266d6\" opacity=\"0.701\"><title>(5,3) 0.022</title></circle><circle cx=\"164\" cy=\"62\" r=\"17.32\" fill=\"#1266d6\" opacity=\"0.694\"><title>(2,5) 0.021</title></circle><circle cx=\"62\" cy=\"232\" r=\"17.23\" fill=\"#1266d6\" opacity=\"0.687\"><title>(7,2) 0.021</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.55\" fill=\"#1266d6\" opacity=\"0.635\"><title>(4,4) 0.019</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.20\" fill=\"#1266d6\" opacity=\"0.608\"><title>(6,3) 0.018</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.71\" fill=\"#1266d6\" opacity=\"0.725\"><title>(3,5) 0.023</title></circle><circle cx=\"130\" cy=\"164\" r=\"16.82\" fill=\"#1266d6\" opacity=\"0.655\"><title>(5,4) 0.020</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.67\" fill=\"#1266d6\" opacity=\"0.643\"><title>(2,6) 0.019</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.23\" fill=\"#1266d6\" opacity=\"0.687\"><title>(7,3) 0.021</title></circle><circle cx=\"164\" cy=\"130\" r=\"17.19\" fill=\"#1266d6\" opacity=\"0.684\"><title>(4,5) 0.021</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.44\" fill=\"#1266d6\" opacity=\"0.703\"><title>(6,4) 0.022</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.36\" fill=\"#1266d6\" opacity=\"0.620\"><title>(3,6) 0.018</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.75\" fill=\"#1266d6\" opacity=\"0.650\"><title>(5,5) 0.020</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.23\" fill=\"#1266d6\" opacity=\"0.610\"><title>(2,7) 0.018</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(7,4) 0.020</title></circle><circle cx=\"198\" cy=\"130\" r=\"17.21\" fill=\"#1266d6\" opacity=\"0.686\"><title>(4,6) 0.021</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.16\" fill=\"#1266d6\" opacity=\"0.681\"><title>(6,5) 0.021</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.39\" fill=\"#1266d6\" opacity=\"0.700\"><title>(3,7) 0.022</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.74\" fill=\"#1266d6\" opacity=\"0.728\"><title>(5,6) 0.023</title></circle><text x=\"198\" y=\"168\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"164\" cy=\"232\" r=\"16.36\" fill=\"#1266d6\" opacity=\"0.620\"><title>(7,5) 0.018</title></circle><circle cx=\"232\" cy=\"130\" r=\"17.02\" fill=\"#1266d6\" opacity=\"0.671\"><title>(4,7) 0.020</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.07\" fill=\"#1266d6\" opacity=\"0.674\"><title>(6,6) 0.021</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.29\" fill=\"#1266d6\" opacity=\"0.615\"><title>(5,7) 0.018</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.96\" fill=\"#1266d6\" opacity=\"0.747\"><title>(7,6) 0.024</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"232\" cy=\"198\" r=\"17.10\" fill=\"#1266d6\" opacity=\"0.676\"><title>(6,7) 0.021</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.38\" fill=\"#1266d6\" opacity=\"0.699\"><title>(7,7) 0.022</title></circle></svg>"
+        },
+        {
+          "name": "\u89d2\u90e8\u63a5\u89e6",
+          "note": "\u9ed1\u68cb\u9700\u8981\u5224\u65ad\u89d2\u90e8\u6218\u6597\u548c\u5916\u52bf\u65b9\u5411\u3002",
+          "player": 0,
+          "value": 0.5028870105743408,
+          "pass_prob": 0.018848983570933342,
+          "entropy": 0.9991709789797242,
+          "top_moves": [
+            [
+              "(4,2)",
+              0.026633315940761616
+            ],
+            [
+              "(7,6)",
+              0.026045674179034143
+            ],
+            [
+              "(3,5)",
+              0.025602999699395137
+            ],
+            [
+              "(1,4)",
+              0.025598597518557694
+            ],
+            [
+              "(3,1)",
+              0.025424487589197377
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u89d2\u90e8\u63a5\u89e6: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"130\" cy=\"28\" r=\"17.74\" fill=\"#1266d6\" opacity=\"0.729\"><title>(1,4) 0.026</title></circle><text x=\"130\" y=\"32\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"164\" cy=\"28\" r=\"17.01\" fill=\"#1266d6\" opacity=\"0.670\"><title>(1,5) 0.023</title></circle><circle cx=\"232\" cy=\"28\" r=\"16.85\" fill=\"#1266d6\" opacity=\"0.657\"><title>(1,7) 0.022</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.67\" fill=\"#1266d6\" opacity=\"0.643\"><title>(2,2) 0.021</title></circle><circle cx=\"198\" cy=\"28\" r=\"16.53\" fill=\"#1266d6\" opacity=\"0.633\"><title>(1,6) 0.021</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.20\" fill=\"#1266d6\" opacity=\"0.685\"><title>(2,3) 0.023</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.34\" fill=\"#1266d6\" opacity=\"0.618\"><title>(2,4) 0.020</title></circle><circle cx=\"164\" cy=\"62\" r=\"17.28\" fill=\"#1266d6\" opacity=\"0.691\"><title>(2,5) 0.024</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.57\" fill=\"#1266d6\" opacity=\"0.636\"><title>(2,6) 0.021</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.25\" fill=\"#1266d6\" opacity=\"0.612\"><title>(2,7) 0.020</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.70\" fill=\"#1266d6\" opacity=\"0.725\"><title>(3,1) 0.025</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"96\" cy=\"96\" r=\"16.68\" fill=\"#1266d6\" opacity=\"0.644\"><title>(3,3) 0.022</title></circle><circle cx=\"96\" cy=\"130\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(4,3) 0.023</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.27\" fill=\"#1266d6\" opacity=\"0.690\"><title>(5,1) 0.024</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.50\" fill=\"#1266d6\" opacity=\"0.631\"><title>(6,1) 0.021</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.75\" fill=\"#1266d6\" opacity=\"0.649\"><title>(7,1) 0.022</title></circle><circle cx=\"28\" cy=\"130\" r=\"16.70\" fill=\"#1266d6\" opacity=\"0.646\"><title>(4,1) 0.022</title></circle><circle cx=\"62\" cy=\"130\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(4,2) 0.027</title></circle><text x=\"62\" y=\"134\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"62\" cy=\"164\" r=\"17.10\" fill=\"#1266d6\" opacity=\"0.677\"><title>(5,2) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.42\" fill=\"#1266d6\" opacity=\"0.702\"><title>(6,2) 0.024</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(3,4) 0.022</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.32\" fill=\"#1266d6\" opacity=\"0.694\"><title>(5,3) 0.024</title></circle><circle cx=\"62\" cy=\"232\" r=\"17.22\" fill=\"#1266d6\" opacity=\"0.686\"><title>(7,2) 0.024</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.62\" fill=\"#1266d6\" opacity=\"0.639\"><title>(4,4) 0.021</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.20\" fill=\"#1266d6\" opacity=\"0.608\"><title>(6,3) 0.020</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.75\" fill=\"#1266d6\" opacity=\"0.729\"><title>(3,5) 0.026</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"130\" cy=\"164\" r=\"16.89\" fill=\"#1266d6\" opacity=\"0.660\"><title>(5,4) 0.022</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.22\" fill=\"#1266d6\" opacity=\"0.686\"><title>(7,3) 0.024</title></circle><circle cx=\"164\" cy=\"130\" r=\"17.18\" fill=\"#1266d6\" opacity=\"0.683\"><title>(4,5) 0.023</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.30\" fill=\"#1266d6\" opacity=\"0.692\"><title>(6,4) 0.024</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.26\" fill=\"#1266d6\" opacity=\"0.613\"><title>(3,6) 0.020</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.66\" fill=\"#1266d6\" opacity=\"0.642\"><title>(5,5) 0.021</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.81\" fill=\"#1266d6\" opacity=\"0.654\"><title>(7,4) 0.022</title></circle><circle cx=\"198\" cy=\"130\" r=\"17.18\" fill=\"#1266d6\" opacity=\"0.683\"><title>(4,6) 0.023</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.08\" fill=\"#1266d6\" opacity=\"0.675\"><title>(6,5) 0.023</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.35\" fill=\"#1266d6\" opacity=\"0.696\"><title>(3,7) 0.024</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.68\" fill=\"#1266d6\" opacity=\"0.723\"><title>(5,6) 0.025</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.35\" fill=\"#1266d6\" opacity=\"0.619\"><title>(7,5) 0.020</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.97\" fill=\"#1266d6\" opacity=\"0.667\"><title>(4,7) 0.023</title></circle><circle cx=\"198\" cy=\"198\" r=\"16.98\" fill=\"#1266d6\" opacity=\"0.667\"><title>(6,6) 0.023</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.29\" fill=\"#1266d6\" opacity=\"0.615\"><title>(5,7) 0.020</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.86\" fill=\"#1266d6\" opacity=\"0.738\"><title>(7,6) 0.026</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"232\" cy=\"198\" r=\"17.07\" fill=\"#1266d6\" opacity=\"0.674\"><title>(6,7) 0.023</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.32\" fill=\"#1266d6\" opacity=\"0.694\"><title>(7,7) 0.024</title></circle><circle cx=\"28\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"28\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"96\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/></svg>"
+        },
+        {
+          "name": "\u5403\u5b50\u63d0\u793a",
+          "note": "\u767d\u68cb\u4e00\u5b50\u5904\u4e8e\u4f4e\u6c14\uff0c\u6a21\u578b\u662f\u5426\u63d0\u9ad8\u76f8\u90bb\u5173\u952e\u70b9\u6982\u7387\u3002",
+          "player": 0,
+          "value": 0.5028870105743408,
+          "pass_prob": 0.018917426466941833,
+          "entropy": 0.9991067942274203,
+          "top_moves": [
+            [
+              "(1,4)",
+              0.02597797861893284
+            ],
+            [
+              "(3,1)",
+              0.025755763332418184
+            ],
+            [
+              "(7,6)",
+              0.025454286187819
+            ],
+            [
+              "(3,5)",
+              0.025201029302625803
+            ],
+            [
+              "(4,2)",
+              0.02491578847714412
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u5403\u5b50\u63d0\u793a: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"28\" r=\"17.44\" fill=\"#1266d6\" opacity=\"0.703\"><title>(1,1) 0.024</title></circle><circle cx=\"62\" cy=\"28\" r=\"16.54\" fill=\"#1266d6\" opacity=\"0.634\"><title>(1,2) 0.020</title></circle><circle cx=\"164\" cy=\"28\" r=\"17.06\" fill=\"#1266d6\" opacity=\"0.673\"><title>(1,5) 0.022</title></circle><circle cx=\"96\" cy=\"28\" r=\"16.01\" fill=\"#1266d6\" opacity=\"0.595\"><title>(1,3) 0.019</title></circle><circle cx=\"130\" cy=\"28\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(1,4) 0.026</title></circle><text x=\"130\" y=\"32\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"198\" cy=\"28\" r=\"16.71\" fill=\"#1266d6\" opacity=\"0.646\"><title>(1,6) 0.021</title></circle><circle cx=\"232\" cy=\"28\" r=\"16.92\" fill=\"#1266d6\" opacity=\"0.662\"><title>(1,7) 0.022</title></circle><circle cx=\"28\" cy=\"62\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(2,1) 0.021</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.83\" fill=\"#1266d6\" opacity=\"0.655\"><title>(2,2) 0.022</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.55\" fill=\"#1266d6\" opacity=\"0.634\"><title>(2,4) 0.021</title></circle><circle cx=\"164\" cy=\"62\" r=\"17.29\" fill=\"#1266d6\" opacity=\"0.692\"><title>(2,5) 0.023</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.94\" fill=\"#1266d6\" opacity=\"0.745\"><title>(3,1) 0.026</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"28\" cy=\"130\" r=\"16.48\" fill=\"#1266d6\" opacity=\"0.629\"><title>(4,1) 0.020</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.32\" fill=\"#1266d6\" opacity=\"0.694\"><title>(5,1) 0.023</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.34\" fill=\"#1266d6\" opacity=\"0.618\"><title>(6,1) 0.020</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.82\" fill=\"#1266d6\" opacity=\"0.655\"><title>(7,1) 0.021</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.73\" fill=\"#1266d6\" opacity=\"0.728\"><title>(4,2) 0.025</title></circle><text x=\"62\" y=\"134\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"62\" cy=\"164\" r=\"17.28\" fill=\"#1266d6\" opacity=\"0.691\"><title>(5,2) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.58\" fill=\"#1266d6\" opacity=\"0.715\"><title>(6,2) 0.024</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.72\" fill=\"#1266d6\" opacity=\"0.647\"><title>(3,4) 0.021</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.53\" fill=\"#1266d6\" opacity=\"0.711\"><title>(5,3) 0.024</title></circle><circle cx=\"62\" cy=\"232\" r=\"17.19\" fill=\"#1266d6\" opacity=\"0.684\"><title>(7,2) 0.023</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.60\" fill=\"#1266d6\" opacity=\"0.638\"><title>(4,4) 0.021</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.22\" fill=\"#1266d6\" opacity=\"0.610\"><title>(6,3) 0.019</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.80\" fill=\"#1266d6\" opacity=\"0.734\"><title>(3,5) 0.025</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"130\" cy=\"164\" r=\"16.84\" fill=\"#1266d6\" opacity=\"0.656\"><title>(5,4) 0.022</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.55\" fill=\"#1266d6\" opacity=\"0.634\"><title>(2,6) 0.020</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.28\" fill=\"#1266d6\" opacity=\"0.691\"><title>(7,3) 0.023</title></circle><circle cx=\"164\" cy=\"130\" r=\"17.27\" fill=\"#1266d6\" opacity=\"0.690\"><title>(4,5) 0.023</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.28\" fill=\"#1266d6\" opacity=\"0.691\"><title>(6,4) 0.023</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.41\" fill=\"#1266d6\" opacity=\"0.624\"><title>(3,6) 0.020</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.85\" fill=\"#1266d6\" opacity=\"0.657\"><title>(5,5) 0.022</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.15\" fill=\"#1266d6\" opacity=\"0.605\"><title>(2,7) 0.019</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.76\" fill=\"#1266d6\" opacity=\"0.650\"><title>(7,4) 0.021</title></circle><circle cx=\"198\" cy=\"130\" r=\"17.33\" fill=\"#1266d6\" opacity=\"0.695\"><title>(4,6) 0.023</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.15\" fill=\"#1266d6\" opacity=\"0.681\"><title>(6,5) 0.023</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.28\" fill=\"#1266d6\" opacity=\"0.691\"><title>(3,7) 0.023</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.59\" fill=\"#1266d6\" opacity=\"0.716\"><title>(5,6) 0.024</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.34\" fill=\"#1266d6\" opacity=\"0.619\"><title>(7,5) 0.020</title></circle><circle cx=\"232\" cy=\"130\" r=\"17.02\" fill=\"#1266d6\" opacity=\"0.670\"><title>(4,7) 0.022</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.25\" fill=\"#1266d6\" opacity=\"0.689\"><title>(6,6) 0.023</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.09\" fill=\"#1266d6\" opacity=\"0.600\"><title>(5,7) 0.019</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.87\" fill=\"#1266d6\" opacity=\"0.739\"><title>(7,6) 0.025</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"232\" cy=\"198\" r=\"17.31\" fill=\"#1266d6\" opacity=\"0.693\"><title>(6,7) 0.023</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.34\" fill=\"#1266d6\" opacity=\"0.695\"><title>(7,7) 0.023</title></circle><circle cx=\"96\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"96\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"96\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"130\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+        },
+        {
+          "name": "\u5730\u57df\u9009\u62e9",
+          "note": "\u53cc\u65b9\u5df2\u6709\u5c0f\u89d2\uff0c\u89c2\u5bdf\u6a21\u578b\u66f4\u504f\u8865\u5f3a\u8fd8\u662f\u62a2\u7a7a\u3002",
+          "player": 2,
+          "value": 0.5028870105743408,
+          "pass_prob": 0.0183718279004097,
+          "entropy": 0.9990841001584692,
+          "top_moves": [
+            [
+              "(7,6)",
+              0.028099027049102783
+            ],
+            [
+              "(4,2)",
+              0.02754337802968072
+            ],
+            [
+              "(3,1)",
+              0.027374811690044503
+            ],
+            [
+              "(3,5)",
+              0.027272039729678108
+            ],
+            [
+              "(1,4)",
+              0.026965566320955224
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u5730\u57df\u9009\u62e9: white to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"28\" r=\"16.13\" fill=\"#1266d6\" opacity=\"0.604\"><title>(1,3) 0.021</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.74\" fill=\"#1266d6\" opacity=\"0.728\"><title>(1,4) 0.027</title></circle><text x=\"130\" y=\"32\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"198\" cy=\"28\" r=\"16.59\" fill=\"#1266d6\" opacity=\"0.637\"><title>(1,6) 0.022</title></circle><circle cx=\"232\" cy=\"28\" r=\"16.83\" fill=\"#1266d6\" opacity=\"0.656\"><title>(1,7) 0.023</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.99\" fill=\"#1266d6\" opacity=\"0.668\"><title>(1,5) 0.024</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.644\"><title>(2,2) 0.023</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.23\" fill=\"#1266d6\" opacity=\"0.686\"><title>(2,3) 0.025</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.29\" fill=\"#1266d6\" opacity=\"0.615\"><title>(2,4) 0.021</title></circle><circle cx=\"164\" cy=\"62\" r=\"17.31\" fill=\"#1266d6\" opacity=\"0.693\"><title>(2,5) 0.025</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.70\" fill=\"#1266d6\" opacity=\"0.646\"><title>(2,6) 0.023</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.18\" fill=\"#1266d6\" opacity=\"0.607\"><title>(2,7) 0.021</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.83\" fill=\"#1266d6\" opacity=\"0.736\"><title>(3,1) 0.027</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"28\" cy=\"130\" r=\"16.62\" fill=\"#1266d6\" opacity=\"0.640\"><title>(4,1) 0.022</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.11\" fill=\"#1266d6\" opacity=\"0.678\"><title>(5,1) 0.024</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.29\" fill=\"#1266d6\" opacity=\"0.692\"><title>(6,2) 0.025</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(7,3) 0.025</title></circle><circle cx=\"62\" cy=\"96\" r=\"16.21\" fill=\"#1266d6\" opacity=\"0.609\"><title>(3,2) 0.021</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.87\" fill=\"#1266d6\" opacity=\"0.739\"><title>(4,2) 0.028</title></circle><text x=\"62\" y=\"134\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"96\" cy=\"96\" r=\"16.76\" fill=\"#1266d6\" opacity=\"0.650\"><title>(3,3) 0.023</title></circle><circle cx=\"62\" cy=\"164\" r=\"17.06\" fill=\"#1266d6\" opacity=\"0.674\"><title>(5,2) 0.024</title></circle><circle cx=\"96\" cy=\"130\" r=\"17.10\" fill=\"#1266d6\" opacity=\"0.677\"><title>(4,3) 0.024</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.64\" fill=\"#1266d6\" opacity=\"0.641\"><title>(3,4) 0.023</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.40\" fill=\"#1266d6\" opacity=\"0.701\"><title>(5,3) 0.026</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.61\" fill=\"#1266d6\" opacity=\"0.639\"><title>(4,4) 0.022</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.13\" fill=\"#1266d6\" opacity=\"0.603\"><title>(6,3) 0.021</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.81\" fill=\"#1266d6\" opacity=\"0.734\"><title>(3,5) 0.027</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"130\" cy=\"164\" r=\"16.78\" fill=\"#1266d6\" opacity=\"0.652\"><title>(5,4) 0.023</title></circle><circle cx=\"164\" cy=\"130\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(4,5) 0.025</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.29\" fill=\"#1266d6\" opacity=\"0.691\"><title>(6,4) 0.025</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.17\" fill=\"#1266d6\" opacity=\"0.606\"><title>(3,6) 0.021</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.66\" fill=\"#1266d6\" opacity=\"0.642\"><title>(5,5) 0.023</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.82\" fill=\"#1266d6\" opacity=\"0.655\"><title>(7,4) 0.023</title></circle><circle cx=\"198\" cy=\"130\" r=\"17.15\" fill=\"#1266d6\" opacity=\"0.680\"><title>(4,6) 0.025</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.04\" fill=\"#1266d6\" opacity=\"0.672\"><title>(6,5) 0.024</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.43\" fill=\"#1266d6\" opacity=\"0.703\"><title>(3,7) 0.026</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.58\" fill=\"#1266d6\" opacity=\"0.715\"><title>(5,6) 0.026</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.28\" fill=\"#1266d6\" opacity=\"0.614\"><title>(7,5) 0.021</title></circle><circle cx=\"232\" cy=\"130\" r=\"17.10\" fill=\"#1266d6\" opacity=\"0.677\"><title>(4,7) 0.024</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.11\" fill=\"#1266d6\" opacity=\"0.678\"><title>(6,6) 0.024</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.17\" fill=\"#1266d6\" opacity=\"0.606\"><title>(5,7) 0.021</title></circle><circle cx=\"198\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,6) 0.028</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"232\" cy=\"198\" r=\"17.09\" fill=\"#1266d6\" opacity=\"0.676\"><title>(6,7) 0.024</title></circle><circle cx=\"28\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"198\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"232\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"232\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"232\" cy=\"232\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+        }
+      ],
+      "sample_game": null
+    },
+    {
+      "epoch": 5,
+      "eval": {
+        "games": 6,
+        "wins": 2,
+        "win_rate": 0.3333333333333333,
+        "avg_margin": -8.5,
+        "avg_moves": 54.666666666666664
+      },
+      "probes": [
+        {
+          "name": "\u7a7a\u68cb\u76d8",
+          "note": "\u89c2\u5bdf\u5f00\u5c40\u504f\u597d\u662f\u5426\u4ece\u8fd1\u4f3c\u5747\u5300\u53d8\u5f97\u66f4\u96c6\u4e2d\u3002",
+          "player": 0,
+          "value": 0.5029327869415283,
+          "pass_prob": 0.02017775923013687,
+          "entropy": 0.9991119641282338,
+          "top_moves": [
+            [
+              "(7,6)",
+              0.02396653706856968
+            ],
+            [
+              "(4,2)",
+              0.02360497198535481
+            ],
+            [
+              "(3,1)",
+              0.02346663028805782
+            ],
+            [
+              "(3,5)",
+              0.02306022814614746
+            ],
+            [
+              "(5,6)",
+              0.02291653892718039
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u7a7a\u68cb\u76d8: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"28\" r=\"17.47\" fill=\"#1266d6\" opacity=\"0.706\"><title>(1,1) 0.022</title></circle><circle cx=\"62\" cy=\"28\" r=\"16.49\" fill=\"#1266d6\" opacity=\"0.630\"><title>(1,2) 0.019</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.91\" fill=\"#1266d6\" opacity=\"0.662\"><title>(1,5) 0.020</title></circle><circle cx=\"96\" cy=\"28\" r=\"16.22\" fill=\"#1266d6\" opacity=\"0.610\"><title>(1,3) 0.018</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.65\" fill=\"#1266d6\" opacity=\"0.721\"><title>(1,4) 0.023</title></circle><circle cx=\"198\" cy=\"28\" r=\"16.32\" fill=\"#1266d6\" opacity=\"0.617\"><title>(1,6) 0.018</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.06\" fill=\"#1266d6\" opacity=\"0.673\"><title>(1,7) 0.021</title></circle><circle cx=\"28\" cy=\"62\" r=\"16.55\" fill=\"#1266d6\" opacity=\"0.634\"><title>(2,1) 0.019</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.72\" fill=\"#1266d6\" opacity=\"0.647\"><title>(2,2) 0.019</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.41\" fill=\"#1266d6\" opacity=\"0.701\"><title>(2,3) 0.022</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.31\" fill=\"#1266d6\" opacity=\"0.616\"><title>(2,4) 0.018</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.86\" fill=\"#1266d6\" opacity=\"0.739\"><title>(3,1) 0.023</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"28\" cy=\"130\" r=\"16.82\" fill=\"#1266d6\" opacity=\"0.655\"><title>(4,1) 0.020</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.23\" fill=\"#1266d6\" opacity=\"0.686\"><title>(5,1) 0.021</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.49\" fill=\"#1266d6\" opacity=\"0.630\"><title>(6,1) 0.019</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.72\" fill=\"#1266d6\" opacity=\"0.647\"><title>(7,1) 0.019</title></circle><circle cx=\"62\" cy=\"96\" r=\"16.37\" fill=\"#1266d6\" opacity=\"0.621\"><title>(3,2) 0.018</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.90\" fill=\"#1266d6\" opacity=\"0.742\"><title>(4,2) 0.024</title></circle><text x=\"62\" y=\"134\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"96\" cy=\"96\" r=\"16.78\" fill=\"#1266d6\" opacity=\"0.651\"><title>(3,3) 0.020</title></circle><circle cx=\"62\" cy=\"164\" r=\"17.19\" fill=\"#1266d6\" opacity=\"0.683\"><title>(5,2) 0.021</title></circle><circle cx=\"96\" cy=\"130\" r=\"17.02\" fill=\"#1266d6\" opacity=\"0.670\"><title>(4,3) 0.020</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.60\" fill=\"#1266d6\" opacity=\"0.717\"><title>(6,2) 0.023</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.57\" fill=\"#1266d6\" opacity=\"0.636\"><title>(3,4) 0.019</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.46\" fill=\"#1266d6\" opacity=\"0.705\"><title>(5,3) 0.022</title></circle><circle cx=\"164\" cy=\"62\" r=\"17.13\" fill=\"#1266d6\" opacity=\"0.679\"><title>(2,5) 0.021</title></circle><circle cx=\"62\" cy=\"232\" r=\"17.16\" fill=\"#1266d6\" opacity=\"0.681\"><title>(7,2) 0.021</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.40\" fill=\"#1266d6\" opacity=\"0.623\"><title>(4,4) 0.018</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.19\" fill=\"#1266d6\" opacity=\"0.607\"><title>(6,3) 0.018</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.75\" fill=\"#1266d6\" opacity=\"0.729\"><title>(3,5) 0.023</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"130\" cy=\"164\" r=\"16.82\" fill=\"#1266d6\" opacity=\"0.654\"><title>(5,4) 0.020</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.77\" fill=\"#1266d6\" opacity=\"0.651\"><title>(2,6) 0.020</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.45\" fill=\"#1266d6\" opacity=\"0.704\"><title>(7,3) 0.022</title></circle><circle cx=\"164\" cy=\"130\" r=\"16.97\" fill=\"#1266d6\" opacity=\"0.667\"><title>(4,5) 0.020</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.59\" fill=\"#1266d6\" opacity=\"0.716\"><title>(6,4) 0.022</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.49\" fill=\"#1266d6\" opacity=\"0.630\"><title>(3,6) 0.019</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.90\" fill=\"#1266d6\" opacity=\"0.661\"><title>(5,5) 0.020</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.13\" fill=\"#1266d6\" opacity=\"0.603\"><title>(2,7) 0.018</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.71\" fill=\"#1266d6\" opacity=\"0.646\"><title>(7,4) 0.019</title></circle><circle cx=\"198\" cy=\"130\" r=\"17.06\" fill=\"#1266d6\" opacity=\"0.674\"><title>(4,6) 0.021</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.23\" fill=\"#1266d6\" opacity=\"0.687\"><title>(6,5) 0.021</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.54\" fill=\"#1266d6\" opacity=\"0.712\"><title>(3,7) 0.022</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.71\" fill=\"#1266d6\" opacity=\"0.726\"><title>(5,6) 0.023</title></circle><text x=\"198\" y=\"168\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"164\" cy=\"232\" r=\"16.32\" fill=\"#1266d6\" opacity=\"0.617\"><title>(7,5) 0.018</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.94\" fill=\"#1266d6\" opacity=\"0.664\"><title>(4,7) 0.020</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.13\" fill=\"#1266d6\" opacity=\"0.679\"><title>(6,6) 0.021</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.28\" fill=\"#1266d6\" opacity=\"0.614\"><title>(5,7) 0.018</title></circle><circle cx=\"198\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,6) 0.024</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"232\" cy=\"198\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(6,7) 0.021</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.34\" fill=\"#1266d6\" opacity=\"0.695\"><title>(7,7) 0.022</title></circle></svg>"
+        },
+        {
+          "name": "\u89d2\u90e8\u63a5\u89e6",
+          "note": "\u9ed1\u68cb\u9700\u8981\u5224\u65ad\u89d2\u90e8\u6218\u6597\u548c\u5916\u52bf\u65b9\u5411\u3002",
+          "player": 0,
+          "value": 0.5029327869415283,
+          "pass_prob": 0.02019619010388851,
+          "entropy": 0.9991459737560082,
+          "top_moves": [
+            [
+              "(7,6)",
+              0.026249250464397317
+            ],
+            [
+              "(4,2)",
+              0.026243527261708567
+            ],
+            [
+              "(3,5)",
+              0.025853096345588324
+            ],
+            [
+              "(3,1)",
+              0.025824972334139128
+            ],
+            [
+              "(5,6)",
+              0.025309034652810633
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u89d2\u90e8\u63a5\u89e6: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"130\" cy=\"28\" r=\"17.72\" fill=\"#1266d6\" opacity=\"0.727\"><title>(1,4) 0.025</title></circle><circle cx=\"164\" cy=\"28\" r=\"17.03\" fill=\"#1266d6\" opacity=\"0.671\"><title>(1,5) 0.022</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.18\" fill=\"#1266d6\" opacity=\"0.683\"><title>(1,7) 0.023</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.76\" fill=\"#1266d6\" opacity=\"0.650\"><title>(2,2) 0.021</title></circle><circle cx=\"198\" cy=\"28\" r=\"16.46\" fill=\"#1266d6\" opacity=\"0.628\"><title>(1,6) 0.020</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.46\" fill=\"#1266d6\" opacity=\"0.705\"><title>(2,3) 0.024</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.38\" fill=\"#1266d6\" opacity=\"0.622\"><title>(2,4) 0.020</title></circle><circle cx=\"164\" cy=\"62\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(2,5) 0.023</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.76\" fill=\"#1266d6\" opacity=\"0.650\"><title>(2,6) 0.021</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.23\" fill=\"#1266d6\" opacity=\"0.610\"><title>(2,7) 0.020</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.89\" fill=\"#1266d6\" opacity=\"0.741\"><title>(3,1) 0.026</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"96\" cy=\"96\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.652\"><title>(3,3) 0.022</title></circle><circle cx=\"96\" cy=\"130\" r=\"17.07\" fill=\"#1266d6\" opacity=\"0.674\"><title>(4,3) 0.023</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.30\" fill=\"#1266d6\" opacity=\"0.692\"><title>(5,1) 0.023</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.56\" fill=\"#1266d6\" opacity=\"0.635\"><title>(6,1) 0.021</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.77\" fill=\"#1266d6\" opacity=\"0.651\"><title>(7,1) 0.022</title></circle><circle cx=\"28\" cy=\"130\" r=\"16.90\" fill=\"#1266d6\" opacity=\"0.661\"><title>(4,1) 0.022</title></circle><circle cx=\"62\" cy=\"130\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(4,2) 0.026</title></circle><text x=\"62\" y=\"134\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"62\" cy=\"164\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(5,2) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.60\" fill=\"#1266d6\" opacity=\"0.716\"><title>(6,2) 0.025</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.63\" fill=\"#1266d6\" opacity=\"0.640\"><title>(3,4) 0.021</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.47\" fill=\"#1266d6\" opacity=\"0.706\"><title>(5,3) 0.024</title></circle><circle cx=\"62\" cy=\"232\" r=\"17.23\" fill=\"#1266d6\" opacity=\"0.687\"><title>(7,2) 0.023</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.55\" fill=\"#1266d6\" opacity=\"0.634\"><title>(4,4) 0.021</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.26\" fill=\"#1266d6\" opacity=\"0.613\"><title>(6,3) 0.020</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.90\" fill=\"#1266d6\" opacity=\"0.742\"><title>(3,5) 0.026</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"130\" cy=\"164\" r=\"16.99\" fill=\"#1266d6\" opacity=\"0.668\"><title>(5,4) 0.022</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.55\" fill=\"#1266d6\" opacity=\"0.712\"><title>(7,3) 0.024</title></circle><circle cx=\"164\" cy=\"130\" r=\"17.05\" fill=\"#1266d6\" opacity=\"0.673\"><title>(4,5) 0.023</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.56\" fill=\"#1266d6\" opacity=\"0.713\"><title>(6,4) 0.024</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.50\" fill=\"#1266d6\" opacity=\"0.630\"><title>(3,6) 0.021</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.91\" fill=\"#1266d6\" opacity=\"0.662\"><title>(5,5) 0.022</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.81\" fill=\"#1266d6\" opacity=\"0.654\"><title>(7,4) 0.022</title></circle><circle cx=\"198\" cy=\"130\" r=\"17.10\" fill=\"#1266d6\" opacity=\"0.676\"><title>(4,6) 0.023</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.26\" fill=\"#1266d6\" opacity=\"0.689\"><title>(6,5) 0.023</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.61\" fill=\"#1266d6\" opacity=\"0.717\"><title>(3,7) 0.025</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.77\" fill=\"#1266d6\" opacity=\"0.730\"><title>(5,6) 0.025</title></circle><text x=\"198\" y=\"168\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"164\" cy=\"232\" r=\"16.39\" fill=\"#1266d6\" opacity=\"0.622\"><title>(7,5) 0.020</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.98\" fill=\"#1266d6\" opacity=\"0.667\"><title>(4,7) 0.022</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.13\" fill=\"#1266d6\" opacity=\"0.679\"><title>(6,6) 0.023</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.37\" fill=\"#1266d6\" opacity=\"0.620\"><title>(5,7) 0.020</title></circle><circle cx=\"198\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,6) 0.026</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"232\" cy=\"198\" r=\"17.25\" fill=\"#1266d6\" opacity=\"0.688\"><title>(6,7) 0.023</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.37\" fill=\"#1266d6\" opacity=\"0.698\"><title>(7,7) 0.024</title></circle><circle cx=\"28\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"28\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"96\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/></svg>"
+        },
+        {
+          "name": "\u5403\u5b50\u63d0\u793a",
+          "note": "\u767d\u68cb\u4e00\u5b50\u5904\u4e8e\u4f4e\u6c14\uff0c\u6a21\u578b\u662f\u5426\u63d0\u9ad8\u76f8\u90bb\u5173\u952e\u70b9\u6982\u7387\u3002",
+          "player": 0,
+          "value": 0.5029327869415283,
+          "pass_prob": 0.02031296119093895,
+          "entropy": 0.9990656354986063,
+          "top_moves": [
+            [
+              "(3,1)",
+              0.026157692866586875
+            ],
+            [
+              "(7,6)",
+              0.02564895321003036
+            ],
+            [
+              "(1,4)",
+              0.025535587871799745
+            ],
+            [
+              "(3,5)",
+              0.02544120418524292
+            ],
+            [
+              "(6,2)",
+              0.024619311678801027
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u5403\u5b50\u63d0\u793a: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"28\" r=\"17.16\" fill=\"#1266d6\" opacity=\"0.681\"><title>(1,1) 0.023</title></circle><circle cx=\"62\" cy=\"28\" r=\"16.49\" fill=\"#1266d6\" opacity=\"0.629\"><title>(1,2) 0.020</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.95\" fill=\"#1266d6\" opacity=\"0.665\"><title>(1,5) 0.022</title></circle><circle cx=\"96\" cy=\"28\" r=\"16.02\" fill=\"#1266d6\" opacity=\"0.595\"><title>(1,3) 0.019</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.84\" fill=\"#1266d6\" opacity=\"0.737\"><title>(1,4) 0.026</title></circle><text x=\"130\" y=\"32\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"198\" cy=\"28\" r=\"16.53\" fill=\"#1266d6\" opacity=\"0.632\"><title>(1,6) 0.021</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.12\" fill=\"#1266d6\" opacity=\"0.678\"><title>(1,7) 0.023</title></circle><circle cx=\"28\" cy=\"62\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(2,1) 0.021</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(2,2) 0.022</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.46\" fill=\"#1266d6\" opacity=\"0.628\"><title>(2,4) 0.020</title></circle><circle cx=\"164\" cy=\"62\" r=\"17.05\" fill=\"#1266d6\" opacity=\"0.672\"><title>(2,5) 0.022</title></circle><circle cx=\"28\" cy=\"96\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(3,1) 0.026</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"28\" cy=\"130\" r=\"16.56\" fill=\"#1266d6\" opacity=\"0.635\"><title>(4,1) 0.021</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.22\" fill=\"#1266d6\" opacity=\"0.686\"><title>(5,1) 0.023</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.27\" fill=\"#1266d6\" opacity=\"0.614\"><title>(6,1) 0.020</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.71\" fill=\"#1266d6\" opacity=\"0.646\"><title>(7,1) 0.021</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.60\" fill=\"#1266d6\" opacity=\"0.716\"><title>(4,2) 0.025</title></circle><circle cx=\"62\" cy=\"164\" r=\"17.23\" fill=\"#1266d6\" opacity=\"0.686\"><title>(5,2) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.61\" fill=\"#1266d6\" opacity=\"0.718\"><title>(6,2) 0.025</title></circle><text x=\"62\" y=\"202\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"130\" cy=\"96\" r=\"16.53\" fill=\"#1266d6\" opacity=\"0.632\"><title>(3,4) 0.021</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.56\" fill=\"#1266d6\" opacity=\"0.713\"><title>(5,3) 0.024</title></circle><circle cx=\"62\" cy=\"232\" r=\"17.08\" fill=\"#1266d6\" opacity=\"0.675\"><title>(7,2) 0.023</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.41\" fill=\"#1266d6\" opacity=\"0.624\"><title>(4,4) 0.020</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.18\" fill=\"#1266d6\" opacity=\"0.606\"><title>(6,3) 0.019</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.82\" fill=\"#1266d6\" opacity=\"0.735\"><title>(3,5) 0.025</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"130\" cy=\"164\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(5,4) 0.022</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.61\" fill=\"#1266d6\" opacity=\"0.639\"><title>(2,6) 0.021</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.49\" fill=\"#1266d6\" opacity=\"0.707\"><title>(7,3) 0.024</title></circle><circle cx=\"164\" cy=\"130\" r=\"17.01\" fill=\"#1266d6\" opacity=\"0.670\"><title>(4,5) 0.022</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.41\" fill=\"#1266d6\" opacity=\"0.701\"><title>(6,4) 0.024</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.53\" fill=\"#1266d6\" opacity=\"0.633\"><title>(3,6) 0.021</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.99\" fill=\"#1266d6\" opacity=\"0.668\"><title>(5,5) 0.022</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.03\" fill=\"#1266d6\" opacity=\"0.596\"><title>(2,7) 0.019</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.64\" fill=\"#1266d6\" opacity=\"0.641\"><title>(7,4) 0.021</title></circle><circle cx=\"198\" cy=\"130\" r=\"17.14\" fill=\"#1266d6\" opacity=\"0.679\"><title>(4,6) 0.023</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.20\" fill=\"#1266d6\" opacity=\"0.684\"><title>(6,5) 0.023</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.40\" fill=\"#1266d6\" opacity=\"0.701\"><title>(3,7) 0.024</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.53\" fill=\"#1266d6\" opacity=\"0.711\"><title>(5,6) 0.024</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.28\" fill=\"#1266d6\" opacity=\"0.614\"><title>(7,5) 0.020</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.89\" fill=\"#1266d6\" opacity=\"0.660\"><title>(4,7) 0.022</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.29\" fill=\"#1266d6\" opacity=\"0.692\"><title>(6,6) 0.023</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.05\" fill=\"#1266d6\" opacity=\"0.597\"><title>(5,7) 0.019</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.87\" fill=\"#1266d6\" opacity=\"0.739\"><title>(7,6) 0.026</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"232\" cy=\"198\" r=\"17.37\" fill=\"#1266d6\" opacity=\"0.698\"><title>(6,7) 0.024</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.27\" fill=\"#1266d6\" opacity=\"0.690\"><title>(7,7) 0.023</title></circle><circle cx=\"96\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"96\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"96\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"130\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+        },
+        {
+          "name": "\u5730\u57df\u9009\u62e9",
+          "note": "\u53cc\u65b9\u5df2\u6709\u5c0f\u89d2\uff0c\u89c2\u5bdf\u6a21\u578b\u66f4\u504f\u8865\u5f3a\u8fd8\u662f\u62a2\u7a7a\u3002",
+          "player": 2,
+          "value": 0.5029327869415283,
+          "pass_prob": 0.01972176320850849,
+          "entropy": 0.9990608987789626,
+          "top_moves": [
+            [
+              "(7,6)",
+              0.02827677116094154
+            ],
+            [
+              "(3,1)",
+              0.02778225777518522
+            ],
+            [
+              "(3,5)",
+              0.027456970468117937
+            ],
+            [
+              "(4,2)",
+              0.027112197592472864
+            ],
+            [
+              "(1,4)",
+              0.026469392470603596
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u5730\u57df\u9009\u62e9: white to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"28\" r=\"16.14\" fill=\"#1266d6\" opacity=\"0.604\"><title>(1,3) 0.021</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.58\" fill=\"#1266d6\" opacity=\"0.715\"><title>(1,4) 0.026</title></circle><text x=\"130\" y=\"32\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"198\" cy=\"28\" r=\"16.40\" fill=\"#1266d6\" opacity=\"0.623\"><title>(1,6) 0.022</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.02\" fill=\"#1266d6\" opacity=\"0.670\"><title>(1,7) 0.024</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.87\" fill=\"#1266d6\" opacity=\"0.659\"><title>(1,5) 0.024</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.66\" fill=\"#1266d6\" opacity=\"0.642\"><title>(2,2) 0.023</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.35\" fill=\"#1266d6\" opacity=\"0.696\"><title>(2,3) 0.026</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.20\" fill=\"#1266d6\" opacity=\"0.608\"><title>(2,4) 0.021</title></circle><circle cx=\"164\" cy=\"62\" r=\"17.07\" fill=\"#1266d6\" opacity=\"0.674\"><title>(2,5) 0.024</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.76\" fill=\"#1266d6\" opacity=\"0.650\"><title>(2,6) 0.023</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.04\" fill=\"#1266d6\" opacity=\"0.597\"><title>(2,7) 0.020</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.89\" fill=\"#1266d6\" opacity=\"0.740\"><title>(3,1) 0.028</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"28\" cy=\"130\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(4,1) 0.023</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.01\" fill=\"#1266d6\" opacity=\"0.669\"><title>(5,1) 0.024</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.33\" fill=\"#1266d6\" opacity=\"0.695\"><title>(6,2) 0.025</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.36\" fill=\"#1266d6\" opacity=\"0.697\"><title>(7,3) 0.026</title></circle><circle cx=\"62\" cy=\"96\" r=\"16.17\" fill=\"#1266d6\" opacity=\"0.606\"><title>(3,2) 0.021</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.73\" fill=\"#1266d6\" opacity=\"0.727\"><title>(4,2) 0.027</title></circle><text x=\"62\" y=\"134\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"96\" cy=\"96\" r=\"16.76\" fill=\"#1266d6\" opacity=\"0.650\"><title>(3,3) 0.023</title></circle><circle cx=\"62\" cy=\"164\" r=\"17.00\" fill=\"#1266d6\" opacity=\"0.669\"><title>(5,2) 0.024</title></circle><circle cx=\"96\" cy=\"130\" r=\"16.87\" fill=\"#1266d6\" opacity=\"0.659\"><title>(4,3) 0.024</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.44\" fill=\"#1266d6\" opacity=\"0.626\"><title>(3,4) 0.022</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.43\" fill=\"#1266d6\" opacity=\"0.703\"><title>(5,3) 0.026</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.42\" fill=\"#1266d6\" opacity=\"0.624\"><title>(4,4) 0.022</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.09\" fill=\"#1266d6\" opacity=\"0.600\"><title>(6,3) 0.021</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.81\" fill=\"#1266d6\" opacity=\"0.734\"><title>(3,5) 0.027</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"130\" cy=\"164\" r=\"16.74\" fill=\"#1266d6\" opacity=\"0.649\"><title>(5,4) 0.023</title></circle><circle cx=\"164\" cy=\"130\" r=\"16.91\" fill=\"#1266d6\" opacity=\"0.661\"><title>(4,5) 0.024</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.41\" fill=\"#1266d6\" opacity=\"0.701\"><title>(6,4) 0.026</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.27\" fill=\"#1266d6\" opacity=\"0.613\"><title>(3,6) 0.021</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.652\"><title>(5,5) 0.023</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(7,4) 0.023</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.95\" fill=\"#1266d6\" opacity=\"0.665\"><title>(4,6) 0.024</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.07\" fill=\"#1266d6\" opacity=\"0.674\"><title>(6,5) 0.024</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.55\" fill=\"#1266d6\" opacity=\"0.713\"><title>(3,7) 0.026</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.51\" fill=\"#1266d6\" opacity=\"0.709\"><title>(5,6) 0.026</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.21\" fill=\"#1266d6\" opacity=\"0.609\"><title>(7,5) 0.021</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.97\" fill=\"#1266d6\" opacity=\"0.666\"><title>(4,7) 0.024</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.14\" fill=\"#1266d6\" opacity=\"0.680\"><title>(6,6) 0.025</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.12\" fill=\"#1266d6\" opacity=\"0.602\"><title>(5,7) 0.021</title></circle><circle cx=\"198\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,6) 0.028</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"232\" cy=\"198\" r=\"17.14\" fill=\"#1266d6\" opacity=\"0.679\"><title>(6,7) 0.025</title></circle><circle cx=\"28\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"198\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"232\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"232\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"232\" cy=\"232\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+        }
+      ],
+      "sample_game": [
+        7,
+        2,
+        [
+          [
+            0,
+            [
+              3,
+              0
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              5
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              1
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              5
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              3,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              4
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              5
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              4
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              1
+            ]
+          ],
+          [
+            0,
+            [
+              1,
+              4
+            ]
+          ],
+          [
+            2,
+            [
+              4,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              1,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              0
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              5
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              5
+            ]
+          ],
+          [
+            0,
+            [
+              0,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              1,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              0
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            [
+              2,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              5,
+              0
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            [
+              5,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              1
+            ]
+          ],
+          [
+            2,
+            null
+          ],
+          [
+            0,
+            [
+              6,
+              4
+            ]
+          ],
+          [
+            2,
+            null
+          ],
+          [
+            0,
+            null
+          ]
+        ],
+        0.5,
+        [
+          [],
+          [],
+          []
+        ]
+      ]
+    },
+    {
+      "epoch": 10,
+      "eval": {
+        "games": 6,
+        "wins": 2,
+        "win_rate": 0.3333333333333333,
+        "avg_margin": -3.8333333333333335,
+        "avg_moves": 57.666666666666664
+      },
+      "probes": [
+        {
+          "name": "\u7a7a\u68cb\u76d8",
+          "note": "\u89c2\u5bdf\u5f00\u5c40\u504f\u597d\u662f\u5426\u4ece\u8fd1\u4f3c\u5747\u5300\u53d8\u5f97\u66f4\u96c6\u4e2d\u3002",
+          "player": 0,
+          "value": 0.5029312372207642,
+          "pass_prob": 0.022379616275429726,
+          "entropy": 0.9988718654929549,
+          "top_moves": [
+            [
+              "(7,6)",
+              0.024160012152362114
+            ],
+            [
+              "(3,1)",
+              0.024005537397071813
+            ],
+            [
+              "(6,4)",
+              0.02344676507128567
+            ],
+            [
+              "(3,5)",
+              0.02327880852253441
+            ],
+            [
+              "(7,3)",
+              0.023190694828047555
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u7a7a\u68cb\u76d8: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"28\" r=\"17.10\" fill=\"#1266d6\" opacity=\"0.676\"><title>(1,1) 0.021</title></circle><circle cx=\"62\" cy=\"28\" r=\"16.40\" fill=\"#1266d6\" opacity=\"0.623\"><title>(1,2) 0.019</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.74\" fill=\"#1266d6\" opacity=\"0.648\"><title>(1,5) 0.020</title></circle><circle cx=\"96\" cy=\"28\" r=\"16.23\" fill=\"#1266d6\" opacity=\"0.610\"><title>(1,3) 0.018</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.41\" fill=\"#1266d6\" opacity=\"0.701\"><title>(1,4) 0.022</title></circle><circle cx=\"198\" cy=\"28\" r=\"16.06\" fill=\"#1266d6\" opacity=\"0.598\"><title>(1,6) 0.017</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.36\" fill=\"#1266d6\" opacity=\"0.697\"><title>(1,7) 0.022</title></circle><circle cx=\"28\" cy=\"62\" r=\"16.56\" fill=\"#1266d6\" opacity=\"0.635\"><title>(2,1) 0.019</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.67\" fill=\"#1266d6\" opacity=\"0.644\"><title>(2,2) 0.019</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.59\" fill=\"#1266d6\" opacity=\"0.716\"><title>(2,3) 0.023</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.18\" fill=\"#1266d6\" opacity=\"0.607\"><title>(2,4) 0.018</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.96\" fill=\"#1266d6\" opacity=\"0.746\"><title>(3,1) 0.024</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"28\" cy=\"130\" r=\"16.94\" fill=\"#1266d6\" opacity=\"0.664\"><title>(4,1) 0.020</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.09\" fill=\"#1266d6\" opacity=\"0.676\"><title>(5,1) 0.021</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.42\" fill=\"#1266d6\" opacity=\"0.625\"><title>(6,1) 0.019</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.59\" fill=\"#1266d6\" opacity=\"0.637\"><title>(7,1) 0.019</title></circle><circle cx=\"62\" cy=\"96\" r=\"16.36\" fill=\"#1266d6\" opacity=\"0.620\"><title>(3,2) 0.018</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.71\" fill=\"#1266d6\" opacity=\"0.726\"><title>(4,2) 0.023</title></circle><circle cx=\"96\" cy=\"96\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(3,3) 0.020</title></circle><circle cx=\"62\" cy=\"164\" r=\"17.13\" fill=\"#1266d6\" opacity=\"0.679\"><title>(5,2) 0.021</title></circle><circle cx=\"96\" cy=\"130\" r=\"16.73\" fill=\"#1266d6\" opacity=\"0.648\"><title>(4,3) 0.020</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.64\" fill=\"#1266d6\" opacity=\"0.720\"><title>(6,2) 0.023</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.28\" fill=\"#1266d6\" opacity=\"0.614\"><title>(3,4) 0.018</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.49\" fill=\"#1266d6\" opacity=\"0.708\"><title>(5,3) 0.022</title></circle><circle cx=\"164\" cy=\"62\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.652\"><title>(2,5) 0.020</title></circle><circle cx=\"62\" cy=\"232\" r=\"17.00\" fill=\"#1266d6\" opacity=\"0.668\"><title>(7,2) 0.021</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.16\" fill=\"#1266d6\" opacity=\"0.605\"><title>(4,4) 0.018</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.15\" fill=\"#1266d6\" opacity=\"0.604\"><title>(6,3) 0.018</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.76\" fill=\"#1266d6\" opacity=\"0.730\"><title>(3,5) 0.023</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"130\" cy=\"164\" r=\"16.77\" fill=\"#1266d6\" opacity=\"0.651\"><title>(5,4) 0.020</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.85\" fill=\"#1266d6\" opacity=\"0.657\"><title>(2,6) 0.020</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.74\" fill=\"#1266d6\" opacity=\"0.728\"><title>(7,3) 0.023</title></circle><text x=\"96\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"164\" cy=\"130\" r=\"16.66\" fill=\"#1266d6\" opacity=\"0.642\"><title>(4,5) 0.019</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.81\" fill=\"#1266d6\" opacity=\"0.734\"><title>(6,4) 0.023</title></circle><text x=\"130\" y=\"202\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"198\" cy=\"96\" r=\"16.67\" fill=\"#1266d6\" opacity=\"0.643\"><title>(3,6) 0.019</title></circle><circle cx=\"164\" cy=\"164\" r=\"17.11\" fill=\"#1266d6\" opacity=\"0.677\"><title>(5,5) 0.021</title></circle><circle cx=\"232\" cy=\"62\" r=\"15.95\" fill=\"#1266d6\" opacity=\"0.590\"><title>(2,7) 0.017</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.56\" fill=\"#1266d6\" opacity=\"0.635\"><title>(7,4) 0.019</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(4,6) 0.020</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.32\" fill=\"#1266d6\" opacity=\"0.694\"><title>(6,5) 0.022</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.71\" fill=\"#1266d6\" opacity=\"0.726\"><title>(3,7) 0.023</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.63\" fill=\"#1266d6\" opacity=\"0.719\"><title>(5,6) 0.023</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.24\" fill=\"#1266d6\" opacity=\"0.611\"><title>(7,5) 0.018</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.77\" fill=\"#1266d6\" opacity=\"0.651\"><title>(4,7) 0.020</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.20\" fill=\"#1266d6\" opacity=\"0.684\"><title>(6,6) 0.021</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.23\" fill=\"#1266d6\" opacity=\"0.610\"><title>(5,7) 0.018</title></circle><circle cx=\"198\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,6) 0.024</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"232\" cy=\"198\" r=\"17.25\" fill=\"#1266d6\" opacity=\"0.689\"><title>(6,7) 0.021</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.26\" fill=\"#1266d6\" opacity=\"0.689\"><title>(7,7) 0.021</title></circle></svg>"
+        },
+        {
+          "name": "\u89d2\u90e8\u63a5\u89e6",
+          "note": "\u9ed1\u68cb\u9700\u8981\u5224\u65ad\u89d2\u90e8\u6218\u6597\u548c\u5916\u52bf\u65b9\u5411\u3002",
+          "player": 0,
+          "value": 0.5029312372207642,
+          "pass_prob": 0.022411085665225983,
+          "entropy": 0.998911459761096,
+          "top_moves": [
+            [
+              "(7,6)",
+              0.02648060544556114
+            ],
+            [
+              "(3,1)",
+              0.026426932044746172
+            ],
+            [
+              "(3,5)",
+              0.026164421851852623
+            ],
+            [
+              "(7,3)",
+              0.02573550832704235
+            ],
+            [
+              "(4,2)",
+              0.025611424771677205
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u89d2\u90e8\u63a5\u89e6: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"130\" cy=\"28\" r=\"17.48\" fill=\"#1266d6\" opacity=\"0.707\"><title>(1,4) 0.024</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.85\" fill=\"#1266d6\" opacity=\"0.657\"><title>(1,5) 0.022</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.48\" fill=\"#1266d6\" opacity=\"0.707\"><title>(1,7) 0.024</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.70\" fill=\"#1266d6\" opacity=\"0.646\"><title>(2,2) 0.021</title></circle><circle cx=\"198\" cy=\"28\" r=\"16.19\" fill=\"#1266d6\" opacity=\"0.607\"><title>(1,6) 0.020</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.64\" fill=\"#1266d6\" opacity=\"0.720\"><title>(2,3) 0.025</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.26\" fill=\"#1266d6\" opacity=\"0.612\"><title>(2,4) 0.020</title></circle><circle cx=\"164\" cy=\"62\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(2,5) 0.022</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.83\" fill=\"#1266d6\" opacity=\"0.656\"><title>(2,6) 0.022</title></circle><circle cx=\"232\" cy=\"62\" r=\"16.04\" fill=\"#1266d6\" opacity=\"0.597\"><title>(2,7) 0.019</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.99\" fill=\"#1266d6\" opacity=\"0.749\"><title>(3,1) 0.026</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"96\" cy=\"96\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.652\"><title>(3,3) 0.022</title></circle><circle cx=\"96\" cy=\"130\" r=\"16.76\" fill=\"#1266d6\" opacity=\"0.650\"><title>(4,3) 0.022</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(5,1) 0.023</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.47\" fill=\"#1266d6\" opacity=\"0.628\"><title>(6,1) 0.021</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.62\" fill=\"#1266d6\" opacity=\"0.640\"><title>(7,1) 0.021</title></circle><circle cx=\"28\" cy=\"130\" r=\"17.01\" fill=\"#1266d6\" opacity=\"0.669\"><title>(4,1) 0.023</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.78\" fill=\"#1266d6\" opacity=\"0.732\"><title>(4,2) 0.026</title></circle><text x=\"62\" y=\"134\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"62\" cy=\"164\" r=\"17.12\" fill=\"#1266d6\" opacity=\"0.678\"><title>(5,2) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.64\" fill=\"#1266d6\" opacity=\"0.720\"><title>(6,2) 0.025</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.35\" fill=\"#1266d6\" opacity=\"0.620\"><title>(3,4) 0.020</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.48\" fill=\"#1266d6\" opacity=\"0.707\"><title>(5,3) 0.024</title></circle><circle cx=\"62\" cy=\"232\" r=\"17.04\" fill=\"#1266d6\" opacity=\"0.671\"><title>(7,2) 0.023</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.32\" fill=\"#1266d6\" opacity=\"0.617\"><title>(4,4) 0.020</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.19\" fill=\"#1266d6\" opacity=\"0.607\"><title>(6,3) 0.020</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.92\" fill=\"#1266d6\" opacity=\"0.743\"><title>(3,5) 0.026</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"130\" cy=\"164\" r=\"16.95\" fill=\"#1266d6\" opacity=\"0.665\"><title>(5,4) 0.022</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.82\" fill=\"#1266d6\" opacity=\"0.735\"><title>(7,3) 0.026</title></circle><text x=\"96\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"164\" cy=\"130\" r=\"16.73\" fill=\"#1266d6\" opacity=\"0.648\"><title>(4,5) 0.022</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.77\" fill=\"#1266d6\" opacity=\"0.731\"><title>(6,4) 0.026</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(3,6) 0.021</title></circle><circle cx=\"164\" cy=\"164\" r=\"17.10\" fill=\"#1266d6\" opacity=\"0.677\"><title>(5,5) 0.023</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.63\" fill=\"#1266d6\" opacity=\"0.640\"><title>(7,4) 0.021</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.81\" fill=\"#1266d6\" opacity=\"0.654\"><title>(4,6) 0.022</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.36\" fill=\"#1266d6\" opacity=\"0.697\"><title>(6,5) 0.024</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.78\" fill=\"#1266d6\" opacity=\"0.732\"><title>(3,7) 0.026</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.68\" fill=\"#1266d6\" opacity=\"0.723\"><title>(5,6) 0.025</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.29\" fill=\"#1266d6\" opacity=\"0.615\"><title>(7,5) 0.020</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.652\"><title>(4,7) 0.022</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(6,6) 0.023</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.30\" fill=\"#1266d6\" opacity=\"0.616\"><title>(5,7) 0.020</title></circle><circle cx=\"198\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,6) 0.026</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"232\" cy=\"198\" r=\"17.31\" fill=\"#1266d6\" opacity=\"0.693\"><title>(6,7) 0.024</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.26\" fill=\"#1266d6\" opacity=\"0.689\"><title>(7,7) 0.024</title></circle><circle cx=\"28\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"28\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"96\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/></svg>"
+        },
+        {
+          "name": "\u5403\u5b50\u63d0\u793a",
+          "note": "\u767d\u68cb\u4e00\u5b50\u5904\u4e8e\u4f4e\u6c14\uff0c\u6a21\u578b\u662f\u5426\u63d0\u9ad8\u76f8\u90bb\u5173\u952e\u70b9\u6982\u7387\u3002",
+          "player": 0,
+          "value": 0.5029312372207642,
+          "pass_prob": 0.02260187268257141,
+          "entropy": 0.9987885709310441,
+          "top_moves": [
+            [
+              "(3,1)",
+              0.02674495810559574
+            ],
+            [
+              "(7,6)",
+              0.0258934991247729
+            ],
+            [
+              "(3,5)",
+              0.025766580520663263
+            ],
+            [
+              "(7,3)",
+              0.025574406235110887
+            ],
+            [
+              "(6,2)",
+              0.024936920370752992
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u5403\u5b50\u63d0\u793a: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"28\" r=\"16.71\" fill=\"#1266d6\" opacity=\"0.646\"><title>(1,1) 0.022</title></circle><circle cx=\"62\" cy=\"28\" r=\"16.32\" fill=\"#1266d6\" opacity=\"0.617\"><title>(1,2) 0.020</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.70\" fill=\"#1266d6\" opacity=\"0.645\"><title>(1,5) 0.022</title></circle><circle cx=\"96\" cy=\"28\" r=\"15.94\" fill=\"#1266d6\" opacity=\"0.590\"><title>(1,3) 0.019</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.52\" fill=\"#1266d6\" opacity=\"0.710\"><title>(1,4) 0.025</title></circle><circle cx=\"198\" cy=\"28\" r=\"16.20\" fill=\"#1266d6\" opacity=\"0.609\"><title>(1,6) 0.020</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.36\" fill=\"#1266d6\" opacity=\"0.697\"><title>(1,7) 0.024</title></circle><circle cx=\"28\" cy=\"62\" r=\"16.62\" fill=\"#1266d6\" opacity=\"0.639\"><title>(2,1) 0.021</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.67\" fill=\"#1266d6\" opacity=\"0.643\"><title>(2,2) 0.022</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.25\" fill=\"#1266d6\" opacity=\"0.612\"><title>(2,4) 0.020</title></circle><circle cx=\"164\" cy=\"62\" r=\"16.61\" fill=\"#1266d6\" opacity=\"0.638\"><title>(2,5) 0.021</title></circle><circle cx=\"28\" cy=\"96\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(3,1) 0.027</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"28\" cy=\"130\" r=\"16.60\" fill=\"#1266d6\" opacity=\"0.638\"><title>(4,1) 0.021</title></circle><circle cx=\"28\" cy=\"164\" r=\"17.01\" fill=\"#1266d6\" opacity=\"0.669\"><title>(5,1) 0.023</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.10\" fill=\"#1266d6\" opacity=\"0.601\"><title>(6,1) 0.019</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.49\" fill=\"#1266d6\" opacity=\"0.630\"><title>(7,1) 0.021</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.30\" fill=\"#1266d6\" opacity=\"0.693\"><title>(4,2) 0.024</title></circle><circle cx=\"62\" cy=\"164\" r=\"17.09\" fill=\"#1266d6\" opacity=\"0.676\"><title>(5,2) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.55\" fill=\"#1266d6\" opacity=\"0.713\"><title>(6,2) 0.025</title></circle><text x=\"62\" y=\"202\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"130\" cy=\"96\" r=\"16.16\" fill=\"#1266d6\" opacity=\"0.605\"><title>(3,4) 0.020</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.52\" fill=\"#1266d6\" opacity=\"0.710\"><title>(5,3) 0.025</title></circle><circle cx=\"62\" cy=\"232\" r=\"16.83\" fill=\"#1266d6\" opacity=\"0.655\"><title>(7,2) 0.022</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.10\" fill=\"#1266d6\" opacity=\"0.601\"><title>(4,4) 0.020</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.05\" fill=\"#1266d6\" opacity=\"0.597\"><title>(6,3) 0.019</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.76\" fill=\"#1266d6\" opacity=\"0.730\"><title>(3,5) 0.026</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"130\" cy=\"164\" r=\"16.68\" fill=\"#1266d6\" opacity=\"0.644\"><title>(5,4) 0.022</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.61\" fill=\"#1266d6\" opacity=\"0.639\"><title>(2,6) 0.021</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.71\" fill=\"#1266d6\" opacity=\"0.726\"><title>(7,3) 0.026</title></circle><text x=\"96\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"164\" cy=\"130\" r=\"16.61\" fill=\"#1266d6\" opacity=\"0.639\"><title>(4,5) 0.021</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.54\" fill=\"#1266d6\" opacity=\"0.712\"><title>(6,4) 0.025</title></circle><circle cx=\"198\" cy=\"96\" r=\"16.63\" fill=\"#1266d6\" opacity=\"0.640\"><title>(3,6) 0.021</title></circle><circle cx=\"164\" cy=\"164\" r=\"17.11\" fill=\"#1266d6\" opacity=\"0.677\"><title>(5,5) 0.023</title></circle><circle cx=\"232\" cy=\"62\" r=\"15.78\" fill=\"#1266d6\" opacity=\"0.578\"><title>(2,7) 0.018</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.40\" fill=\"#1266d6\" opacity=\"0.623\"><title>(7,4) 0.021</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.652\"><title>(4,6) 0.022</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.20\" fill=\"#1266d6\" opacity=\"0.685\"><title>(6,5) 0.024</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.49\" fill=\"#1266d6\" opacity=\"0.708\"><title>(3,7) 0.025</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.35\" fill=\"#1266d6\" opacity=\"0.696\"><title>(5,6) 0.024</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.10\" fill=\"#1266d6\" opacity=\"0.601\"><title>(7,5) 0.020</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.63\" fill=\"#1266d6\" opacity=\"0.641\"><title>(4,7) 0.021</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.29\" fill=\"#1266d6\" opacity=\"0.691\"><title>(6,6) 0.024</title></circle><circle cx=\"232\" cy=\"164\" r=\"15.92\" fill=\"#1266d6\" opacity=\"0.588\"><title>(5,7) 0.019</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.79\" fill=\"#1266d6\" opacity=\"0.732\"><title>(7,6) 0.026</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"232\" cy=\"198\" r=\"17.40\" fill=\"#1266d6\" opacity=\"0.700\"><title>(6,7) 0.024</title></circle><circle cx=\"232\" cy=\"232\" r=\"17.12\" fill=\"#1266d6\" opacity=\"0.678\"><title>(7,7) 0.023</title></circle><circle cx=\"96\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"96\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"96\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"130\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+        },
+        {
+          "name": "\u5730\u57df\u9009\u62e9",
+          "note": "\u53cc\u65b9\u5df2\u6709\u5c0f\u89d2\uff0c\u89c2\u5bdf\u6a21\u578b\u66f4\u504f\u8865\u5f3a\u8fd8\u662f\u62a2\u7a7a\u3002",
+          "player": 2,
+          "value": 0.5029312372207642,
+          "pass_prob": 0.021887101233005524,
+          "entropy": 0.9988207909619337,
+          "top_moves": [
+            [
+              "(7,6)",
+              0.028536763458084792
+            ],
+            [
+              "(3,1)",
+              0.02844077216612368
+            ],
+            [
+              "(3,5)",
+              0.02763024503219174
+            ],
+            [
+              "(3,7)",
+              0.02724434334513838
+            ],
+            [
+              "(6,4)",
+              0.026851711315384028
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u5730\u57df\u9009\u62e9: white to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"28\" r=\"16.13\" fill=\"#1266d6\" opacity=\"0.603\"><title>(1,3) 0.021</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.31\" fill=\"#1266d6\" opacity=\"0.693\"><title>(1,4) 0.026</title></circle><circle cx=\"198\" cy=\"28\" r=\"16.13\" fill=\"#1266d6\" opacity=\"0.603\"><title>(1,6) 0.021</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.30\" fill=\"#1266d6\" opacity=\"0.693\"><title>(1,7) 0.026</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.68\" fill=\"#1266d6\" opacity=\"0.644\"><title>(1,5) 0.023</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.60\" fill=\"#1266d6\" opacity=\"0.638\"><title>(2,2) 0.023</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.52\" fill=\"#1266d6\" opacity=\"0.710\"><title>(2,3) 0.026</title></circle><circle cx=\"130\" cy=\"62\" r=\"16.04\" fill=\"#1266d6\" opacity=\"0.596\"><title>(2,4) 0.021</title></circle><circle cx=\"164\" cy=\"62\" r=\"16.70\" fill=\"#1266d6\" opacity=\"0.645\"><title>(2,5) 0.023</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(2,6) 0.024</title></circle><circle cx=\"232\" cy=\"62\" r=\"15.84\" fill=\"#1266d6\" opacity=\"0.582\"><title>(2,7) 0.020</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.98\" fill=\"#1266d6\" opacity=\"0.748\"><title>(3,1) 0.028</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"28\" cy=\"130\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.653\"><title>(4,1) 0.023</title></circle><circle cx=\"28\" cy=\"164\" r=\"16.85\" fill=\"#1266d6\" opacity=\"0.657\"><title>(5,1) 0.024</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.36\" fill=\"#1266d6\" opacity=\"0.698\"><title>(6,2) 0.026</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.61\" fill=\"#1266d6\" opacity=\"0.717\"><title>(7,3) 0.027</title></circle><circle cx=\"62\" cy=\"96\" r=\"16.13\" fill=\"#1266d6\" opacity=\"0.603\"><title>(3,2) 0.021</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.50\" fill=\"#1266d6\" opacity=\"0.709\"><title>(4,2) 0.026</title></circle><circle cx=\"96\" cy=\"96\" r=\"16.77\" fill=\"#1266d6\" opacity=\"0.651\"><title>(3,3) 0.023</title></circle><circle cx=\"62\" cy=\"164\" r=\"16.91\" fill=\"#1266d6\" opacity=\"0.662\"><title>(5,2) 0.024</title></circle><circle cx=\"96\" cy=\"130\" r=\"16.56\" fill=\"#1266d6\" opacity=\"0.635\"><title>(4,3) 0.023</title></circle><circle cx=\"130\" cy=\"96\" r=\"16.14\" fill=\"#1266d6\" opacity=\"0.604\"><title>(3,4) 0.021</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.46\" fill=\"#1266d6\" opacity=\"0.705\"><title>(5,3) 0.026</title></circle><circle cx=\"130\" cy=\"130\" r=\"16.16\" fill=\"#1266d6\" opacity=\"0.605\"><title>(4,4) 0.021</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.02\" fill=\"#1266d6\" opacity=\"0.595\"><title>(6,3) 0.021</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.79\" fill=\"#1266d6\" opacity=\"0.733\"><title>(3,5) 0.028</title></circle><text x=\"164\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"130\" cy=\"164\" r=\"16.68\" fill=\"#1266d6\" opacity=\"0.644\"><title>(5,4) 0.023</title></circle><circle cx=\"164\" cy=\"130\" r=\"16.56\" fill=\"#1266d6\" opacity=\"0.635\"><title>(4,5) 0.023</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.61\" fill=\"#1266d6\" opacity=\"0.718\"><title>(6,4) 0.027</title></circle><text x=\"130\" y=\"202\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"198\" cy=\"96\" r=\"16.42\" fill=\"#1266d6\" opacity=\"0.625\"><title>(3,6) 0.022</title></circle><circle cx=\"164\" cy=\"164\" r=\"16.98\" fill=\"#1266d6\" opacity=\"0.667\"><title>(5,5) 0.024</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.54\" fill=\"#1266d6\" opacity=\"0.633\"><title>(7,4) 0.022</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.67\" fill=\"#1266d6\" opacity=\"0.643\"><title>(4,6) 0.023</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.12\" fill=\"#1266d6\" opacity=\"0.678\"><title>(6,5) 0.025</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.70\" fill=\"#1266d6\" opacity=\"0.725\"><title>(3,7) 0.027</title></circle><text x=\"232\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"198\" cy=\"164\" r=\"17.41\" fill=\"#1266d6\" opacity=\"0.701\"><title>(5,6) 0.026</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.12\" fill=\"#1266d6\" opacity=\"0.602\"><title>(7,5) 0.021</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.76\" fill=\"#1266d6\" opacity=\"0.650\"><title>(4,7) 0.023</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.21\" fill=\"#1266d6\" opacity=\"0.685\"><title>(6,6) 0.025</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.05\" fill=\"#1266d6\" opacity=\"0.597\"><title>(5,7) 0.021</title></circle><circle cx=\"198\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,6) 0.029</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"232\" cy=\"198\" r=\"17.20\" fill=\"#1266d6\" opacity=\"0.685\"><title>(6,7) 0.025</title></circle><circle cx=\"28\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"198\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"232\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"232\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"232\" cy=\"232\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+        }
+      ],
+      "sample_game": [
+        7,
+        2,
+        [
+          [
+            0,
+            [
+              5,
+              0
+            ]
+          ],
+          [
+            2,
+            [
+              4,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              5
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              4
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              1,
+              4
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              0,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              4,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              5,
+              1
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              5
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              1,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              0,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              5,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              5,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              3,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              4
+            ]
+          ],
+          [
+            2,
+            [
+              3,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              3,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              0,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              5
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              0,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              4,
+              1
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              5
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              0
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              1
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              5
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              1
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            [
+              0,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              5
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            [
+              3,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              3,
+              1
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            [
+              5,
+              5
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              4
+            ]
+          ],
+          [
+            2,
+            null
+          ]
+        ],
+        0.5,
+        [
+          [],
+          [],
+          []
+        ]
+      ]
+    },
+    {
+      "epoch": 20,
+      "eval": {
+        "games": 6,
+        "wins": 0,
+        "win_rate": 0.0,
+        "avg_margin": -15.0,
+        "avg_moves": 59.666666666666664
+      },
+      "probes": [
+        {
+          "name": "\u7a7a\u68cb\u76d8",
+          "note": "\u89c2\u5bdf\u5f00\u5c40\u504f\u597d\u662f\u5426\u4ece\u8fd1\u4f3c\u5747\u5300\u53d8\u5f97\u66f4\u96c6\u4e2d\u3002",
+          "player": 0,
+          "value": 0.5030102133750916,
+          "pass_prob": 0.027077630162239075,
+          "entropy": 0.9980666170236248,
+          "top_moves": [
+            [
+              "(7,3)",
+              0.02486490360369169
+            ],
+            [
+              "(6,4)",
+              0.0248592080109647
+            ],
+            [
+              "(3,1)",
+              0.024621093945277464
+            ],
+            [
+              "(7,6)",
+              0.024487047452515873
+            ],
+            [
+              "(3,7)",
+              0.02406864059560883
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u7a7a\u68cb\u76d8: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"28\" r=\"16.51\" fill=\"#1266d6\" opacity=\"0.631\"><title>(1,1) 0.019</title></circle><circle cx=\"62\" cy=\"28\" r=\"16.17\" fill=\"#1266d6\" opacity=\"0.606\"><title>(1,2) 0.018</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.40\" fill=\"#1266d6\" opacity=\"0.623\"><title>(1,5) 0.019</title></circle><circle cx=\"96\" cy=\"28\" r=\"16.14\" fill=\"#1266d6\" opacity=\"0.604\"><title>(1,3) 0.018</title></circle><circle cx=\"130\" cy=\"28\" r=\"16.99\" fill=\"#1266d6\" opacity=\"0.668\"><title>(1,4) 0.021</title></circle><circle cx=\"198\" cy=\"28\" r=\"15.67\" fill=\"#1266d6\" opacity=\"0.571\"><title>(1,6) 0.017</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.71\" fill=\"#1266d6\" opacity=\"0.726\"><title>(1,7) 0.024</title></circle><circle cx=\"28\" cy=\"62\" r=\"16.47\" fill=\"#1266d6\" opacity=\"0.628\"><title>(2,1) 0.019</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.52\" fill=\"#1266d6\" opacity=\"0.632\"><title>(2,2) 0.020</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.74\" fill=\"#1266d6\" opacity=\"0.728\"><title>(2,3) 0.024</title></circle><circle cx=\"130\" cy=\"62\" r=\"15.89\" fill=\"#1266d6\" opacity=\"0.586\"><title>(2,4) 0.017</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.94\" fill=\"#1266d6\" opacity=\"0.745\"><title>(3,1) 0.025</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"28\" cy=\"130\" r=\"16.99\" fill=\"#1266d6\" opacity=\"0.668\"><title>(4,1) 0.021</title></circle><circle cx=\"28\" cy=\"164\" r=\"16.79\" fill=\"#1266d6\" opacity=\"0.652\"><title>(5,1) 0.020</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.21\" fill=\"#1266d6\" opacity=\"0.609\"><title>(6,1) 0.018</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.32\" fill=\"#1266d6\" opacity=\"0.617\"><title>(7,1) 0.019</title></circle><circle cx=\"62\" cy=\"96\" r=\"16.24\" fill=\"#1266d6\" opacity=\"0.611\"><title>(3,2) 0.019</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.32\" fill=\"#1266d6\" opacity=\"0.694\"><title>(4,2) 0.022</title></circle><circle cx=\"96\" cy=\"96\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(3,3) 0.020</title></circle><circle cx=\"62\" cy=\"164\" r=\"16.97\" fill=\"#1266d6\" opacity=\"0.666\"><title>(5,2) 0.021</title></circle><circle cx=\"96\" cy=\"130\" r=\"16.24\" fill=\"#1266d6\" opacity=\"0.611\"><title>(4,3) 0.019</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.57\" fill=\"#1266d6\" opacity=\"0.715\"><title>(6,2) 0.023</title></circle><circle cx=\"130\" cy=\"96\" r=\"15.86\" fill=\"#1266d6\" opacity=\"0.584\"><title>(3,4) 0.017</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.39\" fill=\"#1266d6\" opacity=\"0.700\"><title>(5,3) 0.023</title></circle><circle cx=\"164\" cy=\"62\" r=\"16.20\" fill=\"#1266d6\" opacity=\"0.608\"><title>(2,5) 0.018</title></circle><circle cx=\"62\" cy=\"232\" r=\"16.70\" fill=\"#1266d6\" opacity=\"0.645\"><title>(7,2) 0.020</title></circle><circle cx=\"130\" cy=\"130\" r=\"15.76\" fill=\"#1266d6\" opacity=\"0.577\"><title>(4,4) 0.017</title></circle><circle cx=\"96\" cy=\"198\" r=\"16.01\" fill=\"#1266d6\" opacity=\"0.595\"><title>(6,3) 0.018</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.67\" fill=\"#1266d6\" opacity=\"0.723\"><title>(3,5) 0.024</title></circle><circle cx=\"130\" cy=\"164\" r=\"16.59\" fill=\"#1266d6\" opacity=\"0.637\"><title>(5,4) 0.020</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.85\" fill=\"#1266d6\" opacity=\"0.657\"><title>(2,6) 0.021</title></circle><circle cx=\"96\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,3) 0.025</title></circle><text x=\"96\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"164\" cy=\"130\" r=\"16.17\" fill=\"#1266d6\" opacity=\"0.606\"><title>(4,5) 0.018</title></circle><circle cx=\"130\" cy=\"198\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(6,4) 0.025</title></circle><text x=\"130\" y=\"202\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"198\" cy=\"96\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(3,6) 0.020</title></circle><circle cx=\"164\" cy=\"164\" r=\"17.20\" fill=\"#1266d6\" opacity=\"0.685\"><title>(5,5) 0.022</title></circle><circle cx=\"232\" cy=\"62\" r=\"15.63\" fill=\"#1266d6\" opacity=\"0.568\"><title>(2,7) 0.017</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.24\" fill=\"#1266d6\" opacity=\"0.611\"><title>(7,4) 0.019</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.35\" fill=\"#1266d6\" opacity=\"0.619\"><title>(4,6) 0.019</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.30\" fill=\"#1266d6\" opacity=\"0.692\"><title>(6,5) 0.022</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.79\" fill=\"#1266d6\" opacity=\"0.732\"><title>(3,7) 0.024</title></circle><text x=\"232\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"198\" cy=\"164\" r=\"17.38\" fill=\"#1266d6\" opacity=\"0.699\"><title>(5,6) 0.023</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.04\" fill=\"#1266d6\" opacity=\"0.596\"><title>(7,5) 0.018</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.45\" fill=\"#1266d6\" opacity=\"0.626\"><title>(4,7) 0.019</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.11\" fill=\"#1266d6\" opacity=\"0.677\"><title>(6,6) 0.022</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.03\" fill=\"#1266d6\" opacity=\"0.596\"><title>(5,7) 0.018</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.90\" fill=\"#1266d6\" opacity=\"0.742\"><title>(7,6) 0.024</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"232\" cy=\"198\" r=\"17.25\" fill=\"#1266d6\" opacity=\"0.689\"><title>(6,7) 0.022</title></circle><circle cx=\"232\" cy=\"232\" r=\"16.98\" fill=\"#1266d6\" opacity=\"0.667\"><title>(7,7) 0.021</title></circle></svg>"
+        },
+        {
+          "name": "\u89d2\u90e8\u63a5\u89e6",
+          "note": "\u9ed1\u68cb\u9700\u8981\u5224\u65ad\u89d2\u90e8\u6218\u6597\u548c\u5916\u52bf\u65b9\u5411\u3002",
+          "player": 0,
+          "value": 0.5030102133750916,
+          "pass_prob": 0.02725324220955372,
+          "entropy": 0.998057821041909,
+          "top_moves": [
+            [
+              "(7,3)",
+              0.02752942252889132
+            ],
+            [
+              "(3,1)",
+              0.027131878730339794
+            ],
+            [
+              "(6,4)",
+              0.027128214342655995
+            ],
+            [
+              "(7,6)",
+              0.02689196911315939
+            ],
+            [
+              "(3,7)",
+              0.026743047890508163
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u89d2\u90e8\u63a5\u89e6: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"130\" cy=\"28\" r=\"16.99\" fill=\"#1266d6\" opacity=\"0.668\"><title>(1,4) 0.023</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.47\" fill=\"#1266d6\" opacity=\"0.628\"><title>(1,5) 0.021</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.78\" fill=\"#1266d6\" opacity=\"0.732\"><title>(1,7) 0.027</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.48\" fill=\"#1266d6\" opacity=\"0.629\"><title>(2,2) 0.021</title></circle><circle cx=\"198\" cy=\"28\" r=\"15.71\" fill=\"#1266d6\" opacity=\"0.573\"><title>(1,6) 0.019</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.76\" fill=\"#1266d6\" opacity=\"0.730\"><title>(2,3) 0.027</title></circle><circle cx=\"130\" cy=\"62\" r=\"15.92\" fill=\"#1266d6\" opacity=\"0.588\"><title>(2,4) 0.019</title></circle><circle cx=\"164\" cy=\"62\" r=\"16.12\" fill=\"#1266d6\" opacity=\"0.603\"><title>(2,5) 0.020</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.78\" fill=\"#1266d6\" opacity=\"0.652\"><title>(2,6) 0.023</title></circle><circle cx=\"232\" cy=\"62\" r=\"15.65\" fill=\"#1266d6\" opacity=\"0.569\"><title>(2,7) 0.018</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.91\" fill=\"#1266d6\" opacity=\"0.742\"><title>(3,1) 0.027</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"96\" cy=\"96\" r=\"16.59\" fill=\"#1266d6\" opacity=\"0.637\"><title>(3,3) 0.022</title></circle><circle cx=\"96\" cy=\"130\" r=\"16.17\" fill=\"#1266d6\" opacity=\"0.606\"><title>(4,3) 0.020</title></circle><circle cx=\"28\" cy=\"164\" r=\"16.81\" fill=\"#1266d6\" opacity=\"0.654\"><title>(5,1) 0.023</title></circle><circle cx=\"28\" cy=\"198\" r=\"16.17\" fill=\"#1266d6\" opacity=\"0.606\"><title>(6,1) 0.020</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.29\" fill=\"#1266d6\" opacity=\"0.615\"><title>(7,1) 0.021</title></circle><circle cx=\"28\" cy=\"130\" r=\"17.00\" fill=\"#1266d6\" opacity=\"0.668\"><title>(4,1) 0.023</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.33\" fill=\"#1266d6\" opacity=\"0.694\"><title>(4,2) 0.025</title></circle><circle cx=\"62\" cy=\"164\" r=\"16.88\" fill=\"#1266d6\" opacity=\"0.659\"><title>(5,2) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.51\" fill=\"#1266d6\" opacity=\"0.709\"><title>(6,2) 0.026</title></circle><circle cx=\"130\" cy=\"96\" r=\"15.89\" fill=\"#1266d6\" opacity=\"0.586\"><title>(3,4) 0.019</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.30\" fill=\"#1266d6\" opacity=\"0.692\"><title>(5,3) 0.025</title></circle><circle cx=\"62\" cy=\"232\" r=\"16.62\" fill=\"#1266d6\" opacity=\"0.640\"><title>(7,2) 0.022</title></circle><circle cx=\"130\" cy=\"130\" r=\"15.87\" fill=\"#1266d6\" opacity=\"0.584\"><title>(4,4) 0.019</title></circle><circle cx=\"96\" cy=\"198\" r=\"15.95\" fill=\"#1266d6\" opacity=\"0.590\"><title>(6,3) 0.020</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.78\" fill=\"#1266d6\" opacity=\"0.731\"><title>(3,5) 0.027</title></circle><circle cx=\"130\" cy=\"164\" r=\"16.73\" fill=\"#1266d6\" opacity=\"0.648\"><title>(5,4) 0.022</title></circle><circle cx=\"96\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,3) 0.028</title></circle><text x=\"96\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"164\" cy=\"130\" r=\"16.16\" fill=\"#1266d6\" opacity=\"0.605\"><title>(4,5) 0.020</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.90\" fill=\"#1266d6\" opacity=\"0.742\"><title>(6,4) 0.027</title></circle><text x=\"130\" y=\"202\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"198\" cy=\"96\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(3,6) 0.023</title></circle><circle cx=\"164\" cy=\"164\" r=\"17.14\" fill=\"#1266d6\" opacity=\"0.680\"><title>(5,5) 0.024</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.22\" fill=\"#1266d6\" opacity=\"0.610\"><title>(7,4) 0.021</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.23\" fill=\"#1266d6\" opacity=\"0.611\"><title>(4,6) 0.021</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.29\" fill=\"#1266d6\" opacity=\"0.691\"><title>(6,5) 0.025</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.81\" fill=\"#1266d6\" opacity=\"0.734\"><title>(3,7) 0.027</title></circle><text x=\"232\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"198\" cy=\"164\" r=\"17.38\" fill=\"#1266d6\" opacity=\"0.699\"><title>(5,6) 0.025</title></circle><circle cx=\"164\" cy=\"232\" r=\"16.01\" fill=\"#1266d6\" opacity=\"0.595\"><title>(7,5) 0.020</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.38\" fill=\"#1266d6\" opacity=\"0.621\"><title>(4,7) 0.021</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.01\" fill=\"#1266d6\" opacity=\"0.669\"><title>(6,6) 0.023</title></circle><circle cx=\"232\" cy=\"164\" r=\"16.03\" fill=\"#1266d6\" opacity=\"0.596\"><title>(5,7) 0.020</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.85\" fill=\"#1266d6\" opacity=\"0.737\"><title>(7,6) 0.027</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"232\" cy=\"198\" r=\"17.25\" fill=\"#1266d6\" opacity=\"0.688\"><title>(6,7) 0.024</title></circle><circle cx=\"232\" cy=\"232\" r=\"16.91\" fill=\"#1266d6\" opacity=\"0.662\"><title>(7,7) 0.023</title></circle><circle cx=\"28\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"28\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"96\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/></svg>"
+        },
+        {
+          "name": "\u5403\u5b50\u63d0\u793a",
+          "note": "\u767d\u68cb\u4e00\u5b50\u5904\u4e8e\u4f4e\u6c14\uff0c\u6a21\u578b\u662f\u5426\u63d0\u9ad8\u76f8\u90bb\u5173\u952e\u70b9\u6982\u7387\u3002",
+          "player": 0,
+          "value": 0.5030102133750916,
+          "pass_prob": 0.027610503137111664,
+          "entropy": 0.9978461511597245,
+          "top_moves": [
+            [
+              "(7,3)",
+              0.027610764420459833
+            ],
+            [
+              "(3,1)",
+              0.027447249575125746
+            ],
+            [
+              "(6,4)",
+              0.026514527597590903
+            ],
+            [
+              "(1,7)",
+              0.02650932190893178
+            ],
+            [
+              "(7,6)",
+              0.02627480147028721
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u5403\u5b50\u63d0\u793a: black to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"28\" r=\"16.10\" fill=\"#1266d6\" opacity=\"0.601\"><title>(1,1) 0.020</title></circle><circle cx=\"62\" cy=\"28\" r=\"16.09\" fill=\"#1266d6\" opacity=\"0.600\"><title>(1,2) 0.020</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.34\" fill=\"#1266d6\" opacity=\"0.619\"><title>(1,5) 0.021</title></circle><circle cx=\"96\" cy=\"28\" r=\"15.84\" fill=\"#1266d6\" opacity=\"0.582\"><title>(1,3) 0.019</title></circle><circle cx=\"130\" cy=\"28\" r=\"17.08\" fill=\"#1266d6\" opacity=\"0.675\"><title>(1,4) 0.024</title></circle><circle cx=\"198\" cy=\"28\" r=\"15.79\" fill=\"#1266d6\" opacity=\"0.579\"><title>(1,6) 0.019</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.74\" fill=\"#1266d6\" opacity=\"0.728\"><title>(1,7) 0.027</title></circle><text x=\"232\" y=\"32\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"28\" cy=\"62\" r=\"16.53\" fill=\"#1266d6\" opacity=\"0.633\"><title>(2,1) 0.022</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.50\" fill=\"#1266d6\" opacity=\"0.630\"><title>(2,2) 0.022</title></circle><circle cx=\"130\" cy=\"62\" r=\"15.94\" fill=\"#1266d6\" opacity=\"0.590\"><title>(2,4) 0.020</title></circle><circle cx=\"164\" cy=\"62\" r=\"15.96\" fill=\"#1266d6\" opacity=\"0.591\"><title>(2,5) 0.020</title></circle><circle cx=\"28\" cy=\"96\" r=\"17.96\" fill=\"#1266d6\" opacity=\"0.747\"><title>(3,1) 0.027</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"28\" cy=\"130\" r=\"16.64\" fill=\"#1266d6\" opacity=\"0.641\"><title>(4,1) 0.022</title></circle><circle cx=\"28\" cy=\"164\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(5,1) 0.022</title></circle><circle cx=\"28\" cy=\"198\" r=\"15.83\" fill=\"#1266d6\" opacity=\"0.582\"><title>(6,1) 0.019</title></circle><circle cx=\"28\" cy=\"232\" r=\"16.20\" fill=\"#1266d6\" opacity=\"0.608\"><title>(7,1) 0.020</title></circle><circle cx=\"62\" cy=\"130\" r=\"16.88\" fill=\"#1266d6\" opacity=\"0.660\"><title>(4,2) 0.023</title></circle><circle cx=\"62\" cy=\"164\" r=\"16.91\" fill=\"#1266d6\" opacity=\"0.661\"><title>(5,2) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.44\" fill=\"#1266d6\" opacity=\"0.704\"><title>(6,2) 0.025</title></circle><circle cx=\"130\" cy=\"96\" r=\"15.70\" fill=\"#1266d6\" opacity=\"0.572\"><title>(3,4) 0.019</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.44\" fill=\"#1266d6\" opacity=\"0.703\"><title>(5,3) 0.025</title></circle><circle cx=\"62\" cy=\"232\" r=\"16.49\" fill=\"#1266d6\" opacity=\"0.630\"><title>(7,2) 0.022</title></circle><circle cx=\"130\" cy=\"130\" r=\"15.68\" fill=\"#1266d6\" opacity=\"0.572\"><title>(4,4) 0.019</title></circle><circle cx=\"96\" cy=\"198\" r=\"15.89\" fill=\"#1266d6\" opacity=\"0.586\"><title>(6,3) 0.019</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.68\" fill=\"#1266d6\" opacity=\"0.723\"><title>(3,5) 0.026</title></circle><circle cx=\"130\" cy=\"164\" r=\"16.47\" fill=\"#1266d6\" opacity=\"0.628\"><title>(5,4) 0.021</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.61\" fill=\"#1266d6\" opacity=\"0.638\"><title>(2,6) 0.022</title></circle><circle cx=\"96\" cy=\"232\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(7,3) 0.028</title></circle><text x=\"96\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"164\" cy=\"130\" r=\"16.08\" fill=\"#1266d6\" opacity=\"0.599\"><title>(4,5) 0.020</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.74\" fill=\"#1266d6\" opacity=\"0.728\"><title>(6,4) 0.027</title></circle><text x=\"130\" y=\"202\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"198\" cy=\"96\" r=\"16.77\" fill=\"#1266d6\" opacity=\"0.651\"><title>(3,6) 0.023</title></circle><circle cx=\"164\" cy=\"164\" r=\"17.22\" fill=\"#1266d6\" opacity=\"0.686\"><title>(5,5) 0.024</title></circle><circle cx=\"232\" cy=\"62\" r=\"15.45\" fill=\"#1266d6\" opacity=\"0.556\"><title>(2,7) 0.018</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.04\" fill=\"#1266d6\" opacity=\"0.597\"><title>(7,4) 0.020</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.28\" fill=\"#1266d6\" opacity=\"0.614\"><title>(4,6) 0.021</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.19\" fill=\"#1266d6\" opacity=\"0.683\"><title>(6,5) 0.024</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.57\" fill=\"#1266d6\" opacity=\"0.714\"><title>(3,7) 0.026</title></circle><circle cx=\"198\" cy=\"164\" r=\"17.07\" fill=\"#1266d6\" opacity=\"0.674\"><title>(5,6) 0.024</title></circle><circle cx=\"164\" cy=\"232\" r=\"15.87\" fill=\"#1266d6\" opacity=\"0.584\"><title>(7,5) 0.019</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.27\" fill=\"#1266d6\" opacity=\"0.614\"><title>(4,7) 0.021</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.21\" fill=\"#1266d6\" opacity=\"0.685\"><title>(6,6) 0.024</title></circle><circle cx=\"232\" cy=\"164\" r=\"15.71\" fill=\"#1266d6\" opacity=\"0.573\"><title>(5,7) 0.019</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.68\" fill=\"#1266d6\" opacity=\"0.723\"><title>(7,6) 0.026</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"232\" cy=\"198\" r=\"17.43\" fill=\"#1266d6\" opacity=\"0.703\"><title>(6,7) 0.025</title></circle><circle cx=\"232\" cy=\"232\" r=\"16.86\" fill=\"#1266d6\" opacity=\"0.658\"><title>(7,7) 0.023</title></circle><circle cx=\"96\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"96\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"96\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"130\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+        },
+        {
+          "name": "\u5730\u57df\u9009\u62e9",
+          "note": "\u53cc\u65b9\u5df2\u6709\u5c0f\u89d2\uff0c\u89c2\u5bdf\u6a21\u578b\u66f4\u504f\u8865\u5f3a\u8fd8\u662f\u62a2\u7a7a\u3002",
+          "player": 2,
+          "value": 0.5030102133750916,
+          "pass_prob": 0.02674279175698757,
+          "entropy": 0.9979635705008499,
+          "top_moves": [
+            [
+              "(3,1)",
+              0.029194349845756636
+            ],
+            [
+              "(7,6)",
+              0.02896119059002865
+            ],
+            [
+              "(7,3)",
+              0.028672821334796105
+            ],
+            [
+              "(6,4)",
+              0.028428346760148552
+            ],
+            [
+              "(3,7)",
+              0.028359081617581116
+            ]
+          ],
+          "board_svg": "<svg class=\"board\" viewBox=\"0 0 260 260\" role=\"img\" aria-label=\"\u5730\u57df\u9009\u62e9: white to play\"><rect x=\"0\" y=\"0\" width=\"260\" height=\"260\" rx=\"8\" fill=\"#d7a85d\"/><line x1=\"28\" y1=\"28\" x2=\"232\" y2=\"28\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"28\" x2=\"28\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"62\" x2=\"232\" y2=\"62\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"62\" y1=\"28\" x2=\"62\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"96\" x2=\"232\" y2=\"96\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"96\" y1=\"28\" x2=\"96\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"130\" x2=\"232\" y2=\"130\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"130\" y1=\"28\" x2=\"130\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"164\" x2=\"232\" y2=\"164\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"164\" y1=\"28\" x2=\"164\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"198\" x2=\"232\" y2=\"198\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"198\" y1=\"28\" x2=\"198\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"28\" y1=\"232\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><line x1=\"232\" y1=\"28\" x2=\"232\" y2=\"232\" stroke=\"#312315\" stroke-width=\"1\"/><circle cx=\"96\" cy=\"28\" r=\"16.05\" fill=\"#1266d6\" opacity=\"0.598\"><title>(1,3) 0.021</title></circle><circle cx=\"130\" cy=\"28\" r=\"16.90\" fill=\"#1266d6\" opacity=\"0.661\"><title>(1,4) 0.024</title></circle><circle cx=\"198\" cy=\"28\" r=\"15.72\" fill=\"#1266d6\" opacity=\"0.574\"><title>(1,6) 0.020</title></circle><circle cx=\"232\" cy=\"28\" r=\"17.71\" fill=\"#1266d6\" opacity=\"0.725\"><title>(1,7) 0.028</title></circle><circle cx=\"164\" cy=\"28\" r=\"16.38\" fill=\"#1266d6\" opacity=\"0.621\"><title>(1,5) 0.022</title></circle><circle cx=\"62\" cy=\"62\" r=\"16.47\" fill=\"#1266d6\" opacity=\"0.628\"><title>(2,2) 0.023</title></circle><circle cx=\"96\" cy=\"62\" r=\"17.70\" fill=\"#1266d6\" opacity=\"0.725\"><title>(2,3) 0.028</title></circle><circle cx=\"130\" cy=\"62\" r=\"15.76\" fill=\"#1266d6\" opacity=\"0.577\"><title>(2,4) 0.020</title></circle><circle cx=\"164\" cy=\"62\" r=\"16.10\" fill=\"#1266d6\" opacity=\"0.601\"><title>(2,5) 0.021</title></circle><circle cx=\"198\" cy=\"62\" r=\"16.80\" fill=\"#1266d6\" opacity=\"0.653\"><title>(2,6) 0.024</title></circle><circle cx=\"232\" cy=\"62\" r=\"15.52\" fill=\"#1266d6\" opacity=\"0.560\"><title>(2,7) 0.019</title></circle><circle cx=\"28\" cy=\"96\" r=\"18.00\" fill=\"#1266d6\" opacity=\"0.750\"><title>(3,1) 0.029</title></circle><text x=\"28\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">1</text><circle cx=\"28\" cy=\"130\" r=\"16.86\" fill=\"#1266d6\" opacity=\"0.658\"><title>(4,1) 0.024</title></circle><circle cx=\"28\" cy=\"164\" r=\"16.55\" fill=\"#1266d6\" opacity=\"0.634\"><title>(5,1) 0.023</title></circle><circle cx=\"62\" cy=\"198\" r=\"17.35\" fill=\"#1266d6\" opacity=\"0.696\"><title>(6,2) 0.026</title></circle><circle cx=\"96\" cy=\"232\" r=\"17.88\" fill=\"#1266d6\" opacity=\"0.740\"><title>(7,3) 0.029</title></circle><text x=\"96\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">3</text><circle cx=\"62\" cy=\"96\" r=\"16.02\" fill=\"#1266d6\" opacity=\"0.595\"><title>(3,2) 0.021</title></circle><circle cx=\"62\" cy=\"130\" r=\"17.13\" fill=\"#1266d6\" opacity=\"0.679\"><title>(4,2) 0.025</title></circle><circle cx=\"96\" cy=\"96\" r=\"16.69\" fill=\"#1266d6\" opacity=\"0.645\"><title>(3,3) 0.024</title></circle><circle cx=\"62\" cy=\"164\" r=\"16.72\" fill=\"#1266d6\" opacity=\"0.647\"><title>(5,2) 0.024</title></circle><circle cx=\"96\" cy=\"130\" r=\"16.05\" fill=\"#1266d6\" opacity=\"0.598\"><title>(4,3) 0.021</title></circle><circle cx=\"130\" cy=\"96\" r=\"15.72\" fill=\"#1266d6\" opacity=\"0.574\"><title>(3,4) 0.020</title></circle><circle cx=\"96\" cy=\"164\" r=\"17.42\" fill=\"#1266d6\" opacity=\"0.702\"><title>(5,3) 0.027</title></circle><circle cx=\"130\" cy=\"130\" r=\"15.77\" fill=\"#1266d6\" opacity=\"0.577\"><title>(4,4) 0.020</title></circle><circle cx=\"96\" cy=\"198\" r=\"15.90\" fill=\"#1266d6\" opacity=\"0.587\"><title>(6,3) 0.021</title></circle><circle cx=\"164\" cy=\"96\" r=\"17.71\" fill=\"#1266d6\" opacity=\"0.726\"><title>(3,5) 0.028</title></circle><circle cx=\"130\" cy=\"164\" r=\"16.51\" fill=\"#1266d6\" opacity=\"0.631\"><title>(5,4) 0.023</title></circle><circle cx=\"164\" cy=\"130\" r=\"16.06\" fill=\"#1266d6\" opacity=\"0.598\"><title>(4,5) 0.021</title></circle><circle cx=\"130\" cy=\"198\" r=\"17.83\" fill=\"#1266d6\" opacity=\"0.736\"><title>(6,4) 0.028</title></circle><text x=\"130\" y=\"202\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">4</text><circle cx=\"198\" cy=\"96\" r=\"16.58\" fill=\"#1266d6\" opacity=\"0.637\"><title>(3,6) 0.023</title></circle><circle cx=\"164\" cy=\"164\" r=\"17.13\" fill=\"#1266d6\" opacity=\"0.679\"><title>(5,5) 0.025</title></circle><circle cx=\"130\" cy=\"232\" r=\"16.23\" fill=\"#1266d6\" opacity=\"0.611\"><title>(7,4) 0.022</title></circle><circle cx=\"198\" cy=\"130\" r=\"16.21\" fill=\"#1266d6\" opacity=\"0.609\"><title>(4,6) 0.022</title></circle><circle cx=\"164\" cy=\"198\" r=\"17.10\" fill=\"#1266d6\" opacity=\"0.677\"><title>(6,5) 0.025</title></circle><circle cx=\"232\" cy=\"96\" r=\"17.81\" fill=\"#1266d6\" opacity=\"0.734\"><title>(3,7) 0.028</title></circle><text x=\"232\" y=\"100\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">5</text><circle cx=\"198\" cy=\"164\" r=\"17.17\" fill=\"#1266d6\" opacity=\"0.682\"><title>(5,6) 0.026</title></circle><circle cx=\"164\" cy=\"232\" r=\"15.95\" fill=\"#1266d6\" opacity=\"0.590\"><title>(7,5) 0.021</title></circle><circle cx=\"232\" cy=\"130\" r=\"16.44\" fill=\"#1266d6\" opacity=\"0.626\"><title>(4,7) 0.023</title></circle><circle cx=\"198\" cy=\"198\" r=\"17.15\" fill=\"#1266d6\" opacity=\"0.681\"><title>(6,6) 0.026</title></circle><circle cx=\"232\" cy=\"164\" r=\"15.87\" fill=\"#1266d6\" opacity=\"0.584\"><title>(5,7) 0.020</title></circle><circle cx=\"198\" cy=\"232\" r=\"17.95\" fill=\"#1266d6\" opacity=\"0.746\"><title>(7,6) 0.029</title></circle><text x=\"198\" y=\"236\" text-anchor=\"middle\" font-size=\"11\" font-weight=\"700\" fill=\"#ffffff\">2</text><circle cx=\"232\" cy=\"198\" r=\"17.25\" fill=\"#1266d6\" opacity=\"0.688\"><title>(6,7) 0.026</title></circle><circle cx=\"28\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"28\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"62\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"198\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"28\" cy=\"232\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"62\" cy=\"232\" r=\"13\" fill=\"#f8f8f8\" stroke=\"#111\" stroke-width=\"1\"/><circle cx=\"232\" cy=\"232\" r=\"13\" fill=\"#111111\" stroke=\"#000\" stroke-width=\"1\"/></svg>"
+        }
+      ],
+      "sample_game": [
+        7,
+        2,
+        [
+          [
+            0,
+            [
+              4,
+              0
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              5,
+              6
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              5
+            ]
+          ],
+          [
+            2,
+            [
+              3,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              5,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              6,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              4,
+              5
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              1,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              2,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              3,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              4
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              0
+            ]
+          ],
+          [
+            0,
+            [
+              0,
+              4
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              2
+            ]
+          ],
+          [
+            0,
+            [
+              0,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              3,
+              3
+            ]
+          ],
+          [
+            0,
+            [
+              1,
+              1
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              4
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            [
+              2,
+              1
+            ]
+          ],
+          [
+            0,
+            [
+              0,
+              6
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              3
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            [
+              5,
+              5
+            ]
+          ],
+          [
+            0,
+            [
+              5,
+              0
+            ]
+          ],
+          [
+            2,
+            [
+              1,
+              5
+            ]
+          ],
+          [
+            0,
+            [
+              1,
+              6
+            ]
+          ],
+          [
+            2,
+            null
+          ],
+          [
+            0,
+            [
+              5,
+              2
+            ]
+          ],
+          [
+            2,
+            [
+              3,
+              4
+            ]
+          ],
+          [
+            0,
+            [
+              2,
+              5
+            ]
+          ],
+          [
+            2,
+            [
+              6,
+              5
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            [
+              6,
+              1
+            ]
+          ],
+          [
+            0,
+            [
+              4,
+              3
+            ]
+          ],
+          [
+            2,
+            [
+              0,
+              5
+            ]
+          ],
+          [
+            0,
+            null
+          ],
+          [
+            2,
+            null
+          ]
+        ],
+        0.5,
+        [
+          [],
+          [],
+          []
+        ]
+      ]
+    }
+  ],
+  "generated_at": "2026-04-28T14:21:29"
+}
